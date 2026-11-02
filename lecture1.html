@@ -1,0 +1,1229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lecture 1: Linear Regression from First Principles (slides)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Literata:ital,opsz,wght@0,7..72,400..600;1,7..72,400&display=swap" rel="stylesheet">
+<script>
+window.MathJax={tex:{inlineMath:[['\\(','\\)']],displayMath:[['\\[','\\]']]},svg:{fontCache:'global'},options:{skipHtmlTags:['script','noscript','style','textarea','pre','canvas']},
+  startup:{ready(){MathJax.startup.defaultReady();MathJax.startup.promise.then(()=>{document.documentElement.classList.add('mj-ready');});}}};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>
+<style>
+:root{
+  --paper:#F3F5F9;--gridc:#E2E8F1;--ink:#16223A;--muted:#5A677D;--line:#CBD4E1;--surface:#FFFFFF;--surface2:#F6F8FB;
+  --blue:#2456C7;--red:#C92A52;--green:#0F8466;--amber:#B26F08;--violet:#6A4BC4;
+  --blue-soft:rgba(36,86,199,.11);--red-soft:rgba(201,42,82,.11);--green-soft:rgba(15,132,102,.12);--amber-soft:rgba(178,111,8,.13);
+  --serif:'Literata',Georgia,serif;--display:'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif;
+  color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0E1219;--gridc:#161C26;--ink:#DFE6F1;--muted:#95A2B7;--line:#2B3546;--surface:#141A23;--surface2:#18202B;
+  --blue:#7AA2FF;--red:#FF7393;--green:#43CFA2;--amber:#F2B550;--violet:#AE98FF;
+  --blue-soft:rgba(122,162,255,.14);--red-soft:rgba(255,115,147,.14);--green-soft:rgba(67,207,162,.14);--amber-soft:rgba(242,181,80,.14);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0E1219;--gridc:#161C26;--ink:#DFE6F1;--muted:#95A2B7;--line:#2B3546;--surface:#141A23;--surface2:#18202B;
+  --blue:#7AA2FF;--red:#FF7393;--green:#43CFA2;--amber:#F2B550;--violet:#AE98FF;
+  --blue-soft:rgba(122,162,255,.14);--red-soft:rgba(255,115,147,.14);--green-soft:rgba(67,207,162,.14);--amber-soft:rgba(242,181,80,.14);color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--serif);overflow:hidden;
+  background-image:linear-gradient(var(--gridc) 1px,transparent 1px),linear-gradient(90deg,var(--gridc) 1px,transparent 1px);background-size:24px 24px;-webkit-user-select:none;user-select:none}
+#deck{position:fixed;inset:0;top:env(safe-area-inset-top,0px);bottom:calc(env(safe-area-inset-bottom,0px) + 44px)}
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:0 0;background:var(--surface);border:1px solid var(--line);border-radius:6px;box-shadow:0 1px 0 var(--line);overflow:hidden}
+.slide{position:absolute;inset:0;padding:52px 76px 44px;display:flex;flex-direction:column;opacity:0;visibility:hidden;transform:translateX(28px);transition:opacity .45s ease,transform .45s ease,visibility 0s linear .45s;font-size:30px;line-height:1.4}
+.slide.active{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease,transform .45s ease,visibility 0s}
+.slide.past{transform:translateX(-28px)}
+.slide h2{font-family:var(--display);font-weight:750;font-size:44px;line-height:1.05;letter-spacing:-.015em;margin:0 0 18px;font-variation-settings:'opsz' 72}
+.slide .sec{position:absolute;left:76px;bottom:16px;font-family:var(--display);font-size:14px;color:var(--muted)}
+.body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:18px;min-height:0;text-align:center}
+.body.left{align-items:flex-start;text-align:left}
+.row{display:flex;gap:44px;align-items:center;justify-content:center;width:100%}
+.col{display:flex;flex-direction:column;gap:14px;align-items:center}
+.q{color:var(--blue);font-family:var(--display);font-weight:650}
+.alert{color:var(--red);font-weight:600}
+.small{font-size:22px;color:var(--muted)}
+.tiny{font-size:18px;color:var(--muted);font-family:var(--display)}
+.big{font-size:40px}
+.huge{font-size:56px}
+.f{opacity:0;transform:translateY(14px);transition:opacity .45s ease,transform .45s ease}
+.f.on{opacity:1;transform:none}
+.f.pop{transform:scale(.85)}
+.f.pop.on{transform:none}
+.box{border:2px solid var(--ink);border-radius:10px;padding:10px 22px;display:inline-block}
+.chip{display:inline-block;font-family:var(--display);font-size:18px;font-weight:650;padding:2px 12px;border-radius:20px;vertical-align:middle;margin-left:10px}
+.c-reg{background:var(--blue-soft);color:var(--blue)}.c-cls{background:var(--amber-soft);color:var(--amber)}.c-oth{background:var(--green-soft);color:var(--green)}
+canvas.cv{display:block;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+canvas.cv.bare{border:none;background:transparent}
+ol.items,ul.items{margin:0;padding-left:1.2em;text-align:left}
+ol.items li,ul.items li{margin:.35em 0}
+table.tb{border-collapse:collapse;font-size:26px;font-variant-numeric:tabular-nums}
+table.tb th{font-family:var(--display);font-weight:650;font-size:22px;border-bottom:2.5px solid var(--ink);padding:8px 20px}
+table.tb td{border-bottom:1px solid var(--line);padding:8px 20px}
+table.tb td.l,table.tb th.l{text-align:left}
+.stag>*{opacity:0;transform:translateY(10px)}
+.slide.active .stag>*{animation:rise .5s ease forwards}
+.slide.active .stag>*:nth-child(2){animation-delay:.12s}.slide.active .stag>*:nth-child(3){animation-delay:.24s}.slide.active .stag>*:nth-child(4){animation-delay:.36s}.slide.active .stag>*:nth-child(5){animation-delay:.48s}.slide.active .stag>*:nth-child(6){animation-delay:.6s}.slide.active .stag>*:nth-child(7){animation-delay:.72s}.slide.active .stag>*:nth-child(8){animation-delay:.84s}
+@keyframes rise{to{opacity:1;transform:none}}
+.hl{transition:background .4s,color .4s;border-radius:4px;padding:0 3px}
+.hl.on{background:var(--red-soft);color:var(--red)}
+tr.hlr.on td{background:var(--red-soft)}
+/* Title & dividers */
+.title-slide{justify-content:center}
+.title-slide h1{font-family:var(--display);font-weight:800;font-size:92px;line-height:.95;letter-spacing:-.03em;margin:0 0 22px;max-width:9.5em;font-variation-settings:'opsz' 96}
+.title-slide .meta{font-family:var(--display);font-size:22px;color:var(--muted)}
+.divider{justify-content:center}
+.divider .num{font-family:var(--display);font-weight:800;font-size:220px;line-height:.8;letter-spacing:-.05em;color:transparent;-webkit-text-stroke:2.5px var(--ink)}
+.divider h1{font-family:var(--display);font-weight:780;font-size:64px;margin:16px 0 4px;letter-spacing:-.02em}
+.divider p{font-family:var(--display);font-size:28px;color:var(--muted);margin:0}
+.divider .mins{position:absolute;right:76px;top:56px;font-family:var(--display);font-size:20px;color:var(--blue);font-weight:700}
+/* SVG drawing animation */
+.draw path,.draw line,.draw circle,.draw rect,.draw polyline{stroke-dasharray:var(--len,600);stroke-dashoffset:var(--len,600)}
+.slide.active .draw path,.slide.active .draw line,.slide.active .draw circle,.slide.active .draw polyline{animation:ink 1.6s ease forwards}
+.slide.active .draw.f.on rect,.slide.active .draw rect.go{animation:ink 1s ease forwards}
+@keyframes ink{to{stroke-dashoffset:0}}
+.flow{stroke-dasharray:6 10;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+/* emails */
+.mail{width:420px;border:1.5px solid var(--line);border-radius:10px;padding:16px 20px;text-align:left;font-size:20px;line-height:1.45;background:var(--surface2)}
+.mail b{font-family:var(--display);display:block;font-size:19px;margin-bottom:6px}
+.mail .from{font-family:var(--display);font-size:15px;color:var(--muted);margin-bottom:6px}
+.verdict{font-family:var(--display);font-weight:700;font-size:20px;margin-top:8px}
+/* pipelines */
+.pipe{display:flex;align-items:center;gap:0}
+.node{border:2.5px solid var(--ink);border-radius:12px;padding:16px 22px;font-family:var(--display);font-size:24px;font-weight:650;background:var(--surface);text-align:center;min-width:170px}
+.node small{display:block;font-weight:450;font-size:17px;color:var(--muted)}
+.node.dark{background:var(--ink);color:var(--surface)}
+.node.dark small{color:inherit;opacity:.75}
+.arrow{width:110px;height:24px}
+/* folds */
+.folds{display:grid;gap:6px;font-family:var(--display);font-size:16px}
+.fold{display:grid;grid-template-columns:90px repeat(5,92px);gap:6px;align-items:center}
+.cell{height:34px;border-radius:5px;background:var(--blue-soft);border:1.5px solid var(--blue);display:grid;place-items:center;color:var(--blue);font-weight:600}
+.cell.val{background:var(--amber-soft);border-color:var(--amber);color:var(--amber)}
+.cell.sel{box-shadow:inset 0 -6px 0 var(--green)}
+.selall{grid-column:2/7;height:30px;border-radius:5px;background:var(--red-soft);border:2px solid var(--red);color:var(--red);display:grid;place-items:center;font-weight:700}
+/* timeline */
+.tl{position:relative;width:1000px;height:220px;font-family:var(--display);font-size:19px}
+/* timer */
+.timer{font-family:var(--display);font-weight:800;font-size:150px;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1}
+/* HUD */
+#hud{position:fixed;left:0;right:0;bottom:env(safe-area-inset-bottom,0px);height:44px;display:flex;align-items:center;gap:10px;padding:0 14px;font-family:var(--display);font-size:14px;color:var(--muted);background:var(--surface);border-top:1px solid var(--line)}
+#hud button{font-family:var(--display);font-size:14px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:4px 10px;cursor:pointer;min-width:34px}
+#hud button:hover{border-color:var(--ink)}
+#hud .grow{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#prog{position:fixed;left:0;bottom:calc(env(safe-area-inset-bottom,0px) + 44px);height:3px;background:var(--blue);transition:width .3s;z-index:5}
+#toc{position:fixed;right:12px;bottom:calc(env(safe-area-inset-bottom,0px) + 52px);width:min(380px,calc(100vw - 24px));max-height:70vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px;display:none;z-index:10;font-family:var(--display);font-size:14px;box-shadow:0 8px 30px rgba(0,0,0,.18)}
+#toc.open{display:block}
+#toc a{display:flex;gap:10px;padding:4px 8px;border-radius:5px;color:var(--ink);text-decoration:none}
+#toc a:hover,#toc a.cur{background:var(--blue-soft)}
+#toc a span{color:var(--muted);min-width:24px;font-variant-numeric:tabular-nums}
+#toc h4{margin:10px 8px 4px;font-size:12.5px;color:var(--blue)}
+:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+button.inl{font-family:var(--display);font-size:20px;font-weight:650;padding:8px 18px;border-radius:8px;border:1.5px solid var(--ink);background:var(--surface);color:var(--ink);cursor:pointer}
+button.inl.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+@media (prefers-reduced-motion:reduce){.slide,.f{transition:none}.slide.active .stag>*{animation:none;opacity:1;transform:none}.flow{animation:none}.slide.active .draw *{animation:none!important;stroke-dashoffset:0!important}}
+</style>
+</head>
+<body>
+<div id="deck"><div id="stage">
+
+<section class="slide title-slide" data-sec="Lecture 1" data-title="Title">
+  <div class="row" style="justify-content:space-between;align-items:center">
+    <div style="text-align:left">
+      <p class="meta">Lecture 1 &nbsp;/&nbsp; 180 minutes</p>
+      <h1>Linear regression from first principles</h1>
+      <p class="meta">Press → or space to advance</p>
+    </div>
+    <canvas class="cv bare" data-v="title" style="width:440px;height:440px"></canvas>
+  </div>
+</section>
+
+<!-- ================= PART 0 ================= -->
+<section class="slide divider" data-sec="Part 0" data-title="From perception to machine learning">
+  <span class="mins">0–25 min</span>
+  <div class="num">0</div><h1>From human perception to machine learning</h1><p>What are we trying to learn?</p>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Code to be human">
+  <h2>Code to be human</h2>
+  <div class="body"><canvas class="cv" data-v="face" style="width:680px;height:255px"></canvas>
+    <div>Can you recognise who this is?</div>
+    <div class="f q" data-at="1">Can you write an algorithm that does the same?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Human perception">
+  <h2>Human perception</h2>
+  <div class="body">
+    <div class="row stag" style="gap:60px">
+      <svg width="130" height="110" viewBox="0 0 130 110" aria-label="sight"><path d="M8 55 Q65 -5 122 55 Q65 115 8 55Z" fill="none" stroke="var(--ink)" stroke-width="5"/><circle cx="65" cy="55" r="20" fill="var(--blue)"/><circle cx="65" cy="55" r="8" fill="var(--ink)"/></svg>
+      <svg width="110" height="110" viewBox="0 0 110 110" aria-label="sound"><path d="M30 55 L50 55 L70 30 L70 80 L50 55" fill="var(--ink)" stroke="var(--ink)" stroke-width="4" stroke-linejoin="round"/><path d="M80 38 Q92 55 80 72 M88 26 Q108 55 88 84" fill="none" stroke="var(--blue)" stroke-width="5" stroke-linecap="round"/></svg>
+      <svg width="130" height="110" viewBox="0 0 130 110" aria-label="language"><rect x="10" y="14" width="110" height="64" rx="16" fill="none" stroke="var(--ink)" stroke-width="5"/><path d="M36 78 L30 100 L58 78" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linejoin="round"/><path d="M32 40 H98 M32 56 H76" stroke="var(--blue)" stroke-width="5" stroke-linecap="round"/></svg>
+      <svg width="120" height="110" viewBox="0 0 120 110" aria-label="objects"><rect x="14" y="40" width="50" height="50" fill="none" stroke="var(--ink)" stroke-width="5"/><circle cx="82" cy="40" r="26" fill="none" stroke="var(--blue)" stroke-width="5"/><path d="M70 98 L92 58 L114 98Z" fill="none" stroke="var(--ink)" stroke-width="5" stroke-linejoin="round"/></svg>
+    </div>
+    <div>Faces, voices, objects, language.</div>
+    <div class="f alert" data-at="1">What information do we use to make these decisions?</div>
+  </div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Algorithm vs human">
+  <h2>Algorithm vs human</h2>
+  <div class="body"><div>Let’s try something simpler.</div>
+    <div class="row"><canvas class="cv" data-v="d3a" style="width:330px;height:330px"></canvas>
+      <canvas class="cv f" data-at="1" data-v="d3b" style="width:330px;height:330px"></canvas></div>
+    <div class="tiny">MNIST: Modified National Institute of Standards and Technology dataset</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="What does a computer see?">
+  <h2>What does a computer see?</h2>
+  <div class="body"><div>An image is a numerical array. \(\;x\in\{0,\ldots,255\}^{H\times W}\)</div>
+    <canvas class="cv" data-v="pix" style="width:900px;height:380px"></canvas>
+    <div class="f" data-at="1">For an MNIST digit: \(H=W=28\), so 784 numbers.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Handwritten digits">
+  <h2>Machine learning: handwritten digits</h2>
+  <div class="body"><canvas class="cv" data-v="mnist" style="width:860px;height:430px"></canvas>
+    <div class="f q" data-at="1">Can examples help us learn to recognise new digits?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Natural images">
+  <h2>Machine learning: natural images</h2>
+  <div class="body"><div class="stag"><img src="data:image/jpeg;base64,/9j/4QC8RXhpZgAASUkqAAgAAAAGABIBAwABAAAAAQAAABoBBQABAAAAVgAAABsBBQABAAAAXgAAACgBAwABAAAAAgAAABMCAwABAAAAAQAAAGmHBAABAAAAZgAAAAAAAABIAAAAAQAAAEgAAAABAAAABgAAkAcABAAAADAyMTABkQcABAAAAAECAwAAoAcABAAAADAxMDABoAMAAQAAAP//AAACoAQAAQAAALwCAAADoAQAAQAAAFkBAAAAAAAA/9sAQwAGBgYGBwYHCAgHCgsKCwoPDgwMDg8WEBEQERAWIhUZFRUZFSIeJB4cHiQeNiomJio2PjQyND5MRERMX1pffHyn/9sAQwEGBgYGBwYHCAgHCgsKCwoPDgwMDg8WEBEQERAWIhUZFRUZFSIeJB4cHiQeNiomJio2PjQyND5MRERMX1pffHyn/8AAEQgBWQK8AwEiAAIRAQMRAf/EAB0AAQACAwADAQAAAAAAAAAAAAAGBwQFCAECAwn/xABiEAABBAIBAgIFBAgMDw8FAAMBAAIDBAURBhIhEzEHFCJBURUyYXEWI4GhsbKz0QgzNkJSVHWRk6PS4xckNVVidIKDhKLBwsPT4hglNENFRlNkc5KUpLTh8SZEY2VyN2bw/8QAGgEBAAMBAQEAAAAAAAAAAAAAAAECAwQFBv/EADMRAAICAQMDAgUEAgIBBQAAAAABAhEDEiExBEFRE2EUIlJxoQUyM4EVkSNCBlNiY4Kx/9oADAMBAAIRAxEAPwDqlERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREARFWGT5Xm38qv4ShZwtN1ZkBjbkDJ4lsyt6iYQ1zPZb80nv3QFjRW6ktixXjsxPmg6PGia8F8fWNt6wO42PLfmk9urXfAyaxFG6aTw4mvcGmR+i7paD5nQJ0FUVR/Knc75tHh2Y5svg4x00trxHRhwhOmNazpJ339rfYe5bSPlbsnjuCX342r4l/KeDI2VniGvIyOUPdCe2nBzCAfgUBaQRVNDybneRn5P8AJlLE+FisjNAzxhL1WBG1r/DHS7TX9/nH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pRY6f7j86H4CvI7t2W7rQWoKjapsvdCHbDD5bXfiKlr6S2l+Tg9jS3zCsf0aRk8wxUhcP+P7f3ly6pRLXgKO/IREUFwuPP0Qf6s8f+5EX5aVdhogPzJa9ze7XEL7uslzA0gHsv0vRAfmOTsrxpfpyiA/MdSng0srOZcaDXkB2Wph2veDK3YX6HogthERAFAvSFF4uGrM+NxgP/ccp6mkTpkp0c84itDHaaHu1IO7XfAKz6bp7UM8WtgDQPxU30vCs5X2LOd9iFZDGUQKwLAJCdHXvUQyvB5pbMQhcWRl/u8tK5UVUFkaKLl4Ga0sDGEvaXbesyjGyF5qQjT2/eKuhFKbTsObaoBERQUCj3KZHx4K69g9oBmv++FIUVZK015VBOmcRcjwty5fmtuafL3fWoeyK3VfEJiQBINgr9DNBeVEYtJLVaRaUk3aVHM+SnZZ4n0MG5HxdDR99VbXwd31cCVxYB5NK7pXnSosbV1Kk3ZDdtX2OAvkVotB7S753fSsGCOa5YgfJH1OhaAxx9wXXaaCmeNyX7q2LqaXESOcRBHH6O/hJ+OVJERXiqikZt2FGuaDq4fyUfHE3PyTlJUVgfmuK7+oaHvXT/B70EeOrM6tPDe/7y6IXnStKWpcESV9yI0JWTkkd+y8XqViUkt+b8FLl5WelBJkOpQSRDpkGwVBvSfxxt3j0smu8XtBXSvOleL0ldO6ZSPoFiMXEcg0jv8AK0v5KNXcmkRl2ERFAOVn0mwci5HJ095Mtbdv65XFb2FvsAHS6L19CLjn0inJvVybxzuKS08HO7WvY9r2u6SN/fXu5wdEYiexds/SV0NofBeNBZ/A/wDyfgs+ot7x/JzXJVa8jTQXHsF8uVCTHYJuPhOrFobefg1dM6HwRTDolG/mtlZZ9SrSc9+gbHvojkbHO6iTV7/wi6FXheV2xjpildmH2CIisCluYWqjM5dZNI0do9g/9mFSPJ8bddu1Te2WL9gV2uiimnswfmndmlGxLTDT8R/8rWsmYzTxEex81+nyK1sikfl/byE9np6j2Cx2Me4+XdfqQinUxSOHvQvjLDOfYWw9umt9Y+7uB4XcKIobCQXgryigkoT0jyQDlsEUrme1i4+kH3nxXqFQ2GY9zo9bjed9Y+K6vXjQ+Cwnh1N/Ns+xk8bu063OTalacZCpcaQ7rl6WAe/t71l4+hlm18nUfCRMZuvf7Ea811QiuoNJK+DRJI5UyEnjNZYjrtdqIsmB8gd+azuLsxFGzZF5sRa/pMbnb7bHkunURwbVWTGou6sp2jkuIfKtCKN0AndZjEYG9l5cANfdVxBNLymPGoKrstKWp8JfYIiLQqEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQBERAEREAREQH//Z" alt="CIFAR-10 sample images with their class labels" style="width:820px;height:auto;display:block;border-radius:8px;background:#fff"></div>
+    <div class="f q" data-at="1">Can a model learn object categories from labelled images?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Text">
+  <h2>Machine learning: text</h2>
+  <div class="body"><div class="row">
+    <div class="mail"><div class="from">From: prize-desk@w1nner.biz</div><b>You have been selected!!!</b>Dear user, <span class="hl" data-at="1">CONGRATULATIONS</span>, you <span class="hl" data-at="1">won</span> a <span class="hl" data-at="1">free</span> phone. Click <span class="hl" data-at="1">now</span> to claim your <span class="hl" data-at="1">$1000</span> reward.<div class="verdict f" data-at="1" style="color:var(--red)">spam</div></div>
+    <div class="mail"><div class="from">From: r.mehta@university.edu</div><b>Lecture 2 materials</b>Hi all, the slides and the exercise sheet for Thursday are on the course page. See you in room 204.<div class="verdict f" data-at="1" style="color:var(--green)">not spam</div></div>
+  </div><div class="f q" data-at="1">Can a model distinguish spam from legitimate email?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Data modalities">
+  <h2>Different data modalities</h2>
+  <div class="body"><table class="tb"><thead><tr><th class="l">Modality</th><th class="l">Numerical representation</th></tr></thead>
+    <tbody class="stag"><tr><td class="l">Image</td><td class="l">Pixel values</td></tr><tr><td class="l">Audio</td><td class="l">Signal samples</td></tr><tr><td class="l">Text</td><td class="l">Token representations</td></tr><tr><td class="l">Tabular</td><td class="l">Feature vectors</td></tr></tbody></table></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Machine learning approach">
+  <h2>The machine learning approach</h2>
+  <div class="body">
+    <svg width="1040" height="400" viewBox="0 0 1040 400" style="font-family:var(--display)">
+      <g font-size="22" font-weight="650" fill="var(--ink)" text-anchor="middle">
+        <rect x="20" y="40" width="210" height="96" rx="12" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="2.5"/><text x="125" y="82">Training data</text><text x="125" y="112" font-size="18" font-weight="450" fill="var(--muted)">examples (x, y)</text>
+        <rect x="400" y="40" width="240" height="96" rx="12" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/><text x="520" y="82">Learning algorithm</text><text x="520" y="112" font-size="18" font-weight="450" fill="var(--muted)">fits parameters β</text>
+        <rect x="400" y="250" width="240" height="96" rx="12" fill="var(--ink)"/><text x="520" y="292" fill="var(--surface)">Model f<tspan font-size="15" dy="5">β</tspan></text><text x="520" y="322" font-size="18" font-weight="450" fill="var(--surface)" opacity=".75">learned mapping</text>
+        <rect x="20" y="250" width="210" height="96" rx="12" fill="var(--surface)" stroke="var(--ink)" stroke-width="2.5"/><text x="125" y="292">New input x</text><text x="125" y="322" font-size="18" font-weight="450" fill="var(--muted)">never seen before</text>
+        <rect x="810" y="250" width="210" height="96" rx="12" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="2.5"/><text x="915" y="292">Prediction ŷ</text><text x="915" y="322" font-size="18" font-weight="450" fill="var(--muted)">f<tspan font-size="13" dy="4">β</tspan><tspan dy="-4">(x)</tspan></text>
+      </g>
+      <g stroke="var(--blue)" stroke-width="4" fill="none"><path class="flow" d="M232 88 H396"/><path class="flow" d="M520 140 V246"/><path class="flow" d="M232 298 H396"/><path class="flow" d="M642 298 H806"/></g>
+      <g fill="var(--blue)"><path d="M398 88 l-14 -8 v16z"/><path d="M520 248 l-8 -14 h16z"/><path d="M398 298 l-14 -8 v16z"/><path d="M808 298 l-14 -8 v16z"/></g>
+    </svg>
+  </div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="A mathematical black box">
+  <h2>A mathematical black box</h2>
+  <div class="body"><div class="big">\[\underbrace{x}_{\text{input}}\ \xrightarrow{\quad f_\beta\quad}\ \underbrace{\hat y=f_\beta(x)}_{\text{prediction}}\]</div>
+    <div class="f alert" data-at="1">The training data determine the model parameters \(\beta\).</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Supervised learning">
+  <h2>Supervised learning</h2>
+  <div class="body"><div class="row"><div class="col"><div>Inputs <em>and</em> targets:</div><div>\[\mathcal D=\{(x_i,y_i)\}_{i=1}^{n}\]</div>
+    <div class="f" data-at="1">Learn \(f_\beta\) to predict \(y\) from \(x\).</div></div>
+    <canvas class="cv" data-v="sup" style="width:440px;height:400px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Unsupervised learning">
+  <h2>Unsupervised learning</h2>
+  <div class="body"><div class="row"><div class="col"><div>Inputs, no target labels:</div><div>\[\mathcal D=\{x_i\}_{i=1}^{n}\]</div>
+    <div class="f" data-at="1">Example: group customers with similar behaviour.</div></div>
+    <canvas class="cv" data-v="unsup" style="width:440px;height:400px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Two supervised tasks">
+  <h2>Two supervised learning tasks</h2>
+  <div class="body"><div class="row">
+    <div class="col"><b class="q">Regression</b><canvas class="cv" data-v="treg" style="width:440px;height:330px"></canvas><div class="small">Predict a number: house price</div></div>
+    <div class="col"><b class="q" style="color:var(--amber)">Classification</b><canvas class="cv" data-v="tcls" style="width:440px;height:330px"></canvas><div class="small">Predict a class: spam / not spam</div></div></div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Banking">
+  <h2>Banking</h2>
+  <div class="body">
+    <svg class="draw" width="300" height="240" viewBox="0 0 300 240" fill="none" stroke="var(--ink)" stroke-width="7" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M20 80 L150 18 L280 80 Z" style="--len:600"/><path d="M40 92 H260" style="--len:240"/><path d="M62 104 V190 M112 104 V190 M188 104 V190 M238 104 V190" style="--len:400"/><path d="M28 202 H272 M16 224 H284" style="--len:560"/><circle cx="150" cy="56" r="11" stroke="var(--blue)" style="--len:80"/>
+      <text x="150" y="168" font-family="var(--display)" font-size="54" font-weight="800" fill="var(--blue)" stroke="none" text-anchor="middle">₹</text>
+    </svg>
+    <div>You are hired by a bank to <b>automate loan pricing</b>.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Bank: past data">
+  <h2>Bank case study: past data</h2>
+  <div class="body"><table class="tb"><thead><tr><th>Customer</th><th>Income (₹ L)</th><th>Score</th><th>Loan (₹ L)</th><th style="color:var(--blue)">Rate (%)</th></tr></thead>
+    <tbody class="stag"><tr><td>A</td><td>8</td><td>690</td><td>4</td><td style="color:var(--blue)">12.5</td></tr><tr><td>B</td><td>12</td><td>720</td><td>6</td><td style="color:var(--blue)">11.2</td></tr><tr><td>C</td><td>5</td><td>650</td><td>3</td><td style="color:var(--blue)">14.1</td></tr><tr><td>D</td><td>15</td><td>780</td><td>8</td><td style="color:var(--blue)">9.8</td></tr><tr><td>E</td><td>10</td><td>710</td><td>5</td><td style="color:var(--blue)">11.5</td></tr></tbody></table>
+    <div class="tiny">Income and loan amount in ₹ lakhs.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Bank: your task">
+  <h2>Bank case study: your task</h2>
+  <div class="body"><div>A new customer applies for a loan.</div><div class="big">\[x=(\text{income},\ \text{credit score},\ \text{loan amount})\]</div>
+    <div class="f q" data-at="1">Predict an interest rate: \(\hat y\in\mathbb R\).</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Bank: loan default">
+  <h2>Bank case study: loan default</h2>
+  <div class="body"><table class="tb"><thead><tr><th>Customer</th><th>Income (₹ L)</th><th>Score</th><th>Loan (₹ L)</th><th style="color:var(--amber)">Default</th></tr></thead>
+    <tbody><tr><td>A</td><td>8</td><td>690</td><td>4</td><td>No</td></tr><tr><td>B</td><td>12</td><td>720</td><td>6</td><td>No</td></tr><tr class="hlr" data-at="1"><td>C</td><td>5</td><td>650</td><td>3</td><td><b>Yes</b></td></tr><tr><td>D</td><td>15</td><td>780</td><td>8</td><td>No</td></tr><tr><td>E</td><td>10</td><td>710</td><td>5</td><td>No</td></tr><tr class="hlr" data-at="1"><td>F</td><td>4</td><td>620</td><td>3</td><td><b>Yes</b></td></tr></tbody></table></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Same features, different tasks">
+  <h2>Same features, different tasks</h2>
+  <div class="body"><div class="row" style="gap:120px"><div class="col"><b>Loan pricing</b><div class="big">\(y\in\mathbb R\)</div><span class="chip c-reg">regression</span></div>
+    <div class="col f" data-at="1"><b>Loan default</b><div class="big">\(y\in\{0,1\}\)</div><span class="chip c-cls">classification</span></div></div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Regression or classification?">
+  <h2>Regression or classification?</h2>
+  <div class="body left" style="align-items:center"><ol class="items big">
+    <li>Predict the price of a used car. <span class="chip c-reg f" data-at="3">regression</span></li>
+    <li class="f" data-at="1">Predict whether an email is spam. <span class="chip c-cls f" data-at="3">classification</span></li>
+    <li class="f" data-at="2">Predict tomorrow’s number of mall visitors. <span class="chip c-reg f" data-at="3">regression (a count)</span></li></ol></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="A more difficult question">
+  <h2>A more difficult question</h2>
+  <div class="body" style="align-items:center"><ol class="items" style="font-size:34px">
+    <li>Predict a movie’s rank in a recommendation list. <span class="chip c-oth f" data-at="3">ranking</span></li>
+    <li class="f" data-at="1">Predict the next word in a sentence. <span class="chip c-oth f" data-at="3">token prediction</span></li>
+    <li class="f" data-at="2">Find where a pedestrian appears in an image. <span class="chip c-oth f" data-at="3">localisation</span></li></ol>
+    <div class="f small" data-at="3">These have more structure than a scalar or a binary label.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Object detection">
+  <h2>Object detection</h2>
+  <div class="body"><div class="row" style="gap:70px"><div class="col" style="align-items:flex-start;text-align:left"><div><b>Goal:</b> identify objects and locate them.</div><div class="f" data-at="1">Example: <b style="color:var(--blue)">bicycle</b></div></div>
+    <svg width="460" height="360" viewBox="0 0 460 360" style="background:var(--surface2);border:1px solid var(--line);border-radius:8px">
+      <path d="M0 300 H460" stroke="var(--line)" stroke-width="3"/>
+      <g class="draw" fill="none" stroke="var(--ink)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="130" cy="240" r="58" style="--len:370"/><circle cx="330" cy="240" r="58" style="--len:370"/>
+        <path d="M130 240 L200 150 L300 150 L330 240 M200 150 L240 240 L300 150 M240 240 L130 240" style="--len:700"/>
+        <path d="M200 150 L190 128 M172 126 H212 M300 150 L292 112 L318 104" style="--len:200"/></g>
+      <g class="draw f" data-at="1"><rect x="62" y="92" width="336" height="216" rx="3" fill="none" stroke="var(--blue)" stroke-width="4" style="--len:1110"/></g>
+      <g class="f" data-at="1"><rect x="62" y="62" width="176" height="30" fill="var(--blue)"/><text x="72" y="84" font-family="var(--display)" font-size="19" font-weight="700" fill="#fff">bicycle 0.94</text></g>
+    </svg></div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Detection: two outputs">
+  <h2>Object detection: two outputs</h2>
+  <div class="body"><div class="row" style="gap:70px"><div class="col"><div><b>Object class</b></div><div class="big">\(c\in\{1,\ldots,K\}\)</div>
+    <div class="f" data-at="1"><b>Bounding box</b></div><div class="big f" data-at="1">\(b=(x_c,y_c,w,h)\in\mathbb R^4\)</div></div>
+    <svg class="f" data-at="1" width="360" height="280" viewBox="0 0 360 280" style="font-family:var(--display)"><rect x="40" y="40" width="280" height="190" fill="var(--blue-soft)" stroke="var(--blue)" stroke-width="4"/><circle cx="180" cy="135" r="7" fill="var(--blue)"/><text x="192" y="130" font-size="20" fill="var(--ink)">(x꜀, y꜀)</text>
+      <path d="M40 254 H320" stroke="var(--ink)" stroke-width="2"/><path d="M40 248 v12 M320 248 v12" stroke="var(--ink)" stroke-width="2"/><text x="180" y="276" font-size="20" text-anchor="middle" fill="var(--ink)">w</text>
+      <path d="M340 40 V230" stroke="var(--ink)" stroke-width="2"/><path d="M334 40 h12 M334 230 h12" stroke="var(--ink)" stroke-width="2"/><text x="352" y="140" font-size="20" fill="var(--ink)">h</text></svg></div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Detection combines tasks">
+  <h2>Object detection combines tasks</h2>
+  <div class="body big">\[\underbrace{\text{object category}}_{\text{classification}}\quad+\quad\underbrace{\text{bounding-box coordinates}}_{\text{regression}}\]</div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Supervised learning: formal setup">
+  <h2>Supervised learning: formal setup</h2>
+  <div class="body"><div class="big">\[\mathcal D=\{(x_i,y_i)\}_{i=1}^n,\qquad x_i\in\mathbb R^d,\quad y_i\in\mathcal Y\]</div>
+    <div class="f big" data-at="1">\[f_\beta:\mathbb R^d\longrightarrow\mathcal Y\]</div><div class="f small" data-at="1">Goal: low prediction error on <b>new</b> observations.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Regression vs classification">
+  <h2>Regression vs classification</h2>
+  <div class="body"><table class="tb"><thead><tr><th style="color:var(--blue)">Regression</th><th style="color:var(--amber)">Classification</th></tr></thead><tbody class="stag">
+    <tr><td>\(\mathcal Y\subseteq\mathbb R\)</td><td>\(\mathcal Y=\{1,\ldots,K\}\)</td></tr><tr><td>Numerical target</td><td>Categorical target</td></tr><tr><td>Interest rate</td><td>Default / no default</td></tr></tbody></table></div>
+</section>
+
+<section class="slide" data-sec="Part 0" data-title="Two ways to understand a model">
+  <h2>Two ways to understand a model</h2>
+  <div class="body"><div class="row" style="gap:120px"><div class="col"><b>Geometric</b><div class="big">\(y\approx X\beta\)</div><div class="small">projection, rank</div></div>
+    <div class="col f" data-at="1"><b>Probabilistic</b><div class="big">\(Y=X\beta+\varepsilon\)</div><div class="small">likelihood, uncertainty</div></div></div>
+    <div class="f alert" data-at="2">Both lead to linear regression.</div></div>
+</section>
+
+<!-- ================= PART 1 ================= -->
+<section class="slide divider" data-sec="Part 1" data-title="Linear regression">
+  <span class="mins">25–72 min</span>
+  <div class="num">1</div><h1>Linear regression</h1><p>From solving equations to fitting data</p>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="House prices">
+  <h2>Motivating example: house prices</h2>
+  <div class="body"><div class="row"><table class="tb"><thead><tr><th>Size (sqft)</th><th>Price (₹ L)</th></tr></thead><tbody class="stag"><tr><td>1000</td><td>40</td></tr><tr><td>1500</td><td>60</td></tr><tr><td>2000</td><td>80</td></tr><tr><td>2500</td><td>100</td></tr></tbody></table>
+    <canvas class="cv" data-v="house" style="width:560px;height:420px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Predict a new house price">
+  <h2>Predict a new house price</h2>
+  <div class="body"><div class="row"><div class="col"><div>How much for a <b>1750 sqft</b> house?</div>
+    <div class="f" data-at="1">\[\hat y=0.04\times1750=\boxed{70\text{ lakhs}}\]</div><div class="f small" data-at="2">We implicitly assumed a linear relationship.</div></div>
+    <canvas class="cv" data-v="house2" style="width:520px;height:420px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="The equation of a line">
+  <h2>The equation of a line</h2>
+  <div class="body"><div class="row"><div class="col"><div class="big">\[\boxed{\hat y=\beta_0+\beta_1x}\]</div>
+    <table class="tb" style="font-size:24px"><tbody><tr><td>\(\beta_0\)</td><td class="l">intercept</td></tr><tr><td>\(\beta_1\)</td><td class="l">slope</td></tr><tr><td>\(x\)</td><td class="l">input feature</td></tr><tr><td>\(\hat y\)</td><td class="l">predicted response</td></tr></tbody></table></div>
+    <canvas class="cv" data-v="lineq" style="width:520px;height:440px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Multiple features">
+  <h2>What if we have multiple features?</h2>
+  <div class="body"><div>\[\hat y=\beta_0+\beta_1x_1+\cdots+\beta_dx_d\]</div>
+    <canvas class="cv f" data-at="1" data-v="plane3d" style="width:640px;height:380px"></canvas>
+    <div class="f small" data-at="1">Two features: the line becomes a plane. Size, age → price.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Matrix form">
+  <h2>Linear regression in matrix form</h2>
+  <div class="body big">\[\underbrace{\begin{bmatrix}1&x_{11}&\cdots&x_{1d}\\\vdots&\vdots&&\vdots\\1&x_{n1}&\cdots&x_{nd}\end{bmatrix}}_{X\in\mathbb R^{n\times(d+1)}}\underbrace{\begin{bmatrix}\beta_0\\\beta_1\\\vdots\\\beta_d\end{bmatrix}}_{\beta}\approx\underbrace{\begin{bmatrix}y_1\\\vdots\\y_n\end{bmatrix}}_{y}\]</div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="The intercept as a feature">
+  <h2>The intercept as a feature</h2>
+  <div class="body"><div>For \(x_i\in\mathbb R^d\), define</div><div class="big">\[\tilde x_i=\begin{bmatrix}1\\x_i\end{bmatrix}\in\mathbb R^{d+1}\]</div>
+    <div class="f" data-at="1">Row \(i\) of \(X\) is \(\tilde x_i^\top\).</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Exercise 1">
+  <h2>Exercise 1: find the parameters</h2>
+  <div class="body"><div class="huge">\[\begin{bmatrix}1&0\\1&1\end{bmatrix}\begin{bmatrix}\beta_0\\\beta_1\end{bmatrix}=\begin{bmatrix}1\\3\end{bmatrix}\]</div>
+    <div class="alert">Find \(\beta_0\) and \(\beta_1\).</div><div class="tiny">3 minutes</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Exercise 1: solution">
+  <h2>Exercise 1: solution</h2>
+  <div class="body"><div class="row"><div class="col"><div>\[\beta_0=1,\qquad\beta_0+\beta_1=3\]</div><div class="f" data-at="1">\[\boxed{\beta_0=1,\quad\beta_1=2}\]</div></div>
+    <canvas class="cv f" data-at="1" data-v="colpic" style="width:440px;height:440px"></canvas></div>
+    <div class="f tiny" data-at="1">Column picture: 1 × column 1 + 2 × column 2 lands exactly on y.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="When is the solution unique?">
+  <h2>When is the solution unique?</h2>
+  <div class="body"><div>For a square system \(X\beta=y\):</div><div class="big">\[\det(X)\neq0\ \Longrightarrow\ \beta=X^{-1}y\]</div>
+    <div class="f alert" data-at="1">What if there are more observations than parameters?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Exercise 2">
+  <h2>Exercise 2: more equations than unknowns</h2>
+  <div class="body"><div class="row"><div class="col"><div class="big">\[\begin{bmatrix}1&0\\1&1\\1&2\end{bmatrix}\begin{bmatrix}\beta_0\\\beta_1\end{bmatrix}=\begin{bmatrix}1\\2\\2\end{bmatrix}\]</div><div class="alert">Can all three equations hold exactly?</div><div class="tiny">5 minutes</div></div>
+    <canvas class="cv f" data-at="1" data-v="ex2try" style="width:440px;height:420px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="No exact solution">
+  <h2>Why an exact solution does not exist</h2>
+  <div class="body"><div>The first two equations imply</div><div class="big">\[\beta_0=1,\qquad\beta_1=1\]</div>
+    <div class="f" data-at="1">The third would then require</div><div class="f big" data-at="1">\[1+2(1)=2\quad\text{✗}\]</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Minimise the error">
+  <h2>Instead, minimise the error</h2>
+  <div class="body"><div class="row"><div class="col"><div><b>Residual vector</b></div><div>\[r(\beta)=y-X\beta\]</div>
+    <div class="f" data-at="1"><b>Ordinary least squares</b></div><div class="f" data-at="1">\[\hat\beta\in\arg\min_{\beta}\|y-X\beta\|_2^2\]</div></div>
+    <canvas class="cv" data-v="resid" style="width:480px;height:420px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Ordinary least squares">
+  <h2>Ordinary least squares</h2>
+  <div class="body"><div class="row"><div class="col"><div>\[\|y-X\beta\|_2^2=\sum_{i=1}^n(y_i-\tilde x_i^\top\beta)^2\]</div><div class="f small" data-at="1">The total area of the squares.</div></div>
+    <canvas class="cv" data-v="squares" style="width:480px;height:440px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Exercise 2: best-fitting line">
+  <h2>Exercise 2: best-fitting line</h2>
+  <div class="body"><div class="row"><div class="col"><div>\[(x_i,y_i)\in\{(0,1),(1,2),(2,2)\}\]</div><div class="alert">Find the line with minimum squared error.</div>
+    <div class="f" data-at="1">\[\boxed{\hat y=\tfrac76+\tfrac12x}\]</div></div>
+    <canvas class="cv" data-v="ex2fit" style="width:460px;height:420px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Deriving the OLS solution">
+  <h2>Deriving the OLS solution</h2>
+  <div class="body big"><div>\[L(\beta)=(y-X\beta)^\top(y-X\beta)\]</div><div class="f" data-at="1">\[\nabla_\beta L(\beta)=-2X^\top(y-X\beta)\]</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="The normal equations">
+  <h2>The normal equations</h2>
+  <div class="body big"><div>\[X^\top(y-X\hat\beta)=0\]</div><div class="f huge" data-at="1">\[\boxed{X^\top X\hat\beta=X^\top y}\]</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="Closed-form estimator">
+  <h2>The closed-form OLS estimator</h2>
+  <div class="body"><div>If \(\operatorname{rank}(X)=d+1\),</div><div class="huge">\[\boxed{\hat\beta=(X^\top X)^{-1}X^\top y}\]</div>
+    <div class="f alert" data-at="1">Why do we need full column rank?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="The geometry of least squares">
+  <h2>The geometry of least squares</h2>
+  <div class="body"><div class="row"><div class="col"><div>\[\hat y=X\hat\beta\in\operatorname{col}(X)\]</div><div class="f" data-at="1">\[\boxed{\hat r=y-\hat y\ \perp\ \operatorname{col}(X)}\]</div>
+    <div class="f small" data-at="1">\(\hat y\) is the orthogonal projection of \(y\).</div><div class="tiny">Drag to rotate</div></div>
+    <canvas class="cv" data-v="proj3d" data-drag="1" style="width:600px;height:470px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="The projection matrix">
+  <h2>The projection matrix</h2>
+  <div class="body big"><div>\[\hat y=P_Xy,\qquad\boxed{P_X=X(X^\top X)^{-1}X^\top}\]</div><div class="f" data-at="1">\[P_X^2=P_X,\qquad P_X^\top=P_X\]</div><div class="f small" data-at="1">Projecting twice changes nothing.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 1" data-title="A geometric check">
+  <h2>A geometric check</h2>
+  <div class="body"><div class="big">\[X^\top\hat r=0\]</div><div class="f alert" data-at="1">Are residuals orthogonal to every feature column?</div>
+    <div class="f" data-at="2">Yes, including the intercept column: \(\sum_i\hat r_i=0\).</div></div>
+</section>
+
+<!-- ================= PART 2 ================= -->
+<section class="slide divider" data-sec="Part 2" data-title="Multicollinearity and identifiability">
+  <span class="mins">72–97 min</span>
+  <div class="num">2</div><h1>Multicollinearity and identifiability</h1><p>When the coefficients stop being unique</p>
+</section>
+
+<section class="slide" data-sec="Part 2" data-title="Singular XᵀX">
+  <h2>What if \(X^\top X\) is singular?</h2>
+  <div class="body"><div class="huge">\[\det(X^\top X)=0\]</div><div class="f" data-at="1">The inverse formula cannot be used.</div>
+    <div class="f alert" data-at="2">Does this mean predictions are impossible?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 2" data-title="Exercise 3">
+  <h2>Exercise 3: dependent features</h2>
+  <div class="body"><div class="huge">\[X=\begin{bmatrix}1&1&\color{#6A4BC4}{2}\\1&2&\color{#6A4BC4}{4}\\1&3&\color{#6A4BC4}{6}\end{bmatrix},\qquad y=\begin{bmatrix}2\\3\\4\end{bmatrix}\]</div>
+    <div class="f" data-at="1">Column 3 is twice column 2.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 2" data-title="Two different solutions">
+  <h2>Exercise 3: two different solutions</h2>
+  <div class="body"><div class="row"><div class="col"><div>\[\beta^{(1)}=\begin{bmatrix}1\\1\\0\end{bmatrix},\qquad\beta^{(2)}=\begin{bmatrix}1\\-1\\1\end{bmatrix}\]</div>
+    <div class="f" data-at="1">\[\boxed{X\beta^{(1)}=X\beta^{(2)}=y}\]</div></div>
+    <canvas class="cv" data-v="nullwalk" style="width:520px;height:440px"></canvas></div>
+    <div class="tiny">Bars: β₀ (grey), β₁x₁ (blue), β₂x₂ (violet). Amber: prediction.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 2" data-title="Identifiability">
+  <h2>Identifiability</h2>
+  <div class="body"><div>\(\beta\) is identifiable from \(X\beta\) if</div><div class="big">\[X\beta=X\beta'\ \Longrightarrow\ \beta=\beta'\]</div>
+    <div class="f" data-at="1">This holds precisely when \(\operatorname{null}(X)=\{0\}\).</div></div>
+</section>
+
+<section class="slide" data-sec="Part 2" data-title="Why predictions can survive">
+  <h2>Why predictions can survive</h2>
+  <div class="body"><div>If \(v\in\operatorname{null}(X)\), then</div><div class="big">\[X(\beta+v)=X\beta\]</div>
+    <div class="f alert" data-at="1">Different coefficients, identical fitted values.</div><div class="f small" data-at="1">Here \(v=(0,-2,1)\).</div></div>
+</section>
+
+<section class="slide" data-sec="Part 2" data-title="Pseudoinverse">
+  <h2>How do we fit a singular system?</h2>
+  <div class="body"><div class="row"><div class="col"><div>\[\boxed{\hat\beta=X^+y}\]</div><div class="small">Moore–Penrose pseudoinverse</div>
+    <div class="f" data-at="1">The <b>minimum-norm</b> least-squares solution.</div></div>
+    <canvas class="cv" data-v="minnorm" style="width:500px;height:440px"></canvas></div></div>
+</section>
+
+<!-- ================= PART 3 ================= -->
+<section class="slide divider" data-sec="Part 3" data-title="Probabilistic view and MLE">
+  <span class="mins">107–127 min</span>
+  <div class="num">3</div><h1>The probabilistic view</h1><p>Maximum likelihood and coefficient uncertainty</p>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="A second view">
+  <h2>A second view of linear regression</h2>
+  <div class="body"><div class="row"><div class="col"><div class="big">\[\boxed{y_i=\tilde x_i^\top\beta+\varepsilon_i}\]</div><div class="f q" data-at="1">What should we assume about \(\varepsilon_i\)?</div></div>
+    <canvas class="cv" data-v="noise" style="width:520px;height:420px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Gaussian noise model">
+  <h2>Gaussian noise model</h2>
+  <div class="body"><div class="row"><div class="col"><div>\[\varepsilon_i\overset{\mathrm{iid}}{\sim}\mathcal N(0,\sigma^2)\]</div><div class="f" data-at="1">\[Y_i\mid x_i\sim\mathcal N(\tilde x_i^\top\beta,\sigma^2)\]</div></div>
+    <canvas class="cv" data-v="bells" style="width:540px;height:440px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Likelihood of one observation">
+  <h2>Likelihood of one observation</h2>
+  <div class="body"><div>\[p(y_i\mid x_i,\beta,\sigma^2)=\frac{1}{\sqrt{2\pi\sigma^2}}\exp\!\left(-\frac{(y_i-\tilde x_i^\top\beta)^2}{2\sigma^2}\right)\]</div>
+    <canvas class="cv" data-v="onebell" style="width:760px;height:300px"></canvas>
+    <div class="f" data-at="1">Large prediction errors are less likely.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Likelihood of the dataset">
+  <h2>Likelihood of the dataset</h2>
+  <div class="body"><div class="small">By conditional independence,</div><div class="big">\[L(\beta,\sigma^2)=\prod_{i=1}^{n}p(y_i\mid x_i,\beta,\sigma^2)\]</div>
+    <div class="f alert" data-at="1">Why is taking a logarithm helpful?</div><div class="f small" data-at="2">Products become sums; tiny numbers stop underflowing.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Log-likelihood">
+  <h2>Log-likelihood</h2>
+  <div class="body"><div class="big">\[\log L=\underbrace{-\frac n2\log(2\pi\sigma^2)}_{\text{no }\beta}\ \underbrace{-\frac{1}{2\sigma^2}\sum_{i=1}^n(y_i-\tilde x_i^\top\beta)^2}_{\text{squared error}}\]</div>
+    <div class="f q" data-at="1">Which term depends on \(\beta\)?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Exercise 4: MLE vs OLS">
+  <h2>Exercise 4: MLE vs OLS</h2>
+  <div class="body"><div class="small">For fixed \(\sigma^2>0\):</div><div class="big">\[\arg\max_\beta\log L=\arg\min_\beta\sum_{i=1}^n(y_i-\tilde x_i^\top\beta)^2\]</div>
+    <div class="f huge" data-at="1">\[\boxed{\hat\beta_{\rm MLE}=\hat\beta_{\rm OLS}}\]</div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Does squared loss always apply?">
+  <h2>Does squared loss always apply?</h2>
+  <div class="body"><div class="row"><div class="col" style="align-items:flex-start;text-align:left"><div><b style="color:var(--blue)">Gaussian errors</b> → squared error</div><div class="f" data-at="1"><b style="color:var(--green)">Laplace errors</b> → absolute error</div><div class="f alert" data-at="2">The noise assumption determines the loss.</div></div>
+    <canvas class="cv" data-v="lap" style="width:560px;height:440px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Near multicollinearity">
+  <h2>Near multicollinearity</h2>
+  <div class="body"><div class="row"><div class="col"><div>Suppose \(x_2\approx2x_1\).</div><div class="f" data-at="1">\(X^\top X\) invertible but ill-conditioned.</div>
+    <div class="f" data-at="2">Small changes in data, large changes in coefficients.</div></div>
+    <canvas class="cv" data-v="cloud" style="width:470px;height:470px"></canvas></div>
+    <div class="tiny">200 datasets, true β = (1, 1). Each dot is one dataset’s estimate.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="What is Rⱼ² in the VIF?">
+  <h2>What is \(R_j^2\) in the VIF?</h2>
+  <div class="body" style="font-size:24px;gap:10px"><div class="row" style="gap:36px;align-items:flex-start">
+    <div class="col" style="align-items:flex-start;text-align:left;gap:6px">
+      <div>Original model:</div><div>\[y_i=\beta_0+\beta_1x_{i1}+\beta_2x_{i2}+\beta_3x_{i3}+\varepsilon_i\]</div>
+      <div class="f q" data-at="1">How much of \(x_2\) can the other features explain?</div>
+      <div class="f" data-at="1">Fit an <span class="alert">auxiliary regression</span>:</div>
+      <div class="f" data-at="1">\[x_{i2}=\alpha_0+\alpha_1x_{i1}+\alpha_3x_{i3}+u_i\]</div>
+      <div class="f" data-at="1">\[\boxed{R_2^2=1-\frac{\sum_{i}(x_{i2}-\hat x_{i2})^2}{\sum_{i}(x_{i2}-\bar x_2)^2}}\]</div>
+    </div>
+    <canvas class="cv f" data-at="1" data-v="aux" style="width:400px;height:360px"></canvas></div>
+    <ul class="items f" data-at="2" style="font-size:22px;margin:0"><li>\(R_2^2=0\): other features explain none of the variation in \(x_2\).</li><li>\(R_2^2=0.96\): they explain 96% of it.</li><li>\(R_2^2=1\): \(x_2\) is perfectly explained by the others.</li></ul>
+    <div class="f alert" data-at="2">We are predicting \(x_2\), not the original target \(y\)!</div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Why the VIF matters">
+  <h2>Variance inflation factor (VIF)</h2>
+  <div class="body" style="font-size:25px;gap:12px">
+    <div class="big">\[\boxed{\mathrm{VIF}_j=\frac{1}{1-R_j^2}}\]</div>
+    <div class="f" data-at="1"><b>Why it matters.</b> Under the classical homoscedastic model,</div>
+    <div class="f" data-at="1">\[\operatorname{Var}(\hat\beta_j\mid X)=\underbrace{\frac{\sigma^2}{\sum_{i=1}^{n}(x_{ij}-\bar x_j)^2}}_{\text{variance without collinearity}}\cdot\underbrace{\frac{1}{1-R_j^2}}_{\mathrm{VIF}_j}\]</div>
+    <div class="row f" data-at="2" style="gap:50px"><div>\(R_2^2=0.96\ \Rightarrow\ \mathrm{VIF}_2=\dfrac{1}{1-0.96}=\boxed{25}\)</div>
+      <ul class="items" style="font-size:22px;margin:0"><li>variance of \(\hat\beta_2\) inflated <span class="alert">× 25</span></li><li>standard error inflated <span class="alert">× \(\sqrt{25}=5\)</span></li></ul></div>
+    <div class="f" data-at="3"><b>What if \(R_2^2=1\)?</b> \(\ \mathrm{VIF}_2=\infty\ \Longrightarrow\ \) <span class="alert">\(\beta_2\) is not uniquely identifiable.</span></div>
+  </div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Variance of OLS coefficients">
+  <h2>Variance of OLS coefficients</h2>
+  <div class="body"><div class="small">If \(\operatorname{Var}(\varepsilon\mid X)=\sigma^2I\) and \(X\) has full column rank,</div><div class="big">\[\boxed{\operatorname{Var}(\hat\beta\mid X)=\sigma^2(X^\top X)^{-1}}\]</div>
+    <div class="f" data-at="1">Near-collinearity makes some diagonal entries large.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Variance inflation factor">
+  <h2>Variance inflation factor</h2>
+  <div class="body"><div class="row"><div class="col"><div class="small">Regress \(x_j\) on the other features; get \(R_j^2\).</div><div class="big f" data-at="1">\[\boxed{\mathrm{VIF}_j=\frac{1}{1-R_j^2}}\]</div></div>
+    <canvas class="cv" data-v="vif1" style="width:520px;height:400px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 3" data-title="Exercise 5: VIF">
+  <h2>Exercise 5: calculate the VIF</h2>
+  <div class="body"><div class="row"><div class="col"><div>Suppose \(R_j^2=0.96\).</div><div class="f big" data-at="1">\[\mathrm{VIF}_j=\frac{1}{1-0.96}=\boxed{25}\]</div>
+    <div class="f small" data-at="2">Variance × 25, standard error × 5.</div></div>
+    <canvas class="cv" data-v="vif2" style="width:500px;height:400px"></canvas></div></div>
+</section>
+
+<!-- ================= PART 4 ================= -->
+<section class="slide divider" data-sec="Part 4" data-title="Can we trust our regression model?">
+  <span class="mins">127–180 min</span>
+  <div class="num">4</div><h1>Can we trust our regression model?</h1><p>Standard errors, \(t\)-tests, confidence intervals and diagnostics</p>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="A question about the coefficients">
+  <h2>A question about the coefficients</h2>
+  <div class="body"><div>Suppose linear regression estimates</div><div class="huge">\[\boxed{\hat\beta_1=2.4}\]</div>
+    <div class="f q" data-at="1">Does this tell us that the true coefficient is 2.4?</div>
+    <div class="f" data-at="2">No. We estimated \(\beta_1\) from a <span class="alert">finite, noisy sample</span>.</div>
+    <div class="f small" data-at="2">What would happen if we collected a different sample?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Different samples, different estimates">
+  <h2>Different samples, different estimates</h2>
+  <div class="body"><div>Repeat the same study with new observations:</div>
+    <table class="tb"><thead><tr><th>Sample</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th></tr></thead><tbody><tr class="stag"><td>\(\hat\beta_1\)</td><td>2.4</td><td>2.1</td><td>2.7</td><td>2.3</td><td>2.6</td></tr></tbody></table>
+    <canvas class="cv bare" data-v="bdots" style="width:820px;height:150px"></canvas>
+    <div class="f" data-at="1">The estimate changes from sample to sample.</div>
+    <div class="f alert" data-at="2">\(\hat\beta_1\) is a random variable; \(\beta_1\) is the fixed, unknown parameter.</div>
+    <div class="tiny">Numbers are illustrative.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="The statistical model">
+  <h2>The statistical model</h2>
+  <div class="body"><div class="big">\[\boxed{y=X\beta+\varepsilon}\]</div><div class="small">\(X\in\mathbb R^{n\times p}\) has full column rank.</div>
+    <div class="f" data-at="1">\[\mathbb E[\varepsilon\mid X]=0,\qquad\operatorname{Var}(\varepsilon\mid X)=\sigma^2I_n\]</div>
+    <ul class="items f" data-at="2" style="font-size:26px"><li>\(\beta\in\mathbb R^p\): true, unknown coefficients</li><li>\(\varepsilon\): random errors with common variance \(\sigma^2\)</li></ul></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Why is the OLS estimate random?">
+  <h2>Why is the OLS estimate random?</h2>
+  <div class="body"><div class="row"><div class="col"><div>\[\hat\beta=(X^\top X)^{-1}X^\top y\]</div>
+    <div class="f" data-at="1">Substitute \(y=X\beta+\varepsilon\):</div><div class="f" data-at="1">\[\hat\beta=\beta+(X^\top X)^{-1}X^\top\varepsilon\]</div>
+    <div class="f" data-at="2">\[\boxed{\hat\beta-\beta=(X^\top X)^{-1}X^\top\varepsilon}\]</div>
+    <div class="f alert" data-at="2">Random errors produce random estimates.</div></div>
+    <canvas class="cv" data-v="samples" style="width:480px;height:420px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Mean and variance of OLS">
+  <h2>Mean and variance of the OLS estimator</h2>
+  <div class="body"><div class="row"><div class="col"><div class="small">With \(\mathbb E[\varepsilon\mid X]=0\),</div><div>\[\boxed{\mathbb E[\hat\beta\mid X]=\beta}\]</div>
+    <div class="f small" data-at="1">With \(\operatorname{Var}(\varepsilon\mid X)=\sigma^2I_n\),</div><div class="f" data-at="1">\[\boxed{\operatorname{Var}(\hat\beta\mid X)=\sigma^2(X^\top X)^{-1}}\]</div>
+    <div class="f small" data-at="2"><b>Diagonal entry \(j\):</b> \(\operatorname{Var}(\hat\beta_j\mid X)=\sigma^2\big[(X^\top X)^{-1}\big]_{jj}\)</div></div>
+    <canvas class="cv" data-v="sampdist" style="width:480px;height:420px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="But we do not know σ²">
+  <h2>But we do not know \(\sigma^2\)</h2>
+  <div class="body"><div class="big">\[\operatorname{Var}(\hat\beta_j\mid X)=\color{#C92A52}{\sigma^2}\big[(X^\top X)^{-1}\big]_{jj}\]</div><div>contains the <span class="alert">unknown noise variance</span>.</div>
+    <div class="f" data-at="1">Estimate it from the residuals: \(\ \hat\varepsilon_i=y_i-\hat y_i\)</div>
+    <div class="f q" data-at="2">Can we estimate \(\sigma^2\) from the squared residuals?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Estimating the noise variance">
+  <h2>Estimating the noise variance</h2>
+  <div class="body"><div>\[\mathrm{RSS}=\sum_{i=1}^n(y_i-\hat y_i)^2\]</div>
+    <div class="f big" data-at="1">\[\boxed{s^2=\frac{\mathrm{RSS}}{n-p}}\]</div><div class="f small" data-at="1">\(p\) = number of fitted coefficients, <em>including the intercept</em>.</div>
+    <div class="f" data-at="2"><b>Why \(n-p\)?</b> Fitting \(p\) coefficients uses \(p\) degrees of freedom.</div><div class="f small" data-at="2">Under the stated model, \(s^2\) is unbiased for \(\sigma^2\).</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Standard error: definition">
+  <h2>Standard error: definition</h2>
+  <div class="body"><div style="max-width:900px">The <b>standard error</b> estimates the standard deviation of a coefficient estimator across repeated samples.</div>
+    <div class="f big" data-at="1">\[\boxed{SE(\hat\beta_j)=\sqrt{s^2\big[(X^\top X)^{-1}\big]_{jj}}}\]</div>
+    <ul class="items f" data-at="2" style="font-size:26px"><li>Small SE ⇒ estimated more precisely</li><li>Large SE ⇒ estimated less precisely</li></ul></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="A small SE calculation">
+  <h2>A small standard-error calculation</h2>
+  <div class="body"><div class="big">\[s^2=4,\qquad\big[(X^\top X)^{-1}\big]_{11}=0.16\]</div>
+    <div class="f q" data-at="1">Exercise (1 minute): find \(SE(\hat\beta_1)\).</div>
+    <div class="f" data-at="2">\[SE(\hat\beta_1)=\sqrt{4\times0.16}=\sqrt{0.64}\]</div>
+    <div class="f big" data-at="3">\[\boxed{SE(\hat\beta_1)=0.8}\]</div><div class="f alert" data-at="3">The SE measures uncertainty, not the coefficient’s size.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Two estimates">
+  <h2>Two estimates: which is more convincing?</h2>
+  <div class="body"><div class="row" style="gap:40px"><table class="tb"><thead><tr><th></th><th style="color:var(--blue)">Study A</th><th style="color:var(--amber)">Study B</th></tr></thead><tbody><tr><td>\(\hat\beta_1\)</td><td>2.4</td><td>2.4</td></tr><tr><td>\(SE(\hat\beta_1)\)</td><td>0.8</td><td>2.0</td></tr></tbody></table>
+    <canvas class="cv" data-v="twostudy" style="width:540px;height:340px"></canvas></div>
+    <div class="f q" data-at="1">Which gives stronger evidence that the true coefficient differs from zero?</div>
+    <div class="f alert" data-at="2">Study A: its estimate has a smaller standard error.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Hypothesis testing">
+  <h2>Hypothesis testing for a coefficient</h2>
+  <div class="body"><div style="max-width:950px">Does feature \(x_j\) have a <span class="alert">nonzero partial regression coefficient</span>?</div>
+    <div class="f big" data-at="1">\[\boxed{\begin{aligned}H_0&:\beta_j=0\\H_1&:\beta_j\neq0\end{aligned}}\]</div>
+    <div class="f" data-at="2"><b>Important:</b> we test the true \(\beta_j\), not whether \(\hat\beta_j\) equals zero.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="The t-statistic">
+  <h2>The \(t\)-statistic</h2>
+  <div class="body"><div class="small">To test \(H_0:\beta_j=b_0\),</div><div class="big">\[\boxed{t=\frac{\hat\beta_j-b_0}{SE(\hat\beta_j)}}\]</div>
+    <div class="f small" data-at="1">For the common null \(H_0:\beta_j=0\),</div><div class="f big" data-at="1">\[\boxed{t=\frac{\hat\beta_j}{SE(\hat\beta_j)}}\]</div>
+    <div class="f alert" data-at="2">How many standard errors the estimate is from the null value.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Exercise: t-statistic">
+  <h2>Exercise: compute the \(t\)-statistic</h2>
+  <div class="body"><div>\[\hat\beta_1=2.4,\qquad SE(\hat\beta_1)=0.8\]</div><div class="q">Exercise (2 minutes): test \(H_0:\beta_1=0\).</div>
+    <div class="f big" data-at="1">\[t=\frac{2.4-0}{0.8}=\boxed{3}\]</div>
+    <canvas class="cv bare f" data-at="2" data-v="ruler" style="width:820px;height:130px"></canvas>
+    <div class="f" data-at="2">The estimate is <span class="alert">3 standard errors from zero</span>.</div><div class="f q" data-at="2">But is \(t=3\) large enough to reject \(H_0\)?</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Why a t-distribution?">
+  <h2>Why a \(t\)-distribution?</h2>
+  <div class="body"><div class="row"><div class="col"><div class="small">Classical model, <b>Gaussian errors</b>:</div><div>\[\frac{\hat\beta_j-\beta_j}{SE(\hat\beta_j)}\sim t_{n-p}\]</div>
+    <ul class="items f" data-at="1" style="font-size:24px"><li>\(n\): observations</li><li>\(p\): fitted coefficients</li><li>\(n-p\): residual degrees of freedom</li></ul></div>
+    <canvas class="cv" data-v="tvsn" style="width:500px;height:360px"></canvas></div>
+    <div class="f alert" data-at="2">Heavier tails than the normal because \(\sigma^2\) is estimated.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="When do we reject H₀?">
+  <h2>When do we reject the null hypothesis?</h2>
+  <div class="body"><div class="row"><div class="col"><div class="small">\(n=25,\ p=2\):</div><div>\[\text{df}=n-p=23\]</div>
+    <div class="f" data-at="1">5% level, two-sided: \(\ \pm t_{0.975,23}\approx\pm2.069\)</div>
+    <div class="f big" data-at="2">\[\boxed{|3|>2.069}\]</div><div class="f alert" data-at="3">Reject \(H_0:\beta_1=0\) at the 5% level.</div></div>
+    <canvas class="cv f" data-at="1" data-v="tdens2" style="width:500px;height:340px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="What is a p-value?">
+  <h2>What is a \(p\)-value?</h2>
+  <div class="body"><div style="max-width:980px">The probability, <em>assuming \(H_0\)</em>, of a test statistic at least as extreme as the one observed.</div>
+    <div class="row"><div class="f" data-at="1">\[\boxed{p\text{-value}=P(|T_{23}|\ge3)\approx0.0064}\]</div><canvas class="cv f" data-at="1" data-v="pval" style="width:470px;height:270px"></canvas></div>
+    <div class="f" data-at="2">\(0.0064<0.05\), so we reject \(H_0\).</div><div class="f alert" data-at="2">A \(p\)-value is not the probability that \(H_0\) is true.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Confidence intervals: a different question">
+  <h2>Confidence intervals: a different question</h2>
+  <div class="body"><div>A \(t\)-test asks: <em>“Is the true coefficient plausibly zero?”</em></div>
+    <div class="f" data-at="1">A confidence interval asks: <em>“Which coefficient values are compatible with the data?”</em></div>
+    <div class="f big" data-at="2">\[\boxed{\hat\beta_j\ \pm\ t_{1-\alpha/2,\,n-p}\,SE(\hat\beta_j)}\]</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Exercise: 95% CI">
+  <h2>Exercise: construct a 95% confidence interval</h2>
+  <div class="body"><div>\(n=25,\ p=2,\ t_{0.975,23}\approx2.069,\quad\hat\beta_1=2.4,\ SE(\hat\beta_1)=0.8\)</div><div class="q">Exercise (2 minutes): find the 95% interval.</div>
+    <div class="f" data-at="1">\[2.4\pm2.069\times0.8=2.4\pm1.6552\]</div>
+    <div class="f big" data-at="2">\[\boxed{CI_{95\%}\approx[0.745,\ 4.055]}\]</div>
+    <canvas class="cv bare f" data-at="2" data-v="cinum" style="width:820px;height:130px"></canvas></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="What does 95% confidence mean?">
+  <h2>What does “95% confidence” mean?</h2>
+  <div class="body"><div class="row"><div class="col"><div>Repeatedly collect new samples; build an interval from each.</div>
+    <div class="f alert" data-at="1">About 95% of these intervals contain the fixed, true \(\beta_j\).</div>
+    <div class="f small" data-at="2">It does <b>not</b> mean that, after seeing one interval, \(\beta_j\) has a 95% probability of lying inside it.</div></div>
+    <canvas class="cv f" data-at="1" data-v="cis" style="width:480px;height:440px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="t-tests and CIs agree">
+  <h2>\(t\)-tests and confidence intervals agree</h2>
+  <div class="body"><div>We tested \(H_0:\beta_1=0\) with estimate 2.4 and SE 0.8.</div>
+    <div class="f big" data-at="1">\[\boxed{CI_{95\%}=[0.745,\ 4.055]}\]</div>
+    <div class="f q" data-at="2">Does the interval contain 0?</div>
+    <canvas class="cv bare f" data-at="3" data-v="cinum" style="width:820px;height:130px"></canvas>
+    <div class="f" data-at="3">No, so the two-sided \(t\)-test rejects \(H_0\) at 5%.</div>
+    <div class="f alert" data-at="3">Rejecting \(H_0\) ⇔ the null value lies outside the CI.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Connection to multicollinearity">
+  <h2>Connection to multicollinearity</h2>
+  <div class="body"><div>\[\operatorname{Var}(\hat\beta_j\mid X)=\frac{\sigma^2}{\sum_i(x_{ij}-\bar x_j)^2}\underbrace{\frac{1}{1-R_j^2}}_{\mathrm{VIF}_j}\]</div>
+    <div class="f" data-at="1">Higher VIF ⇒ larger SE, <em>holding everything else fixed</em>.</div>
+    <canvas class="cv bare f" data-at="1" data-v="vifci" style="width:880px;height:150px"></canvas>
+    <div class="f alert" data-at="2">An imprecisely estimated coefficient may not be statistically significant.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Significance and causation">
+  <h2>Does statistical significance mean causation?</h2>
+  <div class="body"><div style="max-width:960px">Education is significant in a regression predicting salary.</div>
+    <div class="f q" data-at="1">Have we proved that education causes higher salary?</div>
+    <div class="f row" data-at="2" style="gap:50px"><div style="max-width:440px">No. Omitted variables and confounding can explain the association.</div>
+      <svg width="360" height="190" viewBox="0 0 360 190" style="font-family:var(--display)"><g font-weight="700" text-anchor="middle"><rect x="100" y="8" width="160" height="56" rx="28" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="3"/><text x="180" y="34" font-size="18" fill="var(--amber)">family background,</text><text x="180" y="54" font-size="18" fill="var(--amber)">ability</text>
+        <rect x="8" y="128" width="130" height="50" rx="25" fill="var(--surface)" stroke="var(--ink)" stroke-width="3"/><text x="73" y="160" font-size="20" fill="var(--ink)">education</text><rect x="222" y="128" width="130" height="50" rx="25" fill="var(--surface)" stroke="var(--ink)" stroke-width="3"/><text x="287" y="160" font-size="20" fill="var(--ink)">salary</text></g>
+        <g stroke="var(--amber)" stroke-width="3"><path d="M140 66 L95 126"/><path d="M220 66 L265 126"/></g><path d="M142 153 H218" stroke="var(--muted)" stroke-width="3" stroke-dasharray="7 6"/></svg></div>
+    <div class="f alert" data-at="2">Significance ≠ causal identification ≠ practical importance.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Assumptions: when does OLS work?">
+  <h2>Assumptions: when does OLS work?</h2>
+  <div class="body"><div>For the familiar OLS formulas, assume:</div>
+    <ol class="items" style="font-size:30px"><li class="f" data-at="1">\(\mathbb E[\varepsilon\mid X]=0\): zero conditional mean</li><li class="f" data-at="2">\(\operatorname{rank}(X)=p\): no perfect multicollinearity</li></ol>
+    <div class="f" data-at="3">Then OLS is unbiased conditional on \(X\).</div><div class="f alert" data-at="3">A high \(R^2\) does not verify these assumptions.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Assumptions for classical inference">
+  <h2>Additional assumptions for classical inference</h2>
+  <div class="body"><div>For the conventional variance formula: \(\ \operatorname{Var}(\varepsilon\mid X)=\sigma^2I_n\)</div>
+    <ul class="items f" data-at="1" style="font-size:28px"><li><b>Homoscedasticity:</b> constant conditional error variance</li><li><b>Uncorrelated errors:</b> zero conditional covariance across observations</li></ul>
+    <div class="f" data-at="2">For exact small-sample \(t\)-tests and intervals, also:</div><div class="f big" data-at="2">\[\varepsilon\mid X\sim\mathcal N(0,\sigma^2I_n)\]</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Residual diagnostics">
+  <h2>Residual diagnostics</h2>
+  <div class="body"><div class="row"><div class="col"><div>\[\boxed{e_i=y_i-\hat y_i}\]</div>
+    <div class="f" data-at="1">Plot \(e_i\) against fitted \(\hat y_i\).</div>
+    <ul class="items f" data-at="2" style="font-size:24px"><li>Random scatter near zero is reassuring.</li><li>Systematic shapes reveal problems.</li></ul><div class="f q" data-at="2">What patterns should we look for?</div></div>
+    <canvas class="cv f" data-at="1" data-v="rp1" style="width:460px;height:380px"></canvas></div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Residual plot A">
+  <h2>Residual plot A: no clear pattern</h2>
+  <div class="body"><canvas class="cv" data-v="rpA" style="width:760px;height:400px"></canvas><div class="f alert" data-at="1">No obvious curvature or change in spread.</div></div>
+</section>
+<section class="slide" data-sec="Part 4" data-title="Residual plot B">
+  <h2>Residual plot B: curved pattern</h2>
+  <div class="body"><canvas class="cv" data-v="rpB" style="width:760px;height:400px"></canvas><div class="f alert" data-at="1">Possible misspecification of the conditional mean (e.g. missing nonlinearity).</div></div>
+</section>
+<section class="slide" data-sec="Part 4" data-title="Residual plot C">
+  <h2>Residual plot C: funnel shape</h2>
+  <div class="body"><canvas class="cv" data-v="rpC" style="width:760px;height:400px"></canvas><div class="f alert" data-at="1">Possible heteroscedasticity: error variance changes with the fitted value.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Can residual plots prove correctness?">
+  <h2>Can residual plots prove the model is correct?</h2>
+  <div class="body"><div><b>No.</b> Residual plots are <span class="alert">diagnostic tools</span>, not proofs.</div>
+    <ul class="items" style="font-size:28px"><li class="f" data-at="1">Curvature ⇒ possible mean-model misspecification</li><li class="f" data-at="2">Funnel ⇒ possible unequal error variance</li></ul>
+    <div class="f small" data-at="3">Other checks are needed for dependence and error normality.</div><div class="f alert" data-at="3">A visually random residual plot does not establish causality.</div></div>
+</section>
+
+<section class="slide" data-sec="Part 4" data-title="Final check">
+  <h2>Final check: what does each quantity tell us?</h2>
+  <div class="body"><table class="tb" style="font-size:24px"><thead><tr><th class="l">Quantity</th><th class="l">Meaning</th></tr></thead><tbody class="stag">
+    <tr><td class="l">\(\hat\beta_j\)</td><td class="l">Estimated association (given the other features)</td></tr><tr><td class="l">\(SE(\hat\beta_j)\)</td><td class="l">Precision of the estimate</td></tr><tr><td class="l">\(t\)-statistic</td><td class="l">Distance from the null, in standard errors</td></tr><tr><td class="l">95% CI</td><td class="l">Range from a 95% coverage procedure</td></tr><tr><td class="l">Residual plot</td><td class="l">Check for visible misspecification</td></tr></tbody></table>
+    <div class="f alert" data-at="1">A useful model needs both predictive assessment and trustworthy inference.</div></div>
+</section>
+
+<section class="slide" data-sec="Wrap-up" data-title="Takeaways">
+  <h2>Takeaways</h2>
+  <div class="body" style="align-items:center"><ol class="items" style="font-size:34px"><li>OLS is an orthogonal projection.</li><li class="f" data-at="1">Gaussian MLE gives the same coefficients.</li><li class="f" data-at="2">Good predictions do not guarantee identifiable coefficients.</li><li class="f" data-at="3">Reliable inference requires assumptions and diagnostics.</li></ol></div>
+</section>
+
+<section class="slide" data-sec="Next" data-title="Next lecture">
+  <h2>Next lecture</h2>
+  <div class="body"><div>What if the target is a class label, not a real number?</div><canvas class="cv f" data-at="1" data-v="sigmoid" style="width:620px;height:340px"></canvas>
+    <div class="f huge" data-at="1" style="font-family:var(--display);font-weight:800">Logistic regression</div></div>
+</section>
+
+</div></div>
+<div id="prog"></div>
+<nav id="hud" aria-label="Slide controls">
+  <button id="b-prev" aria-label="Previous">←</button><button id="b-next" aria-label="Next">→</button>
+  <span class="grow" id="h-title"></span>
+  <button id="b-toc" aria-label="All slides"><span id="h-num"></span></button>
+  <button id="b-fs" aria-label="Full screen">⛶</button>
+</nav>
+<div id="toc" role="dialog" aria-label="All slides"></div>
+<script>
+(function(){
+'use strict';
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+const FONT="'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif";
+const REDUCED=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+const COL={};const KEYS=['ink','muted','line','gridc','surface','surface2','blue','red','green','amber','violet'];
+function readColors(){const s=getComputedStyle(document.documentElement);KEYS.forEach(k=>COL[k]=s.getPropertyValue('--'+k).trim()||'#888888');}
+readColors();try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{readColors();kick();});}catch(e){}
+function alpha(hex,a){let h=(hex||'#888888').replace('#','');if(h.length===3)h=h.split('').map(c=>c+c).join('');const n=parseInt(h,16);return`rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;}
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),lerp=(a,b,t)=>a+(b-a)*t,ease=x=>{x=clamp(x,0,1);return 1-Math.pow(1-x,3);},eio=x=>{x=clamp(x,0,1);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;};
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function gaussFn(r){return()=>{let u=0;while(u===0)u=r();const v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};}
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length;
+const sdv=a=>{const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)*(x-m),0)/Math.max(1,a.length-1));};
+function line2(xs,ys){const mx=mean(xs),my=mean(ys);let sxy=0,sxx=0;xs.forEach((x,i)=>{sxy+=(x-mx)*(ys[i]-my);sxx+=(x-mx)*(x-mx);});const b1=sxy/sxx;return{b0:my-b1*mx,b1};}
+function lgamma(x){const g=7,c=[0.99999999999980993,676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];if(x<0.5)return Math.log(Math.PI/Math.sin(Math.PI*x))-lgamma(1-x);x-=1;let a=c[0];const t=x+g+0.5;for(let i=1;i<9;i++)a+=c[i]/(x+i);return 0.5*Math.log(2*Math.PI)+(x+0.5)*Math.log(t)-t+Math.log(a);}
+const tpdf=(t,df)=>Math.exp(lgamma((df+1)/2)-lgamma(df/2)-0.5*Math.log(df*Math.PI)-(df+1)/2*Math.log(1+t*t/df));
+const npdf=(z,s)=>Math.exp(-z*z/(2*s*s))/(s*Math.sqrt(2*Math.PI));
+function f(v,d=2){let s=Number(v).toFixed(d);if(/^-0(\.0+)?$/.test(s))s=s.slice(1);return s.replace('-','−');}
+function niceTicks(a,b,n){const span=b-a;if(!(span>0))return[a];const raw=span/Math.max(1,n),mag=Math.pow(10,Math.floor(Math.log10(raw))),r=raw/mag,step=(r<1.5?1:r<3?2:r<7?5:10)*mag;const out=[];for(let v=Math.ceil(a/step-1e-9)*step;v<=b+step*1e-9;v+=step)out.push(Math.abs(v)<step*1e-6?0:v);return out;}
+function tickFmt(v){let s;if(Math.abs(v)>=1e5)s=v.toExponential(0);else if(Math.abs(v-Math.round(v))<1e-9)s=String(Math.round(v));else s=String(+v.toPrecision(3));return s.replace('-','−');}
+
+/* ---------- Plot ---------- */
+let SCALE=1;
+class Plot{
+  constructor(cv,o={}){this.cv=cv;this.ctx=cv.getContext('2d');this.pad=o.pad||[14,14,34,48];this.equal=!!o.equal;this.xr=[0,1];this.yr=[0,1];this.ox=0;this.oy=0;this.w=300;this.h=200;}
+  fit(){const w=this.cv.clientWidth,h=this.cv.clientHeight,d=Math.min(3,(window.devicePixelRatio||1)*SCALE);const W=Math.round(w*d),H=Math.round(h*d);if(this.cv.width!==W||this.cv.height!==H){this.cv.width=W;this.cv.height=H;}this.ctx.setTransform(d,0,0,d,0,0);this.w=w;this.h=h;this.ox=0;this.oy=0;this.fullW=w;this.fullH=h;}
+  sub(ox,oy,w,h,o={}){const q=Object.create(this);q.ox=ox;q.oy=oy;q.w=w;q.h=h;q.pad=o.pad||this.pad;q.equal=!!o.equal;q.xr=[0,1];q.yr=[0,1];return q;}
+  range(x0,x1,y0,y1){const[t,r,b,l]=this.pad;if(this.equal){const pw=this.w-l-r,ph=this.h-t-b,s=Math.min(pw/(x1-x0),ph/(y1-y0));const cx=(x0+x1)/2,cy=(y0+y1)/2,hx=pw/s/2,hy=ph/s/2;x0=cx-hx;x1=cx+hx;y0=cy-hy;y1=cy+hy;}this.xr=[x0,x1];this.yr=[y0,y1];return this;}
+  X(x){const l=this.pad[3],r=this.pad[1];return this.ox+l+(x-this.xr[0])/(this.xr[1]-this.xr[0])*(this.w-l-r);}
+  Y(y){const t=this.pad[0],b=this.pad[2];return this.oy+this.h-b-(y-this.yr[0])/(this.yr[1]-this.yr[0])*(this.h-t-b);}
+  iX(px){const l=this.pad[3],r=this.pad[1];return this.xr[0]+(px-this.ox-l)/(this.w-l-r)*(this.xr[1]-this.xr[0]);}
+  sx(){return(this.w-this.pad[3]-this.pad[1])/(this.xr[1]-this.xr[0]);}
+  sy(){return(this.h-this.pad[0]-this.pad[2])/(this.yr[1]-this.yr[0]);}
+  clear(){this.ctx.clearRect(0,0,this.fullW||this.w,this.fullH||this.h);}
+  font(sz=13,w=500){this.ctx.font=`${w} ${sz}px ${FONT}`;}
+  axes(o={}){const c=this.ctx,[t,r,b,l]=this.pad,L=this.ox+l,R=this.ox+this.w-r,T=this.oy+t,B=this.oy+this.h-b;
+    const xt=o.xticks||niceTicks(this.xr[0],this.xr[1],Math.max(2,Math.round((this.w-l-r)/80))),yt=o.yticks||niceTicks(this.yr[0],this.yr[1],Math.max(2,Math.round((this.h-t-b)/60)));
+    c.save();c.lineWidth=1;c.strokeStyle=COL.gridc;
+    if(!o.noGrid){xt.forEach(v=>{const x=Math.round(this.X(v))+.5;c.beginPath();c.moveTo(x,T);c.lineTo(x,B);c.stroke();});yt.forEach(v=>{const y=Math.round(this.Y(v))+.5;c.beginPath();c.moveTo(L,y);c.lineTo(R,y);c.stroke();});}
+    if(o.zero!==false){c.strokeStyle=alpha(COL.muted,.5);if(this.xr[0]<0&&this.xr[1]>0){const x=Math.round(this.X(0))+.5;c.beginPath();c.moveTo(x,T);c.lineTo(x,B);c.stroke();}if(this.yr[0]<0&&this.yr[1]>0){const y=Math.round(this.Y(0))+.5;c.beginPath();c.moveTo(L,y);c.lineTo(R,y);c.stroke();}}
+    c.strokeStyle=COL.line;c.strokeRect(L+.5,T+.5,R-L-1,B-T-1);this.font(13,500);c.fillStyle=COL.muted;
+    if(!o.noX){c.textAlign='center';c.textBaseline='top';xt.forEach(v=>c.fillText((o.xfmt||tickFmt)(v),this.X(v),B+5));}
+    if(!o.noY){c.textAlign='right';c.textBaseline='middle';yt.forEach(v=>c.fillText((o.yfmt||tickFmt)(v),L-6,this.Y(v)));}
+    this.font(14.5,650);if(o.xl){c.textAlign='right';c.textBaseline='bottom';c.fillText(o.xl,R-6,B-5);}if(o.yl){c.textAlign='left';c.textBaseline='top';c.fillText(o.yl,L+6,T+5);}c.restore();}
+  clip(){const c=this.ctx,[t,r,b,l]=this.pad;c.save();c.beginPath();c.rect(this.ox+l,this.oy+t,this.w-l-r,this.h-t-b);c.clip();}
+  unclip(){this.ctx.restore();}
+  seg(x1,y1,x2,y2,col,lw=2,dash){const c=this.ctx;c.save();c.strokeStyle=col;c.lineWidth=lw;c.lineCap='round';if(dash)c.setLineDash(dash);c.beginPath();c.moveTo(this.X(x1),this.Y(y1));c.lineTo(this.X(x2),this.Y(y2));c.stroke();c.restore();}
+  poly(pts,col,lw=2.5,dash,fill){if(pts.length<2)return;const c=this.ctx;c.save();c.beginPath();pts.forEach((q,i)=>{const x=this.X(q[0]),y=this.Y(q[1]);i?c.lineTo(x,y):c.moveTo(x,y);});if(fill){c.closePath();c.fillStyle=fill;c.fill();}if(col){c.strokeStyle=col;c.lineWidth=lw;c.lineJoin='round';c.lineCap='round';if(dash)c.setLineDash(dash);c.stroke();}c.restore();}
+  dot(x,y,r,fill,stroke,lw=2){const c=this.ctx;c.save();c.beginPath();c.arc(this.X(x),this.Y(y),r,0,Math.PI*2);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=lw;c.stroke();}c.restore();}
+  box(x0,y0,x1,y1,fill,stroke,lw=1.2){const c=this.ctx,X0=this.X(x0),X1=this.X(x1),Y0=this.Y(y0),Y1=this.Y(y1);c.save();if(fill){c.fillStyle=fill;c.fillRect(Math.min(X0,X1),Math.min(Y0,Y1),Math.abs(X1-X0),Math.abs(Y1-Y0));}if(stroke){c.strokeStyle=stroke;c.lineWidth=lw;c.strokeRect(Math.min(X0,X1),Math.min(Y0,Y1),Math.abs(X1-X0),Math.abs(Y1-Y0));}c.restore();}
+  arrowPx(x1,y1,x2,y2,col,lw=3,head=12){const c=this.ctx,a=Math.atan2(y2-y1,x2-x1),L=Math.hypot(x2-x1,y2-y1);if(L<1)return;head=Math.min(head,L*0.6);c.save();c.strokeStyle=col;c.fillStyle=col;c.lineWidth=lw;c.lineCap='round';c.beginPath();c.moveTo(x1,y1);c.lineTo(x2-Math.cos(a)*head*.75,y2-Math.sin(a)*head*.75);c.stroke();c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-head*Math.cos(a-.42),y2-head*Math.sin(a-.42));c.lineTo(x2-head*Math.cos(a+.42),y2-head*Math.sin(a+.42));c.closePath();c.fill();c.restore();}
+  arrow(x1,y1,x2,y2,col,lw,head){this.arrowPx(this.X(x1),this.Y(y1),this.X(x2),this.Y(y2),col,lw,head);}
+  text(s,x,y,col,o={}){const c=this.ctx;c.save();if(o.alpha!==undefined)c.globalAlpha=o.alpha;this.font(o.size||16,o.weight||650);c.fillStyle=col||COL.ink;c.textAlign=o.align||'left';c.textBaseline=o.base||'middle';const px=(o.px?x:this.X(x))+(o.dx||0),py=(o.px?y:this.Y(y))+(o.dy||0);if(o.halo!==false){c.lineWidth=4;c.strokeStyle=COL.surface;c.lineJoin='round';c.strokeText(s,px,py);}c.fillText(s,px,py);c.restore();}
+  hist(vals,lo,hi,bins,y0,hgt,col){const h=new Array(bins).fill(0),bw=(hi-lo)/bins;vals.forEach(v=>{const k=Math.floor((v-lo)/bw);if(k>=0&&k<bins)h[k]++;});const m=Math.max(1,...h);h.forEach((c,k)=>{if(c)this.box(lo+k*bw,y0,lo+(k+1)*bw,y0+hgt*c/m,alpha(col,.55),col,1);});return m;}
+}
+function cam(p,yaw,pitch,cen,rad){const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);const rot=v=>{const x1=v[0]*cy-v[1]*sy,y1=v[0]*sy+v[1]*cy;return[x1,v[2]*cp+y1*sp];};
+  const S=Math.min(p.w,p.h)/(2*rad),rc=rot(cen),cx=p.w/2-S*rc[0],cyy=p.h/2+S*rc[1];return v=>{const q=rot(v);return[cx+S*q[0],cyy-S*q[1]];};}
+function L3(p,pr,a,b,col,lw=2,dash){const A=pr(a),B=pr(b),c=p.ctx;c.save();c.strokeStyle=col;c.lineWidth=lw;c.lineCap='round';if(dash)c.setLineDash(dash);c.beginPath();c.moveTo(A[0],A[1]);c.lineTo(B[0],B[1]);c.stroke();c.restore();}
+function A3(p,pr,a,b,col,lw=3){const A=pr(a),B=pr(b);p.arrowPx(A[0],A[1],B[0],B[1],col,lw,13);}
+function T3(p,pr,v,s,col,dx=8,dy=-8,size=17){const P=pr(v);p.text(s,P[0],P[1],col,{px:true,dx,dy,size});}
+function F3(p,pr,pts,fill,stroke){const c=p.ctx;c.save();c.beginPath();pts.map(pr).forEach((q,i)=>i?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1]));c.closePath();c.fillStyle=fill;c.fill();if(stroke){c.strokeStyle=stroke;c.lineWidth=1.2;c.stroke();}c.restore();}
+const add=(a,b)=>a.map((x,i)=>x+b[i]),sc=(a,k)=>a.map(x=>x*k);
+
+const V={};
+
+/* ================= Part 0 visuals ================= */
+const TD=(()=>{const r=mulberry(4),g=gaussFn(r);return Array.from({length:26},(_,i)=>{const x=0.6+9*i/25+g()*0.15;return[x,1.3+0.72*x+g()*0.95];});})();
+const TL=line2(TD.map(q=>q[0]),TD.map(q=>q[1]));const TXm=mean(TD.map(q=>q[0])),TYm=mean(TD.map(q=>q[1]));
+V.title=(p,S)=>{p.pad=[6,6,6,6];p.clear();p.range(0,10.4,0,10.4);const n=Math.min(TD.length,Math.floor(S.t*14));const e=ease((S.t-2)/1.6);
+  if(e>0){const b1=lerp(-0.4,TL.b1,e),b0=TYm-b1*TXm;p.clip();if(e>=1)TD.forEach(q=>p.seg(q[0],q[1],q[0],b0+b1*q[0],alpha(COL.red,.75),2));p.seg(-1,b0-b1,12,b0+12*b1,COL.blue,4);p.unclip();}
+  TD.slice(0,n).forEach(q=>p.dot(q[0],q[1],7,COL.surface,COL.ink,2.6));};
+
+const EYES=new Image();EYES.src='data:image/jpeg;base64,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';
+const tmp=document.createElement('canvas'),tctx=tmp.getContext('2d',{willReadFrequently:true});
+V.face=(p,S)=>{p.clear();if(!EYES.complete||!EYES.naturalWidth)return;const c=p.ctx,ar=EYES.naturalHeight/EYES.naturalWidth;let n;
+  if(S.step===0)n=Math.round(lerp(6,405,Math.pow(clamp(S.t/3.4,0,1),2.2)));else n=Math.round(lerp(405,24,ease(S.st/1.2)));
+  if(n>=400){c.imageSmoothingEnabled=true;c.drawImage(EYES,0,0,p.w,p.h);}
+  else{const m=Math.max(2,Math.round(n*ar));tmp.width=n;tmp.height=m;tctx.imageSmoothingEnabled=true;tctx.drawImage(EYES,0,0,n,m);c.imageSmoothingEnabled=false;c.drawImage(tmp,0,0,p.w,p.h);
+    if(S.step>=1&&S.st>1.2){const d=tctx.getImageData(0,0,n,m).data,cw=p.w/n,ch=p.h/m,a=ease((S.st-1.2)/0.8);c.save();c.globalAlpha=a;p.font(Math.max(8,cw*0.36),650);c.textAlign='center';c.textBaseline='middle';
+      for(let j=0;j<m;j++)for(let i=0;i<n;i++){const k=4*(j*n+i),v=Math.round(0.299*d[k]+0.587*d[k+1]+0.114*d[k+2]);c.fillStyle=v>120?'#1b2433':'#ffffff';c.fillText(v,(i+.5)*cw,(j+.5)*ch);}c.restore();}}};
+function three(ctx){ctx.beginPath();ctx.moveTo(7,7.5);ctx.bezierCurveTo(12,2.5,21,3.5,19.5,9);ctx.bezierCurveTo(18.5,13,14.5,13.8,12.5,14);ctx.bezierCurveTo(17,14,22,16.5,20.5,21);ctx.bezierCurveTo(19,26,10,26.5,6.5,22);}
+let THREE=null;function threePix(){if(THREE)return THREE;tmp.width=28;tmp.height=28;tctx.setTransform(1,0,0,1,0,0);tctx.fillStyle='#000';tctx.fillRect(0,0,28,28);tctx.strokeStyle='#fff';tctx.lineWidth=2.6;tctx.lineCap='round';tctx.lineJoin='round';three(tctx);tctx.stroke();
+  const d=tctx.getImageData(0,0,28,28).data;THREE=[];for(let i=0;i<784;i++)THREE.push(d[4*i]);return THREE;}
+V.d3a=(p,S)=>{p.clear();const c=p.ctx,k=p.w/28;c.save();c.scale(k,k);c.strokeStyle=COL.ink;c.lineWidth=2.2;c.lineCap='round';c.lineJoin='round';c.setLineDash([60*ease(S.t/1.6),200]);three(c);c.stroke();c.restore();};
+V.d3b=(p,S)=>{p.clear();const v=threePix(),cw=p.w/28,c=p.ctx,rows=S.step>=1?Math.floor(S.st*22):0;for(let j=0;j<28;j++)for(let i=0;i<28;i++){const g=j<rows?v[j*28+i]:0;c.fillStyle=`rgb(${g},${g},${g})`;c.fillRect(i*cw,j*cw,cw+.5,cw+.5);}
+  c.strokeStyle='rgba(128,128,128,.25)';c.lineWidth=.5;for(let i=0;i<=28;i++){c.beginPath();c.moveTo(i*cw,0);c.lineTo(i*cw,p.h);c.stroke();c.beginPath();c.moveTo(0,i*cw);c.lineTo(p.w,i*cw);c.stroke();}};
+V.pix=(p,S)=>{p.clear();const v=threePix(),c=p.ctx,sz=p.h-20,cw=sz/28,ox=20,oy=10;for(let j=0;j<28;j++)for(let i=0;i<28;i++){const g=v[j*28+i];c.fillStyle=`rgb(${g},${g},${g})`;c.fillRect(ox+i*cw,oy+j*cw,cw+.5,cw+.5);}
+  const wx=Math.round(3+14*(0.5+0.5*Math.sin(S.t*0.55))),wy=Math.round(3+14*(0.5+0.5*Math.sin(S.t*0.37+1)));c.strokeStyle=COL.blue;c.lineWidth=3;c.strokeRect(ox+wx*cw,oy+wy*cw,7*cw,7*cw);
+  const zx=ox+sz+90,zc=sz/7;c.beginPath();c.moveTo(ox+(wx+7)*cw,oy+wy*cw);c.lineTo(zx,oy);c.moveTo(ox+(wx+7)*cw,oy+(wy+7)*cw);c.lineTo(zx,oy+sz);c.strokeStyle=alpha(COL.blue,.4);c.lineWidth=1.5;c.stroke();
+  p.font(Math.round(zc*0.36),650);c.textAlign='center';c.textBaseline='middle';for(let j=0;j<7;j++)for(let i=0;i<7;i++){const g=v[(wy+j)*28+wx+i];c.fillStyle=`rgb(${g},${g},${g})`;c.fillRect(zx+i*zc,oy+j*zc,zc,zc);c.fillStyle=g>128?'#111':'#fff';c.fillText(g,zx+(i+.5)*zc,oy+(j+.5)*zc);}
+  c.strokeStyle=COL.blue;c.lineWidth=3;c.strokeRect(zx,oy,sz,sz);};
+
+let MN=null;function mnistCells(){if(MN)return MN;const r=mulberry(9),fonts=['Comic Sans MS','Segoe Print','Bradley Hand','Chalkboard','Marker Felt','cursive','Georgia','sans-serif'];MN=[];
+  for(let k=0;k<105;k++){const d=k%10,c=document.createElement('canvas');c.width=28;c.height=28;const x=c.getContext('2d');x.fillStyle='#000';x.fillRect(0,0,28,28);x.translate(14+(r()-.5)*3,15+(r()-.5)*3);x.rotate((r()-.5)*0.45);x.scale(0.85+r()*0.3,0.9+r()*0.25);
+    x.font=`${r()<.5?700:400} 23px '${fonts[Math.floor(r()*fonts.length)]}'`;x.fillStyle='#fff';x.textAlign='center';x.textBaseline='middle';x.fillText(String(d),0,1);MN.push(c);}
+  for(let i=MN.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[MN[i],MN[j]]=[MN[j],MN[i]];}return MN;}
+V.mnist=(p,S)=>{p.clear();const M=mnistCells(),c=p.ctx,cols=15,rows=7,cw=Math.min(p.w/cols,p.h/rows),ox=(p.w-cw*cols)/2,oy=(p.h-cw*rows)/2,n=Math.floor(S.t*45);c.imageSmoothingEnabled=false;
+  M.slice(0,n).forEach((im,k)=>{c.drawImage(im,ox+(k%cols)*cw+1,oy+Math.floor(k/cols)*cw+1,cw-2,cw-2);});};
+
+const CIF=[['airplane','✈️','#8fb6e8'],['automobile','🚗','#9aa0a8'],['bird','🐦','#a9cdea'],['cat','🐱','#c7b49a'],['deer','🦌','#7fa05f'],['dog','🐶','#b8a98c'],['frog','🐸','#6f9a4c'],['horse','🐴','#9bb06a'],['ship','🚢','#5d8fc4'],['truck','🚚','#a3a3a3']];
+let CF=null;function cifarCells(){if(CF)return CF;const r=mulberry(12);CF=CIF.map(cl=>Array.from({length:12},()=>{const c=document.createElement('canvas');c.width=32;c.height=32;const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,32);g.addColorStop(0,cl[2]);g.addColorStop(1,`hsl(${Math.floor(r()*60+60)},25%,${50+r()*25}%)`);x.fillStyle=g;x.fillRect(0,0,32,32);
+  const s=18+r()*10;x.font=`${s}px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif`;x.textAlign='center';x.textBaseline='middle';x.save();x.translate(16+(r()-.5)*6,17+(r()-.5)*5);if(r()<.5)x.scale(-1,1);x.fillText(cl[1],0,0);x.restore();return c;}));return CF;}
+V.cifar=(p,S)=>{p.clear();const M=cifarCells(),c=p.ctx,lw=140,rows=10,cols=12,cw=Math.min((p.w-lw-10)/cols,(p.h-10)/rows),oy=(p.h-cw*rows)/2;c.imageSmoothingEnabled=false;
+  M.forEach((row,j)=>{p.text(CIF[j][0],lw-12,oy+(j+.5)*cw,COL.ink,{px:true,align:'right',size:15,halo:false});row.forEach((im,i)=>{if(i+j*1.5<S.t*14)c.drawImage(im,lw+i*cw+1,oy+j*cw+1,cw-2,cw-2);});});};
+
+const SUPD=(()=>{const g=gaussFn(mulberry(31));const a=[];for(let i=0;i<40;i++){const k=i%2;a.push([k?6.5+g()*1.3:3.5+g()*1.3,k?6+g()*1.3:3.8+g()*1.3,k]);}return a;})();
+V.sup=(p,S)=>{p.clear();p.range(0,10,0,10);p.axes({xl:'x₁',yl:'x₂',noX:true,noY:true});const e=S.step>=1?ease(S.st/1.2):0;p.clip();
+  if(e>0){p.poly([[0,10.6],[10.6,0],[10.6,10.6]],null,0,null,alpha(COL.amber,.09*e));p.poly([[0,10.6],[10.6,0],[0,0]],null,0,null,alpha(COL.blue,.09*e));p.seg(-1,11.6,lerp(-1,11.6,e),lerp(11.6,-1,e),COL.ink,3,[8,6]);}
+  SUPD.forEach((q,i)=>{if(i<S.t*20){q[2]?p.dot(q[0],q[1],7,COL.amber):p.dot(q[0],q[1],7,COL.surface,COL.blue,3);}});p.unclip();
+  p.text('y = 1',9.5,9.4,COL.amber,{align:'right'});p.text('y = 0',0.5,0.7,COL.blue);};
+
+const KM=(()=>{const g=gaussFn(mulberry(8));const C=[[2.5,7.5],[7.5,7],[5,2.5]];const P=[];C.forEach(c=>{for(let i=0;i<20;i++)P.push([c[0]+g()*1.0,c[1]+g()*1.0]);});
+  let cen=[[1,1],[1.5,1.8],[2.2,1]];const hist=[];for(let it=0;it<7;it++){const asg=P.map(q=>{let b=0,bd=1e9;cen.forEach((c,k)=>{const d=(q[0]-c[0])**2+(q[1]-c[1])**2;if(d<bd){bd=d;b=k;}});return b;});hist.push({cen:cen.map(c=>c.slice()),asg});cen=cen.map((c,k)=>{const m=P.filter((_,i)=>asg[i]===k);return m.length?[mean(m.map(q=>q[0])),mean(m.map(q=>q[1]))]:c;});}return{P,hist};})();
+V.unsup=(p,S)=>{p.clear();p.range(0,10,0,10);p.axes({xl:'spending',yl:'visits',noX:true,noY:true});const cols=[COL.blue,COL.amber,COL.green];p.clip();
+  if(S.step<1){KM.P.forEach((q,i)=>{if(i<S.t*30)p.dot(q[0],q[1],6.5,alpha(COL.muted,.55),COL.muted,1.5);});p.unclip();return;}
+  const it=Math.min(KM.hist.length-1,Math.floor(S.st/0.9)),fr=ease((S.st-it*0.9)/0.6),H=KM.hist[it],Hn=KM.hist[Math.min(KM.hist.length-1,it+1)];
+  KM.P.forEach((q,i)=>p.dot(q[0],q[1],6.5,alpha(cols[H.asg[i]],.75),cols[H.asg[i]],1.5));
+  H.cen.forEach((c,k)=>{const x=lerp(c[0],Hn.cen[k][0],fr),y=lerp(c[1],Hn.cen[k][1],fr),X=p.X(x),Y=p.Y(y),cx=p.ctx;cx.save();cx.strokeStyle=COL.ink;cx.lineWidth=5;cx.beginPath();cx.moveTo(X-10,Y-10);cx.lineTo(X+10,Y+10);cx.moveTo(X-10,Y+10);cx.lineTo(X+10,Y-10);cx.stroke();cx.strokeStyle=cols[k];cx.lineWidth=3;cx.stroke();cx.restore();});p.unclip();
+  p.text('k-means, iteration '+(it+1),9.6,9.5,COL.muted,{align:'right',size:14});};
+V.treg=(p,S)=>{p.clear();p.range(0,10,0,10);p.axes({xl:'size',yl:'price',noX:true,noY:true});p.clip();const e=ease((S.t-0.8)/1.2);if(e>0)p.seg(0,1.4,lerp(0,10,e),lerp(1.4,9.0,e),COL.blue,3.5);TD.forEach((q,i)=>{if(i<S.t*25)p.dot(q[0]*0.95,q[1]*0.92,5.5,COL.surface,COL.ink,2.2);});p.unclip();};
+V.tcls=(p,S)=>{p.clear();p.range(0,10,0,10);p.axes({xl:'word score',yl:'link count',noX:true,noY:true});p.clip();const e=ease((S.t-0.8)/1.2);if(e>0)p.seg(-1,11.6,lerp(-1,11.6,e),lerp(11.6,-1,e),COL.ink,3,[8,6]);SUPD.forEach((q,i)=>{if(i<S.t*25){q[2]?p.dot(q[0],q[1],6,COL.amber):p.dot(q[0],q[1],6,COL.surface,COL.blue,2.5);}});p.unclip();
+  p.text('spam',9.5,9.4,COL.amber,{align:'right'});p.text('not spam',0.5,0.7,COL.blue);};
+
+/* ================= Part 1 visuals ================= */
+const HOUSE=[[1000,40],[1500,60],[2000,80],[2500,100]];
+function houseBase(p,S){p.clear();p.range(800,2700,20,115);p.axes({xl:'size (sqft)',yl:'price (₹ L)'});const e=ease((S.t-1)/1.2);p.clip();if(e>0)p.seg(800,32,lerp(800,2700,e),lerp(32,108,e),COL.blue,3.5);HOUSE.forEach((q,i)=>{if(S.t>i*0.2)p.dot(q[0],q[1],8,COL.surface,COL.ink,3);});p.unclip();}
+V.house=houseBase;
+V.house2=(p,S)=>{houseBase(p,{t:9});if(S.step<1)return;const e1=ease(S.st/0.8),e2=ease((S.st-0.8)/0.8);p.seg(1750,20,1750,lerp(20,70,e1),COL.amber,3,[7,5]);if(e2>0){p.seg(1750,70,lerp(1750,800,e2),70,COL.amber,3,[7,5]);p.dot(1750,70,8,COL.amber);p.text('70',800,70,COL.amber,{dx:8,dy:-14,size:22,alpha:e2});}p.text('1750',1750,20,COL.amber,{dy:-14,dx:6,size:16});};
+V.lineq=(p,S)=>{p.clear();p.range(0,6,0,10);p.axes({xl:'x',yl:'ŷ'});const b0=2.2+1.3*Math.sin(S.t*0.7),b1=0.85+0.45*Math.sin(S.t*0.45+1);p.clip();p.seg(0,b0,6,b0+6*b1,COL.blue,4);
+  p.seg(2.5,b0+2.5*b1,3.5,b0+2.5*b1,COL.amber,3);p.seg(3.5,b0+2.5*b1,3.5,b0+3.5*b1,COL.amber,3);p.dot(0,b0,9,COL.violet);p.unclip();
+  p.text('1',3,b0+2.5*b1,COL.amber,{dy:16,align:'center',size:18});p.text('β₁ = '+f(b1),3.5,b0+3*b1,COL.amber,{dx:10,size:18});p.text('β₀ = '+f(b0),0,b0,COL.violet,{dx:16,dy:-16,size:18});};
+
+const PL=(()=>{const g=gaussFn(mulberry(17));return Array.from({length:22},()=>{const a=g(),b=g();const x1=1.5+0.8*a,x2=1.5+0.8*b;return[clamp(x1,0,3),clamp(x2,0,3),0];}).map(q=>{q[2]=0.6+0.8*q[0]-0.3*q[1]+g()*0.25;return q;});})();
+V.plane3d=(p,S)=>{p.clear();const pr=cam(p,-0.7+S.t*0.22,0.5,[1.5,1.5,1.3],2.15);const zf=(a,b)=>0.6+0.8*a-0.3*b;
+  [[3.4,0,0,'size'],[0,3.4,0,'age'],[0,0,3.3,'price']].forEach(a=>{L3(p,pr,[0,0,0],a,alpha(COL.muted,.8),1.5);T3(p,pr,a,a[3],COL.muted,4,-4,15);});
+  F3(p,pr,[[0,0,zf(0,0)],[3,0,zf(3,0)],[3,3,zf(3,3)],[0,3,zf(0,3)]],alpha(COL.blue,.16),alpha(COL.blue,.5));
+  for(let k=0;k<=3;k++){L3(p,pr,[k,0,zf(k,0)],[k,3,zf(k,3)],alpha(COL.blue,.25),1);L3(p,pr,[0,k,zf(0,k)],[3,k,zf(3,k)],alpha(COL.blue,.25),1);}
+  PL.forEach(q=>{L3(p,pr,q,[q[0],q[1],zf(q[0],q[1])],alpha(COL.red,.7),1.6);const P=pr(q);p.ctx.beginPath();p.ctx.arc(P[0],P[1],5.5,0,7);p.ctx.fillStyle=COL.surface;p.ctx.fill();p.ctx.strokeStyle=COL.ink;p.ctx.lineWidth=2;p.ctx.stroke();});};
+
+V.colpic=(p,S)=>{p.clear();p.equal=true;p.range(-0.7,2.4,-0.7,3.6);p.axes({});const t=S.step>=1?S.st:0,e1=ease(t/1.1),e2=ease((t-1.2)/1.1);
+  p.arrow(0,0,1,1,alpha(COL.violet,.4),2.5);p.arrow(0,0,0,1,alpha(COL.violet,.4),2.5);p.text('col 1',1,1,COL.violet,{dx:8,dy:10,size:15});p.text('col 2',0,1,COL.violet,{dx:-8,dy:-6,align:'right',size:15});
+  const a=[e1,e1];if(e1>0)p.arrow(0,0,a[0],a[1],COL.blue,4);if(e2>0)p.arrow(a[0],a[1],a[0],a[1]+2*e2,COL.green,4);p.dot(1,3,9,COL.surface,COL.ink,3);p.text('y = (1, 3)',1,3,COL.ink,{dx:14,size:17});
+  if(e1>0)p.text('1 × col 1',0.5,0.5,COL.blue,{dx:12,dy:8,size:15,alpha:e1});if(e2>0)p.text('2 × col 2',1,2,COL.green,{dx:10,size:15,alpha:e2});};
+const E2=[[0,1],[1,2],[2,2]];
+V.ex2try=(p,S)=>{p.clear();p.range(-0.5,2.6,0,3.5);p.axes({xl:'x',yl:'y'});const tt=S.step>=1?S.st:0,k=Math.floor(tt/2)%3,pairs=[[0,1,2],[1,2,0],[0,2,1]],P=pairs[k],a=E2[P[0]],b=E2[P[1]],m=E2[P[2]],sl=(b[1]-a[1])/(b[0]-a[0]),ic=a[1]-sl*a[0],e=ease((tt%2)/0.6);
+  p.clip();if(S.step>=1){p.seg(-1,ic-sl,lerp(-1,3,e),ic+sl*lerp(-1,3,e),COL.blue,3.5);if(e>=1){p.seg(m[0],m[1],m[0],ic+sl*m[0],COL.red,3,[6,5]);}}E2.forEach((q,i)=>p.dot(q[0],q[1],9,COL.surface,(S.step>=1&&i===P[2]&&e>=1)?COL.red:COL.ink,3));p.unclip();
+  if(S.step>=1&&e>=1)p.text('misses',m[0],(m[1]+ic+sl*m[0])/2,COL.red,{dx:12,size:17});};
+const RD=(()=>{const g=gaussFn(mulberry(6));return Array.from({length:9},(_,i)=>{const x=1+i*1.05;return[x,2+0.65*x+g()*1.1];});})();const RL=line2(RD.map(q=>q[0]),RD.map(q=>q[1]));
+function residScene(p,S,squares){p.clear();p.equal=!!squares;p.range(0,10.5,0,10.5);p.axes({xl:'x',yl:'y'});const e=eio((S.t-0.6)/2.4),b1=lerp(-0.3,RL.b1,e),b0=lerp(8.2,RL.b0,e);let sse=0;p.clip();
+  RD.forEach(q=>{const yh=b0+b1*q[0],r=q[1]-yh;sse+=r*r;if(squares){const s=Math.abs(r),x0=q[0]+s>10.4?q[0]-s:q[0];p.box(x0,yh,x0+s,q[1],alpha(COL.red,.13),alpha(COL.red,.55));}p.seg(q[0],q[1],q[0],yh,COL.red,2.5);});
+  p.seg(-1,b0-b1,12,b0+12*b1,COL.blue,3.5);RD.forEach(q=>p.dot(q[0],q[1],7,COL.surface,COL.ink,2.6));p.unclip();p.text((squares?'total area = ':'‖r‖² = ')+f(sse,1),0.4,10,COL.red,{size:18});}
+V.resid=(p,S)=>residScene(p,S,false);V.squares=(p,S)=>residScene(p,S,true);
+V.ex2fit=(p,S)=>{p.clear();p.range(-0.5,2.6,0,3.2);p.axes({xl:'x',yl:'y'});const e=S.step>=1?ease(S.st/1.2):0,b0=7/6,b1=0.5;p.clip();
+  if(e>0){p.seg(-1,b0-b1,lerp(-1,3,e),b0+b1*lerp(-1,3,e),COL.blue,3.5);if(e>=1)E2.forEach((q,i)=>{p.seg(q[0],q[1],q[0],b0+b1*q[0],COL.red,3);});}
+  E2.forEach(q=>p.dot(q[0],q[1],9,COL.surface,COL.ink,3));p.unclip();if(e>=1)['−1/6','+1/3','−1/6'].forEach((s,i)=>p.text(s,E2[i][0],(E2[i][1]+b0+b1*E2[i][0])/2,COL.red,{dx:12,size:17}));};
+
+const P3={y:[0.5,3,1.5],dyaw:0,dpitch:0};
+V.proj3d=(p,S)=>{p.clear();const yaw=-1.15+0.18*Math.sin(S.t*0.35)+P3.dyaw,pitch=clamp(0.38+P3.dpitch,-0.2,1.3);const pr=cam(p,yaw,pitch,[1,1.5,1.6],2.5);
+  [[2.7,0,0,'obs 1'],[0,3.3,0,'obs 2'],[0,0,3.2,'obs 3']].forEach(a=>{L3(p,pr,[0,0,0],a,alpha(COL.muted,.8),1.5);T3(p,pr,a,a[3],COL.muted,4,-4,15);});
+  const C1=[1,1,1],C2=[0,1,2],P=(s,t)=>add(sc(C1,s),sc(C2,t));F3(p,pr,[P(-0.3,-0.35),P(2.1,-0.35),P(2.1,1.35),P(-0.3,1.35)],alpha(COL.blue,.12),alpha(COL.blue,.4));
+  for(let s=0;s<=2;s++)L3(p,pr,P(s,-0.35),P(s,1.35),alpha(COL.blue,.18),1);for(let t=0;t<=1;t++)L3(p,pr,P(-0.3,t),P(2.1,t),alpha(COL.blue,.18),1);
+  A3(p,pr,[0,0,0],C1,COL.violet,2.5);A3(p,pr,[0,0,0],C2,COL.violet,2.5);
+  // OLS for X=[[1,0],[1,1],[1,2]]
+  const y=P3.y,a=y[0]+y[1]+y[2],b=y[1]+2*y[2],b1=(3*b-3*a)/6,b0=(5*a-3*b)/6,yh=[b0,b0+b1,b0+2*b1],r=y.map((v,i)=>v-yh[i]);
+  A3(p,pr,[0,0,0],y,COL.ink,3.2);T3(p,pr,y,'y',COL.ink,10,-6,20);
+  if(S.step>=1){const e=ease(S.st/1.2);A3(p,pr,[0,0,0],sc(yh,Math.max(0.02,e)),COL.blue,3.6);if(e>=1){L3(p,pr,yh,y,COL.red,3,[7,5]);const rn=Math.hypot(...r),m=0.2,u=sc(r,m/rn),yn=Math.hypot(...yh),w=sc(yh,-m/yn);L3(p,pr,add(yh,w),add(add(yh,w),u),COL.red,2);L3(p,pr,add(add(yh,w),u),add(yh,u),COL.red,2);T3(p,pr,yh,'ŷ',COL.blue,12,16,20);T3(p,pr,sc(add(yh,y),0.5),'r',COL.red,10,0,20);}}};
+(function(){let d=null;document.addEventListener('pointerdown',e=>{const cv=e.target.closest&&e.target.closest('canvas[data-v="proj3d"]');if(!cv)return;d=[e.clientX,e.clientY,P3.dyaw,P3.dpitch];cv.setPointerCapture(e.pointerId);});
+  document.addEventListener('pointermove',e=>{if(!d)return;P3.dyaw=d[2]-(e.clientX-d[0])*0.01/SCALE;P3.dpitch=d[3]+(e.clientY-d[1])*0.008/SCALE;});document.addEventListener('pointerup',()=>{d=null;});})();
+
+/* ================= Part 2 visuals ================= */
+V.nullwalk=(p,S)=>{p.clear();const tp=0.5+1.05*Math.sin(S.t*0.8),b=[1,1-2*tp,tp],x1=[1,2,3],x2=[2,4,6],y=[2,3,4];p.range(0.4,3.6,-8,13);p.axes({xticks:[1,2,3],xfmt:v=>'obs '+v});const cols=[COL.muted,COL.blue,COL.violet],w=0.26;
+  x1.forEach((xv,i)=>{const cs=[b[0],b[1]*xv,b[2]*x2[i]];let pos=0,neg=0;cs.forEach((v,k)=>{if(v>=0){p.box(i+1-w,pos,i+1+w,pos+v,alpha(cols[k],.75),cols[k]);pos+=v;}else{p.box(i+1-w,neg,i+1+w,neg+v,alpha(cols[k],.75),cols[k]);neg+=v;}});
+    const yh=cs[0]+cs[1]+cs[2];p.seg(i+1-w-0.08,yh,i+1+w+0.08,yh,COL.amber,4);p.dot(i+1,y[i],6,null,COL.ink,2.5);});
+  p.text(`β = (1, ${f(b[1])}, ${f(b[2])})`,0.5,12,COL.ink,{size:18});p.text('predictions: 2, 3, 4',3.5,12,COL.amber,{align:'right',size:18});};
+V.minnorm=(p,S)=>{p.clear();p.equal=true;p.range(-2.4,2.4,-1.4,2.2);p.axes({xl:'β₁',yl:'β₂'});p.clip();p.seg(1-2*-3,-3,1-2*3,3,COL.amber,3,[9,6]);
+  p.dot(1,0,6,COL.ink);p.dot(-1,1,6,COL.ink);p.text('β⁽¹⁾',1,0,COL.ink,{dx:10,dy:12,size:15});p.text('β⁽²⁾',-1,1,COL.ink,{dx:10,dy:-12,size:15});
+  let pt;if(S.step<1){const tp=0.4+0.9*Math.sin(S.t*0.7);pt=[1-2*tp,tp];}else{const e=ease(S.st/1.2),tp0=0.4+0.9*Math.sin(S.t*0.7-S.st*0.7);pt=[lerp(1-2*tp0,0.2,e),lerp(tp0,0.4,e)];
+    if(e>=1){const c=p.ctx;c.save();c.beginPath();c.arc(p.X(0),p.Y(0),Math.hypot(0.2,0.4)*p.sx(),0,7);c.strokeStyle=alpha(COL.green,.7);c.lineWidth=2;c.setLineDash([4,4]);c.stroke();c.restore();p.seg(0,0,0.2,0.4,COL.green,3);}}
+  p.dot(pt[0],pt[1],9,COL.blue,COL.surface,2.5);p.unclip();p.text('β₁ + 2β₂ = 1 (all fit perfectly)',-2.2,-1.15,COL.amber,{size:15});if(S.step>=1&&S.st>1.2)p.text('X⁺y: smallest ‖β‖',0.2,0.4,COL.green,{dx:14,dy:4,size:17});};
+function cloudSim(rho,seed,S0=200,n=50){const g=gaussFn(mulberry(seed)),q=Math.sqrt(1-rho*rho),out=[];for(let s=0;s<S0;s++){let a=0,b=0,c=0,u=0,v=0;for(let i=0;i<n;i++){const x1=g(),x2=rho*x1+q*g(),y=x1+x2+g();a+=x1*x1;b+=x1*x2;c+=x2*x2;u+=x1*y;v+=x2*y;}const d=a*c-b*b;out.push([(c*u-b*v)/d,(a*v-b*u)/d]);}return out;}
+V.cloud=(p,S)=>{p.clear();p.equal=true;p.range(-2.5,4.5,-2.5,4.5);p.axes({xl:'β̂₁',yl:'β̂₂'});const rho=0.992*(0.5-0.5*Math.cos(S.t*0.45));const E=cloudSim(rho,11);p.clip();p.seg(5,-3,-3,5,COL.amber,2,[7,5]);
+  E.forEach(e=>p.dot(e[0],e[1],3.2,alpha(COL.blue,.5)));const X=p.X(1),Y=p.Y(1),c=p.ctx;c.save();c.strokeStyle=COL.red;c.lineWidth=3.5;c.beginPath();c.moveTo(X-9,Y-9);c.lineTo(X+9,Y+9);c.moveTo(X-9,Y+9);c.lineTo(X+9,Y-9);c.stroke();c.restore();p.unclip();
+  p.text('ρ = corr(x₁, x₂) = '+f(rho,3),-2.2,4.1,COL.ink,{size:18});p.text('VIF = '+f(1/(1-rho*rho),1),-2.2,3.6,COL.muted,{size:16});};
+function vifCurve(p,r2,lab){p.clear();p.range(0,1,0,50);p.axes({xl:'R²ⱼ',yl:'VIF'});p.clip();[[5,'5'],[10,'10']].forEach(l=>p.seg(0,l[0],1,l[0],alpha(COL.red,.5),1.2,[4,4]));const pts=[];for(let i=0;i<=300;i++){const x=i/300*0.99;pts.push([x,1/(1-x)]);}p.poly(pts,COL.blue,3.5);
+  const v=1/(1-r2);p.seg(r2,0,r2,Math.min(v,50),COL.amber,2,[5,4]);if(v<50)p.seg(0,v,r2,v,COL.amber,2,[5,4]);p.dot(r2,Math.min(v,49.5),9,COL.amber,COL.surface,2.5);p.unclip();if(lab)p.text(lab,r2,Math.min(v,46),COL.amber,{dx:-14,align:'right',size:20});}
+V.vif1=(p,S)=>{const r2=S.step>=1?0.5-0.48*Math.cos(S.st*0.6):0.3;vifCurve(p,r2,'VIF = '+f(1/(1-r2),1));};
+V.vif2=(p,S)=>{const r2=S.step>=1?lerp(0.5,0.96,ease(S.st/1.4)):0.5;vifCurve(p,r2,S.step>=1?'VIF = '+f(1/(1-r2),1):'');};
+const AUXD=(()=>{const g=gaussFn(mulberry(33));return Array.from({length:60},()=>[g(),g()]);})();
+V.aux=(p,S)=>{p.clear();p.equal=true;let r2;if(S.step<2)r2=0.96;else{const seq=[0,0.96,1],k=Math.floor(S.st/2.6)%3,prev=seq[(k+2)%3];r2=lerp(prev,seq[k],ease((S.st%2.6)/0.9));}
+  const a=Math.sqrt(r2),b=Math.sqrt(1-r2);p.range(-3,3,-3,3);p.axes({xl:'x̂₂ (from x₁, x₃)',yl:'x₂'});p.clip();p.seg(-3,-3,3,3,COL.amber,2.5,[8,6]);
+  AUXD.forEach(q=>{const fh=a*q[0],x2=fh+b*q[1];p.seg(fh,x2,fh,fh,alpha(COL.red,.35),1.2);p.dot(fh,x2,5,alpha(COL.blue,.6),COL.blue,1.2);});p.unclip();
+  p.text('R₂² = '+f(r2,2),-2.8,1.6,COL.ink,{size:20});};
+const PH=(()=>{const E=cloudSim(0.95,21,300);return{a:E.map(e=>e[0]+e[1]),b:E.map(e=>e[0]-e[1])};})();
+V.predhist=(p,S)=>{p.clear();p.range(-5,6,0,1);p.axes({noY:true,xl:'prediction'});const e=S.step>=1?ease(S.st/1):0;if(e<=0)return;p.hist(PH.a,-5,6,55,0.52,0.42*e,COL.green);p.hist(PH.b,-5,6,55,0.03,0.42*e,COL.red);
+  p.text('x = (1, 1): like training',5.8,0.95,COL.green,{size:15,align:'right'});p.text('x = (1, −1): breaks it',5.8,0.46,COL.red,{size:15,align:'right'});};
+
+/* ================= Part 3 visuals ================= */
+const ND=(()=>{const g=gaussFn(mulberry(14));return Array.from({length:26},(_,i)=>{const x=0.5+9*i/25;return[x,1.5+0.7*x+g()*1.0];});})();
+V.noise=(p,S)=>{p.clear();p.range(0,10,0,10.5);p.axes({xl:'x',yl:'y'});p.clip();p.seg(0,1.5,10,8.5,COL.blue,3.5);ND.forEach((q,i)=>{const e=ease((S.t-0.4-i*0.07)/0.7),yh=1.5+0.7*q[0],yy=lerp(yh,q[1],e);if(e>0)p.seg(q[0],yh,q[0],yy,alpha(COL.red,.6),2);p.dot(q[0],yy,6,COL.surface,COL.ink,2.2);});p.unclip();
+  p.text('x̃ᵀβ',9.6,8.3,COL.blue,{align:'right',dy:22,size:18});p.text('+ ε',4,6.8,COL.red,{size:20});};
+V.bells=(p,S)=>{p.clear();p.range(0,10,0,10.5);p.axes({xl:'x',yl:'y'});p.clip();p.seg(0,1.5,10,8.5,COL.blue,3.5);const e=ease((S.t-0.3)/1.2),sg=1;
+  [1.5,3.5,5.5,7.5].forEach(x=>{const mu=1.5+0.7*x,pts=[];for(let k=-60;k<=60;k++){const yy=mu+k/60*3.2;pts.push([x+1.6*e*npdf(yy-mu,sg)*Math.sqrt(2*Math.PI),yy]);}p.poly([[x,mu-3.2],...pts,[x,mu+3.2]],alpha(COL.muted,.8),1.8,null,alpha(COL.blue,.1));p.seg(x,mu-3.2,x,mu+3.2,alpha(COL.muted,.4),1);});
+  ND.forEach((q,i)=>{if(S.t>1.2+i*0.04)p.dot(q[0],q[1],5,alpha(COL.ink,.65));});p.unclip();};
+V.onebell=(p,S)=>{p.clear();p.range(-4.2,4.2,0,0.5);p.axes({noY:true,xl:'y − x̃ᵀβ'});const pts=[];for(let i=0;i<=200;i++){const z=-4.2+8.4*i/200;pts.push([z,npdf(z,1)]);}p.poly([[-4.2,0],...pts,[4.2,0]],COL.ink,3,null,alpha(COL.blue,.1));
+  const y=2.8*Math.sin(S.t*0.6),d=npdf(y,1);p.seg(y,0,y,d,COL.red,5);p.dot(y,0,8,COL.surface,COL.ink,3);p.text('p = '+f(d,3),y,d,COL.red,{dx:10,dy:-10,size:18});p.seg(0,0,0,0.42,alpha(COL.blue,.6),2,[5,4]);p.text('prediction',0,0.44,COL.blue,{align:'center',size:15});};
+const LP=[[1,2.5],[2,3.4],[3,3.6],[4,4.7],[5,4.9],[6,5.8],[7,6.5],[8,6.6],[9,7.6],[10,8.1]];
+function l1fit(xs,ys){let{b0,b1}=line2(xs,ys);for(let it=0;it<120;it++){let sw=0,swx=0,swy=0,swxx=0,swxy=0;xs.forEach((x,i)=>{const w=1/Math.max(Math.abs(ys[i]-b0-b1*x),1e-5);sw+=w;swx+=w*x;swy+=w*ys[i];swxx+=w*x*x;swxy+=w*x*ys[i];});const d=sw*swxx-swx*swx;b1=(sw*swxy-swx*swy)/d;b0=(swy-b1*swx)/sw;}return{b0,b1};}
+V.lap=(p,S)=>{p.clear();p.range(0,11,0,10.5);p.axes({xl:'x',yl:'y'});const oy=lerp(7.8,0.6,0.5-0.5*Math.cos(S.t*0.7)),P=[...LP,[8.6,oy]],xs=P.map(q=>q[0]),ys=P.map(q=>q[1]),a=line2(xs,ys);p.clip();
+  p.seg(-1,a.b0-a.b1,12,a.b0+12*a.b1,COL.blue,3.5);if(S.step>=1){const b=l1fit(xs,ys);p.seg(-1,b.b0-b.b1,12,b.b0+12*b.b1,COL.green,3.5,[10,6]);}
+  LP.forEach(q=>p.dot(q[0],q[1],6.5,COL.surface,COL.ink,2.4));p.dot(8.6,oy,9,alpha(COL.red,.2),COL.red,3);p.unclip();p.text('outlier',8.6,oy,COL.red,{dx:-14,align:'right',size:16});
+  p.text('squared',0.4,10,COL.blue,{size:17});if(S.step>=1)p.text('absolute',0.4,9.3,COL.green,{size:17});};
+
+/* ================= Part 4 visuals ================= */
+const AREAS=[52,61,70,78,85,93,104,115,128,140,162,185];const PRICE=(()=>{const g=gaussFn(mulberry(21));return AREAS.map(a=>40+2.1*a+g()*22);})();const HL=line2(AREAS,PRICE);
+function unitFlip(t){const k=Math.floor(t/3)%2,fr=ease((t%3)/0.5);return{k,fr};}
+V.units=(p,S)=>{const{k,fr}=unitFlip(S.t),u=k?10000:1;p.clear();p.range(40,195,100,480);p.axes({xl:'floor area ('+(k?'cm²':'m²')+')',yl:'price (k€)',xfmt:v=>tickFmt(v*u)});p.clip();p.seg(30,HL.b0+30*HL.b1,200,HL.b0+200*HL.b1,COL.blue,3.5);AREAS.forEach((a,i)=>p.dot(a,PRICE[i],6,COL.surface,COL.ink,2.4));p.unclip();
+  p.text('β₁ = '+(k?(HL.b1/1e4).toExponential(2).replace('-','−')+' per cm²':f(HL.b1,3)+' per m²'),190,175,COL.blue,{size:18,alpha:fr,align:'right'});p.text('ŷ(120 m²) = '+f(HL.b0+HL.b1*120,1)+', unchanged',190,140,COL.ink,{size:18,align:'right'});};
+const KN=(()=>{const r=mulberry(5),g=gaussFn(r),P=[];for(let i=0;i<60;i++){const a=40+160*r(),d=0.5+19.5*r();P.push([a,d,(0.025*(a-120)-0.28*(d-10)+0.55*g())>0?1:0]);}return{P,sA:sdv(P.map(q=>q[0])),sD:sdv(P.map(q=>q[1]))};})();
+V.knn=(p,S)=>{p.clear();p.range(30,210,0,21);const raw=Math.floor(S.t/3.5)%2===0,fr=ease((S.t%3.5)/0.8);p.axes({xl:'area (m²)',yl:'distance (km)'});const q=[110,7],sa=raw?1:KN.sA,sd=raw?1:KN.sD;
+  const ds=KN.P.map((z,i)=>[Math.hypot((z[0]-q[0])/sa,(z[1]-q[1])/sd),i]).sort((a,b)=>a[0]-b[0]).slice(0,5),R=ds[4][0];p.clip();const c=p.ctx;c.save();c.beginPath();c.ellipse(p.X(q[0]),p.Y(q[1]),Math.max(2,R*sa*p.sx()*fr),Math.max(2,R*sd*p.sy()*fr),0,0,7);c.fillStyle=alpha(COL.blue,.09);c.fill();c.strokeStyle=COL.blue;c.lineWidth=2.2;c.setLineDash([7,5]);c.stroke();c.restore();
+  ds.forEach(d=>{const z=KN.P[d[1]];p.seg(q[0],q[1],z[0],z[1],alpha(COL.blue,.7*fr),1.8);});KN.P.forEach(z=>z[2]?p.dot(z[0],z[1],5.5,COL.green):p.dot(z[0],z[1],5,COL.surface,COL.red,2.2));p.dot(q[0],q[1],9,COL.muted,COL.surface,3);p.unclip();
+  p.text(raw?'raw units: area dominates':'standardised: both count',205,20,raw?COL.red:COL.green,{size:18,align:'right'});};
+const SZ=KN.P.map(z=>[z[0],z[1]]),SmA=mean(SZ.map(q=>q[0])),SmD=mean(SZ.map(q=>q[1]));
+V.stdz=(p,S)=>{p.clear();const e1=ease((S.t-1)/1.4),e2=ease((S.t-3.2)/1.4);const pts=SZ.map(q=>{const cx=q[0]-SmA*e1,cy=q[1]-SmD*e1;return[cx/lerp(1,KN.sA,e2),cy/lerp(1,KN.sD,e2)];});
+  let x0=Math.min(0,...pts.map(q=>q[0])),x1=Math.max(0,...pts.map(q=>q[0])),y0=Math.min(0,...pts.map(q=>q[1])),y1=Math.max(0,...pts.map(q=>q[1]));const mx=(x1-x0)*0.08,my=(y1-y0)*0.08;p.equal=true;p.range(x0-mx,x1+mx,y0-my,y1+my);
+  p.axes({xl:e2>0.5?'z₁ (area)':'area',yl:e2>0.5?'z₂ (distance)':'distance'});p.clip();pts.forEach(q=>p.dot(q[0],q[1],5,alpha(COL.blue,.6),COL.blue,1.2));p.unclip();
+  p.text(e2>=1?'centred and scaled: round cloud':e1>=1?'centred, still stretched':'raw units, equal axes',p.xr[0],p.yr[1],COL.ink,{dx:10,dy:16,size:17,px:false});};
+V.ridge=(p,S)=>{const{k,fr}=unitFlip(S.t),u=k?10000:1,xs=AREAS.map(a=>a*u),mx=mean(xs),my=mean(PRICE);let sxy=0,sxx=0;xs.forEach((x,i)=>{sxy+=(x-mx)*(PRICE[i]-my);sxx+=(x-mx)**2;});const rb=sxy/(sxx+8000),r0=my-rb*mx;
+  p.clear();p.range(40,195,100,480);p.axes({xl:'floor area ('+(k?'cm²':'m²')+')',yl:'price',xfmt:v=>tickFmt(v*u)});p.clip();p.seg(30,HL.b0+30*HL.b1,200,HL.b0+200*HL.b1,COL.blue,3.5);p.seg(30,r0+rb*30*u,200,r0+rb*200*u,COL.amber,3.5,[10,6]);AREAS.forEach((a,i)=>p.dot(a,PRICE[i],6,COL.surface,COL.ink,2.4));p.unclip();
+  p.text('OLS',190,175,COL.blue,{size:18,align:'right'});p.text('ridge, λ = 8000: '+(k?'no visible shrinkage':'shrunk towards flat'),190,140,COL.amber,{size:18,align:'right'});};
+
+function bboxRange(p,pts,extra){const xs=pts.map(q=>q[0]).concat(extra.map(q=>q[0])),ys=pts.map(q=>q[1]).concat(extra.map(q=>q[1]));const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),mx=(x1-x0)*0.08||1,my=(y1-y0)*0.08||1;p.equal=true;p.range(x0-mx,x1+mx,y0-my,y1+my);}
+const MMx=[Math.min(...SZ.map(q=>q[0])),Math.max(...SZ.map(q=>q[0]))],MMy=[Math.min(...SZ.map(q=>q[1])),Math.max(...SZ.map(q=>q[1]))];
+V.minmax=(p,S)=>{p.clear();const e=ease((S.t-1)/1.8);const pts=SZ.map(q=>[lerp(q[0],(q[0]-MMx[0])/(MMx[1]-MMx[0]),e),lerp(q[1],(q[1]-MMy[0])/(MMy[1]-MMy[0]),e)]);bboxRange(p,pts,[[0,0]]);
+  p.axes({xl:e>0.5?'area′':'area (m²)',yl:e>0.5?'distance′':'distance (km)'});p.clip();if(e>=1)p.box(0,0,1,1,alpha(COL.amber,.08),COL.amber,2);pts.forEach(q=>p.dot(q[0],q[1],5,alpha(COL.blue,.6),COL.blue,1.2));p.unclip();
+  p.text(e>=1?'both features in [0, 1]':'raw units, equal axes',p.xr[0],p.yr[1],COL.ink,{dx:10,dy:16,size:17});};
+const CMPV=(()=>{const g=gaussFn(mulberry(61));return Array.from({length:24},()=>50+10*g());})();
+V.cmp=(p,S)=>{p.clear();const e=ease((S.t-1.5)/1.2),out=lerp(Math.max(...CMPV),250,e),vals=[...CMPV,out];const mn=Math.min(...vals),mx=Math.max(...vals),mu=mean(vals),sd=sdv(vals);
+  const rows=[['raw income (k)',vals,[0,270]],['min–max',vals.map(v=>(v-mn)/(mx-mn)),[-0.1,1.1]],['standardised',vals.map(v=>(v-mu)/sd),[-2,5]]],h=p.h/3;
+  rows.forEach((r,k)=>{const q=p.sub(0,k*h,p.w,h,{pad:[30,16,26,16]});q.range(r[2][0],r[2][1],0,1);q.axes({noY:true,noGrid:true,zero:false});r[1].forEach((v,i)=>q.dot(v,0.45,i===r[1].length-1?7:5,i===r[1].length-1?alpha(COL.red,.7):alpha(COL.blue,.55),i===r[1].length-1?COL.red:COL.blue,1.2));q.text(r[0],r[2][0],1,COL.ink,{dy:-8,size:15,base:'bottom',halo:false});});
+  if(e>0.2)p.text('outlier',p.w-20,22,COL.red,{px:true,align:'right',size:15});};
+function gdPath(H,start,star){const lr=1.5/Math.max(...H),L=v=>0.5*(H[0]*(v[0]-star[0])**2+H[1]*(v[1]-star[1])**2);let b=start.slice();const P=[b.slice()];for(let k=0;k<400&&L(b)>1e-6;k++){b=[b[0]-lr*H[0]*(b[0]-star[0]),b[1]-lr*H[1]*(b[1]-star[1])];P.push(b.slice());}return P;}
+const GDR=gdPath([1,25],[-2,1.25],[2,0.4]),GDS=gdPath([1,1],[-2,6.25],[2,2]);
+function gdPanel(q,H,star,P,t,lab,rng){q.equal=true;q.range(...rng);q.axes({xl:lab[0],yl:lab[1]});q.clip();const c=q.ctx;[0.05,0.3,1,2.5,5,10,20,40].forEach((Lv,i)=>{c.save();c.beginPath();c.ellipse(q.X(star[0]),q.Y(star[1]),Math.sqrt(2*Lv/H[0])*q.sx(),Math.sqrt(2*Lv/H[1])*q.sy(),0,0,7);c.strokeStyle=alpha(COL.violet,.25+0.04*(8-i));c.lineWidth=1.3;c.stroke();c.restore();});
+  const n=Math.max(1,Math.min(P.length,Math.ceil(t*40))),sub=P.slice(0,n);q.poly(sub,COL.amber,2.2);sub.forEach(v=>q.dot(v[0],v[1],3,COL.amber));q.dot(P[0][0],P[0][1],6,COL.surface,COL.ink,2.2);q.dot(star[0],star[1],6,COL.violet);q.unclip();
+  q.text(`step ${n-1}${n===P.length?' (converged)':''}`,q.xr[0],q.yr[1],COL.ink,{dx:10,dy:18,size:16});}
+V.gd=(p,S)=>{p.clear();const t=S.t%8,w=p.w/2;gdPanel(p.sub(0,0,w,p.h),[1,25],[2,0.4],GDR,t,['β₁','β₂'],[-3,4,-1.6,2.4]);gdPanel(p.sub(w,0,w,p.h),[1,1],[2,2],GDS,t,['γ₁','γ₂'],[-3,4,-0.5,7]);
+  p.text('raw features (sd 1 and 5)',w/2,8,COL.red,{px:true,align:'center',base:'top',size:17});p.text('standardised',w+w/2,8,COL.green,{px:true,align:'center',base:'top',size:17});};
+/* ================= Part 5 visuals ================= */
+function sampleFit(i){const g=gaussFn(mulberry(500+i));const xs=[],ys=[];for(let k=0;k<15;k++){const x=0.5+9*k/14;xs.push(x);ys.push(1+0.8*x+g()*1.4);}return{xs,ys,...line2(xs,ys)};}
+const SF=Array.from({length:400},(_,i)=>sampleFit(i));
+V.samples=(p,S)=>{p.clear();p.range(0,10,-1,12);p.axes({xl:'x',yl:'y'});const n=Math.min(SF.length-1,Math.floor(S.t*2.2));p.clip();for(let i=Math.max(0,n-40);i<n;i++){const s=SF[i];p.seg(0,s.b0,10,s.b0+10*s.b1,alpha(COL.blue,.18),2);}
+  const s=SF[n];p.seg(0,1,10,9,COL.ink,2,[6,5]);p.seg(0,s.b0,10,s.b0+10*s.b1,COL.blue,3.5);s.xs.forEach((x,k)=>p.dot(x,s.ys[k],5.5,COL.surface,COL.ink,2));p.unclip();p.text('sample '+(n+1)+': β̂₁ = '+f(s.b1,3),0.3,11.2,COL.blue,{size:18});p.text('true line',9.7,9,COL.ink,{align:'right',dy:18,size:15});};
+V.sampdist=(p,S)=>{p.clear();p.range(0.45,1.15,0,1);p.axes({noY:true,xl:'β̂₁'});const n=Math.min(SF.length,Math.floor(S.t*60)),vals=SF.slice(0,n).map(s=>s.b1);if(n>0)p.hist(vals,0.45,1.15,35,0,0.85,COL.blue);p.seg(0.8,0,0.8,0.95,COL.ink,2.5,[6,5]);p.text('β* = 0.8',0.8,0.97,COL.ink,{align:'center',size:16});
+  if(S.step>=1){const sd=sdv(SF.map(s=>s.b1)),pts=[];for(let i=0;i<=200;i++){const x=0.45+0.7*i/200;pts.push([x,0.85*Math.exp(-((x-0.8)**2)/(2*sd*sd))]);}p.poly(pts,COL.amber,3);}p.text(n+' samples',0.47,0.95,COL.muted,{size:15});};
+function tScene(p,S,obs){p.clear();p.range(-4.5,4.5,0,0.45);p.axes({noY:true,xl:'t'});const df=23,cr=2.069,e=ease(S.st/1);const pts=[];for(let i=0;i<=240;i++){const x=-4.5+9*i/240;pts.push([x,tpdf(x,df)]);}
+  const tail=(a,b)=>{const q=[[a,0]];for(let i=0;i<=60;i++){const x=a+(b-a)*i/60;q.push([x,tpdf(x,df)]);}q.push([b,0]);p.poly(q,null,0,null,alpha(COL.red,.3*e));};tail(-4.5,-cr);tail(cr,4.5);p.poly(pts,COL.ink,3);
+  p.text('−2.069',-cr,0.02,COL.red,{dy:-16,align:'center',size:15,alpha:e});p.text('2.069',cr,0.02,COL.red,{dy:-16,align:'center',size:15,alpha:e});p.text('2.5%',-3.6,0.06,COL.red,{size:14,align:'center',alpha:e});p.text('2.5%',3.6,0.06,COL.red,{size:14,align:'center',alpha:e});
+  if(obs){const t=lerp(0,3,ease((S.st-0.4)/1.2));p.seg(t,0,t,0.38,COL.amber,4);p.text('t = '+f(t,2),t,0.4,COL.amber,{align:'center',size:18});}}
+V.tdens1=(p,S)=>tScene(p,S,false);V.tdens2=(p,S)=>tScene(p,S,true);
+const CIS=(()=>{const g=gaussFn(mulberry(42)),out=[];for(let s=0;s<40;s++){const xs=[],ys=[];for(let i=0;i<25;i++){const x=g();xs.push(x);ys.push(1+2.4*x+2*g());}const L=line2(xs,ys),mx=mean(xs);let sse=0,sxx=0;xs.forEach((x,i)=>{sse+=(ys[i]-L.b0-L.b1*x)**2;sxx+=(x-mx)**2;});const se=Math.sqrt(sse/23/sxx);out.push([L.b1,L.b1-2.069*se,L.b1+2.069*se]);}return out;})();
+V.cis=(p,S)=>{p.clear();p.range(0.8,4,0,41);p.axes({noY:true,xl:'95% interval for β₁'});const n=Math.min(40,Math.floor(S.t*9));p.clip();p.seg(2.4,0,2.4,41,COL.ink,2.5);let miss=0;
+  CIS.slice(0,n).forEach((c,i)=>{const ok=c[1]<=2.4&&c[2]>=2.4;if(!ok)miss++;p.seg(c[1],i+1,c[2],i+1,ok?COL.blue:COL.red,ok?3:4);p.dot(c[0],i+1,3.5,ok?COL.blue:COL.red);});p.unclip();p.text(`${n-miss} of ${n} cover β₁ = 2.4`,0.9,40,COL.ink,{size:17});};
+V.cinum=(p,S)=>{p.pad=[10,20,30,20];p.clear();p.range(-0.5,5,0,1);p.axes({noY:true,noGrid:true,zero:false});const e=ease(S.st/1.2);p.seg(0,0,0,0.9,COL.red,2.5,[5,4]);p.text('0',0,0.9,COL.red,{dy:-2,dx:8,size:16});
+  p.seg(lerp(2.4,0.745,e),0.45,lerp(2.4,4.055,e),0.45,COL.blue,7);p.dot(2.4,0.45,9,COL.surface,COL.blue,3.5);if(e>=1){p.text('0.745',0.745,0.45,COL.blue,{dy:-22,align:'center',size:16});p.text('4.055',4.055,0.45,COL.blue,{dy:-22,align:'center',size:16});p.text('0 is outside: reject H₀',2.4,0.12,COL.ink,{align:'center',size:16});}};
+function rgen(seed,fn,n=70){const r=mulberry(seed),g=gaussFn(r);return Array.from({length:n},()=>{const x=1+9*r();return[x,fn(x,g)];});}
+function residPanel(p,pts,S,delay=0){p.range(0,11,-Math.max(...pts.map(q=>Math.abs(q[1])))*1.2,Math.max(...pts.map(q=>Math.abs(q[1])))*1.2);p.axes({xl:'fitted',yl:'residual'});p.clip();p.seg(0,0,11,0,COL.ink,1.8,[6,5]);pts.forEach((q,i)=>{if(S.t>delay+i*0.02)p.dot(q[0],q[1],5,alpha(COL.red,.6),COL.red,1.2);});p.unclip();}
+const RP1=rgen(77,(x,g)=>g());
+V.rp1=(p,S)=>{p.clear();residPanel(p,RP1,S);};
+function dataPanel(p,pts,S){const L=line2(pts.map(q=>q[0]),pts.map(q=>q[1])),ys=pts.map(q=>q[1]);p.range(0,11,Math.min(...ys)-1,Math.max(...ys)+1);p.axes({xl:'x',yl:'y'});p.clip();pts.forEach((q,i)=>{if(S.t>i*0.02)p.dot(q[0],q[1],5,alpha(COL.ink,.55));});const e=ease((S.t-1.4)/0.8);if(e>0)p.seg(0,L.b0,lerp(0,11,e),L.b0+L.b1*lerp(0,11,e),COL.blue,3.5);p.unclip();return L;}
+function twoPanel(p,S,pts){p.clear();const w=p.w/2;const a=p.sub(0,0,w,p.h),b=p.sub(w,0,w,p.h);const L=dataPanel(a,pts,S);const res=pts.map(q=>[L.b0+L.b1*q[0],q[1]-L.b0-L.b1*q[0]]);const fx=res.map(q=>q[0]),lo=Math.min(...fx),hi=Math.max(...fx);
+  residPanel(b,res.map(q=>[0.5+10*(q[0]-lo)/(hi-lo),q[1]]),S,2.2);}
+const RP2=rgen(3,(x,g)=>1+0.25*(x-5.5)**2+0.6*g()),RP3=rgen(4,(x,g)=>2+0.8*x+g()*(0.1+0.35*x));
+V.rp2=(p,S)=>twoPanel(p,S,RP2);V.rp3=(p,S)=>twoPanel(p,S,RP3);
+V.bdots=(p,S)=>{p.pad=[30,20,30,20];p.clear();p.range(1.7,3.1,0,1);p.axes({noY:true,noGrid:true,zero:false});const E=[2.4,2.1,2.7,2.3,2.6];
+  if(S.step>=2){p.box(2.15,0.05,2.65,0.95,alpha(COL.amber,.1));p.text('β₁: fixed, unknown',2.4,0.92,COL.amber,{align:'center',size:15});}
+  E.forEach((b,i)=>{const e=ease((S.t-0.3-i*0.45)/0.5);if(e<=0)return;const y=lerp(1.2,0.3,e);p.dot(b,y,9,COL.blue,COL.surface,2.5);p.text(String(i+1),b,y,COL.blue,{dy:-18,align:'center',size:14,alpha:e});});};
+V.twostudy=(p,S)=>{p.clear();p.range(-5,9.5,0,0.55);p.axes({noY:true,xl:'β₁'});const e=ease(S.t/1.2);p.seg(0,0,0,0.55,COL.red,2,[6,5]);p.text('0',0,0.52,COL.red,{dx:6,size:15});
+  [[0.8,COL.blue,'A'],[2,COL.amber,'B']].forEach(c=>{const pts=[],tail=[[-5,0]];for(let i=0;i<=300;i++){const x=-5+14.5*i/300,y=e*npdf(x-2.4,c[0]);pts.push([x,y]);if(x<=0)tail.push([x,y]);}tail.push([0,0]);p.poly(tail,null,0,null,alpha(c[1],.3));p.poly(pts,c[1],3);p.text('Study '+c[2],2.4+c[0]*1.2,e*npdf(c[0]*1.2,c[0]),c[1],{dx:8,size:16});});
+  p.text('shaded: area below 0',-4.8,0.5,COL.muted,{size:14});};
+V.ruler=(p,S)=>{p.pad=[34,24,30,24];p.clear();p.range(-0.3,3.2,0,1);p.axes({noY:true,noGrid:true,zero:false});p.seg(0,0,0,1,COL.red,2,[5,4]);p.text('H₀: 0',0,0.95,COL.red,{dx:6,size:14});
+  for(let k=0;k<3;k++){const e=ease((S.st-0.3-k*0.5)/0.4);if(e<=0)continue;p.box(k*0.8,0.25,k*0.8+0.8*e,0.6,alpha(COL.blue,.15+0.1*k),COL.blue,1.5);if(e>=1)p.text((k+1)+' SE',k*0.8+0.4,0.43,COL.blue,{align:'center',size:15});}
+  if(S.st>1.9){p.dot(2.4,0.43,8,COL.amber,COL.surface,2.5);p.text('β̂₁ = 2.4',2.4,0.43,COL.amber,{dx:12,size:16});}};
+V.tvsn=(p,S)=>{p.clear();p.range(-5,5,0,0.43);p.axes({noY:true,xl:'t'});const D=[1,2,3,5,10,30],df=D[Math.floor(S.t/1.6)%D.length];const n=[],t=[];for(let i=0;i<=240;i++){const x=-5+10*i/240;n.push([x,npdf(x,1)]);t.push([x,tpdf(x,df)]);}
+  p.poly(n,COL.ink,2.2,[7,5]);p.poly(t,COL.blue,3.5);p.text('t with df = '+df,-4.8,0.4,COL.blue,{size:17});p.text('normal',-4.8,0.36,COL.ink,{size:15});};
+V.pval=(p,S)=>{p.clear();p.range(-4.5,4.5,0,0.44);p.axes({noY:true,xl:'t₂₃'});const df=23,e=ease(S.st/1);const tail=(a,b)=>{const q=[[a,0]];for(let i=0;i<=50;i++){const x=a+(b-a)*i/50;q.push([x,tpdf(x,df)]);}q.push([b,0]);p.poly(q,null,0,null,alpha(COL.red,.55*e));};
+  tail(-4.5,-3);tail(3,4.5);const pts=[];for(let i=0;i<=200;i++){const x=-4.5+9*i/200;pts.push([x,tpdf(x,df)]);}p.poly(pts,COL.ink,3);[-3,3].forEach(x=>p.seg(x,0,x,0.2,COL.amber,3));
+  p.text('−3',-3,0.22,COL.amber,{align:'center',size:15});p.text('3',3,0.22,COL.amber,{align:'center',size:15});p.text('total red area ≈ 0.0064',0,0.06,COL.red,{align:'center',size:15,alpha:e});};
+V.vifci=(p,S)=>{p.pad=[34,20,30,20];p.clear();p.range(-6,11,0,1);p.axes({noY:true,noGrid:true,zero:false});const vif=1+24*(0.5-0.5*Math.cos(S.st*0.6)),hw=2.069*0.8*Math.sqrt(vif),lo=2.4-hw,hi=2.4+hw,sig=lo>0;
+  p.seg(0,0,0,1,COL.red,2,[5,4]);p.text('0',0,0.95,COL.red,{dx:6,size:14});p.seg(lo,0.45,hi,0.45,sig?COL.green:COL.red,7);p.dot(2.4,0.45,8,COL.surface,sig?COL.green:COL.red,3);
+  p.text(`VIF = ${f(vif,1)}   SE = ${f(0.8*Math.sqrt(vif),2)}   CI = [${f(lo,2)}, ${f(hi,2)}]   ${sig?'significant':'not significant'}`,-5.8,0.95,sig?COL.green:COL.red,{size:16});};
+const RPA=[[0.4,0.3],[0.8,-0.45],[1.2,0.75],[1.6,-0.25],[2.0,0.15],[2.4,-0.7],[2.8,0.43],[3.2,-0.13],[3.6,0.65],[4.0,-0.5],[4.4,0.3],[4.8,-0.16],[5.2,0.52],[5.6,-0.38],[6.0,0.12],[6.4,-0.6],[6.8,0.6],[7.2,-0.13],[7.6,0.28],[8.0,-0.42]],
+RPB=[[0.4,1.0],[0.8,0.75],[1.2,0.45],[1.6,0.28],[2.0,-0.12],[2.4,-0.36],[2.8,-0.6],[3.2,-0.55],[3.6,-0.7],[4.0,-0.77],[4.4,-0.58],[4.8,-0.66],[5.2,-0.4],[5.6,-0.2],[6.0,0.0],[6.4,0.2],[6.8,0.34],[7.2,0.66],[7.6,1.06],[8.0,1.26]],
+RPC=[[0.4,0.02],[0.8,-0.11],[1.2,0.14],[1.6,-0.17],[2.0,0.25],[2.4,-0.32],[2.8,0.36],[3.2,-0.43],[3.6,0.49],[4.0,-0.6],[4.4,0.68],[4.8,-0.76],[5.2,0.84],[5.6,-0.96],[6.0,1.1],[6.4,-1.18],[6.8,1.36],[7.2,-1.42],[7.6,1.55],[8.0,-1.55]];
+function rpExact(p,S,D,shape){p.clear();p.range(0,8.6,-1.8,1.9);p.axes({xl:'fitted value ŷᵢ',yl:'residual eᵢ'});p.clip();p.seg(0,0,8.6,0,COL.muted,2,[6,5]);
+  if(S.step>=1){const e=ease(S.st/1);if(shape==='B'){const pts=[];for(let i=0;i<=100;i++){const x=0.3+7.8*i/100;pts.push([x,0.11*(x-4.1)**2-0.78]);}p.poly(pts,alpha(COL.red,.7*e),4);}if(shape==='C'){p.poly([[0.2,0],[8.2,1.7]],alpha(COL.red,.7*e),3,[8,6]);p.poly([[0.2,0],[8.2,-1.7]],alpha(COL.red,.7*e),3,[8,6]);}}
+  D.forEach((q,i)=>{if(S.t>i*0.06)p.dot(q[0],q[1],7,alpha(COL.blue,.8),COL.blue,1.5);});p.unclip();}
+V.rpA=(p,S)=>rpExact(p,S,RPA,'A');V.rpB=(p,S)=>rpExact(p,S,RPB,'B');V.rpC=(p,S)=>rpExact(p,S,RPC,'C');
+const SG=(()=>{const r=mulberry(2);return Array.from({length:40},()=>{const x=-5+10*r();return[x,r()<1/(1+Math.exp(-1.4*x))?1:0];});})();
+V.sigmoid=(p,S)=>{p.clear();p.range(-5.5,5.5,-0.45,1.45);p.axes({xl:'income score',yl:'P(default)',yticks:[0,0.5,1]});const e=ease((S.st-0.8)/1.6),L=line2(SG.map(q=>q[0]),SG.map(q=>q[1]));p.clip();
+  const pts=[];for(let i=0;i<=200;i++){const x=-5.5+11*i/200;pts.push([x,lerp(L.b0+L.b1*x,1/(1+Math.exp(-1.4*x)),e)]);}p.poly(pts,e>0.5?COL.green:COL.blue,3.5);SG.forEach(q=>p.dot(q[0],q[1],6,q[1]?COL.amber:COL.surface,q[1]?COL.amber:COL.blue,2.2));p.unclip();
+  p.text(e<0.5?'a straight line leaves [0, 1]':'a sigmoid stays inside',-5.3,1.3,e<0.5?COL.blue:COL.green,{size:17});};
+
+/* ================= Engine ================= */
+const stage=$('#stage'),deck=$('#deck'),slides=$$('.slide',stage);
+slides.forEach(s=>{s._max=Math.max(0,...$$('[data-at]',s).map(e=>+e.dataset.at));});
+let cur=0,step=0,raf=0,t0=0,ts=0,active=[];
+function fit(){const r=deck.getBoundingClientRect();SCALE=Math.min(r.width/1300,r.height/740);stage.style.transform=`translate(${-640*SCALE}px,${-360*SCALE}px) scale(${SCALE})`;stage.style.left=r.width/2+'px';stage.style.top=r.height/2+'px';kick();}
+window.addEventListener('resize',fit);
+function frame(now){const S={t:Math.max(0,(now-t0)/1000),st:Math.max(0,(now-ts)/1000),step};if(REDUCED){S.t=60;S.st=60;}
+  active.forEach(a=>{try{a.p.fit();a.p.pad=a.pad.slice();a.p.equal=false;a.fn(a.p,S);}catch(e){console.error(e);}});
+  if(!REDUCED&&active.length)raf=requestAnimationFrame(frame);}
+function kick(){cancelAnimationFrame(raf);if(active.length)raf=requestAnimationFrame(frame);}
+function setActive(){const s=slides[cur];active=$$('canvas[data-v]',s).filter(cv=>V[cv.dataset.v]).map(cv=>{if(!cv._p){cv._p=new Plot(cv);cv._pad=cv._p.pad.slice();}return{p:cv._p,pad:cv._pad,fn:V[cv.dataset.v]};});}
+function applyStep(){const s=slides[cur];$$('[data-at]',s).forEach(e=>e.classList.toggle('on',+e.dataset.at<=step));ts=performance.now();kick();hud();}
+function go(i,st=0,instant){i=clamp(i,0,slides.length-1);slides.forEach((s,k)=>{s.classList.toggle('active',k===i);s.classList.toggle('past',k<i);s.setAttribute('aria-hidden',k===i?'false':'true');});
+  const changed=i!==cur;cur=i;step=clamp(st,0,slides[i]._max);if(changed||instant){t0=performance.now();setActive();}applyStep();
+  try{history.replaceState(null,'','#s'+(cur+1));}catch(e){}}
+function next(){if(step<slides[cur]._max){step++;applyStep();}else if(cur<slides.length-1)go(cur+1,0);}
+function prev(){if(step>0){step--;applyStep();}else if(cur>0)go(cur-1,slides[cur-1]._max);}
+function hud(){const s=slides[cur];$('#h-num').textContent=`${cur+1} / ${slides.length}`;$('#h-title').textContent=`${s.dataset.sec}: ${s.dataset.title}`;$('#prog').style.width=(100*(cur+(slides[cur]._max?step/(slides[cur]._max+1):0))/(slides.length-1))+'%';
+  $$('#toc a').forEach((a,k)=>a.classList.toggle('cur',k===cur));}
+document.addEventListener('keydown',e=>{if(e.target.closest&&e.target.closest('input,textarea'))return;const k=e.key;
+  if(['ArrowRight','ArrowDown',' ','PageDown','Enter'].includes(k)){e.preventDefault();next();}
+  else if(['ArrowLeft','ArrowUp','PageUp','Backspace'].includes(k)){e.preventDefault();prev();}
+  else if(k==='Home')go(0);else if(k==='End')go(slides.length-1,slides[slides.length-1]._max);
+  else if(k==='f'||k==='F')fs();else if(k==='t'||k==='T'||k==='g')toggleToc();else if(k==='Escape')$('#toc').classList.remove('open');});
+stage.addEventListener('click',e=>{if(e.target.closest('button,a,input,canvas[data-v="proj3d"]'))return;if(slides[cur].dataset.noclick)return;const r=stage.getBoundingClientRect();if(e.clientX-r.left<r.width*0.2)prev();else next();});
+let sx=null;deck.addEventListener('touchstart',e=>{sx=[e.touches[0].clientX,e.touches[0].clientY];},{passive:true});
+deck.addEventListener('touchend',e=>{if(!sx)return;const dx=e.changedTouches[0].clientX-sx[0],dy=e.changedTouches[0].clientY-sx[1];if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)){dx<0?next():prev();}sx=null;},{passive:true});
+$('#b-next').addEventListener('click',next);$('#b-prev').addEventListener('click',prev);
+function fs(){try{if(document.fullscreenElement)document.exitFullscreen();else document.documentElement.requestFullscreen();}catch(e){}}
+$('#b-fs').addEventListener('click',fs);document.addEventListener('fullscreenchange',()=>setTimeout(fit,50));
+function toggleToc(){$('#toc').classList.toggle('open');}
+$('#b-toc').addEventListener('click',e=>{e.stopPropagation();toggleToc();});
+(function(){let h='',sec='';slides.forEach((s,i)=>{if(s.dataset.sec!==sec){sec=s.dataset.sec;h+=`<h4>${sec}</h4>`;}h+=`<a href="#s${i+1}" data-i="${i}"><span>${i+1}</span>${s.dataset.title}</a>`;});const T=$('#toc');T.innerHTML=h;
+  $$('a',T).forEach(a=>a.addEventListener('click',e=>{e.preventDefault();go(+a.dataset.i,0);T.classList.remove('open');}));})();
+document.addEventListener('click',e=>{if(!e.target.closest('#toc,#b-toc'))$('#toc').classList.remove('open');});
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(kick);
+const m=/^#s(\d+)$/.exec(location.hash||'');fit();go(m?(+m[1]-1):0,0,true);
+})();
+</script>
+</body></html>
