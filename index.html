@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Foundations of Machine Learning — lecture notes and course materials.">
+  <title>Foundations of Machine Learning | Course Lectures</title>
+  <style>
+    :root {
+      --bg: #f7f9fc;
+      --surface: #ffffff;
+      --ink: #18243b;
+      --ink-soft: #506078;
+      --border: #e1e7ef;
+      --accent: #2557c2;
+      --accent-dark: #174195;
+      --accent-light: #edf3ff;
+      --shadow: 0 12px 36px rgba(18, 34, 66, .055);
+      --radius: 17px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; }
+    a:focus-visible { outline: 3px solid #ffb84d; outline-offset: 4px; }
+    .container { width: min(1100px, calc(100% - 44px)); margin: 0 auto; }
+    .topbar { background: #fff; border-bottom: 1px solid var(--border); }
+    .nav { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .brand { display: flex; align-items: center; gap: 12px; text-decoration: none; font-weight: 750; letter-spacing: -.025em; }
+    .brandmark { width: 41px; height: 41px; display: grid; place-items: center; background: #203e80; color: #fff; border-radius: 11px; font-size: 14px; letter-spacing: .02em; }
+    .navlinks { display: flex; gap: 26px; flex-wrap: wrap; }
+    .navlinks a { text-decoration: none; color: var(--ink-soft); font-weight: 600; font-size: 14px; }
+    .navlinks a:hover { color: var(--accent); }
+    .hero { padding: 80px 0 70px; background: radial-gradient(circle at 90% 10%, #e7efff 0, transparent 37%), linear-gradient(140deg, #f8fbff, #f3f6fb); border-bottom: 1px solid var(--border); }
+    .eyebrow { font-size: 12px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); margin: 0 0 13px; }
+    h1 { font-size: clamp(36px, 5.6vw, 61px); line-height: 1.12; margin: 0 0 20px; letter-spacing: -.052em; max-width: 780px; }
+    .lead { font-size: 18px; color: var(--ink-soft); max-width: 680px; margin: 0 0 31px; }
+    .primary-link { display: inline-flex; gap: 10px; align-items: center; background: var(--accent); color: #fff; text-decoration: none; padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 14px; box-shadow: 0 7px 16px rgba(37,87,194,.14); }
+    .primary-link:hover { background: var(--accent-dark); }
+    main { padding: 64px 0 85px; }
+    .section-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 10px; margin-bottom: 25px; }
+    h2 { font-size: clamp(25px, 3.7vw, 33px); line-height: 1.2; letter-spacing: -.035em; margin: 0; }
+    .section-subtitle { color: var(--ink-soft); margin: 9px 0 0; font-size: 15px; }
+    .count { font-size: 12px; border: 1px solid var(--border); border-radius: 999px; padding: 6px 12px; color: var(--ink-soft); background: #fff; font-weight: 700; white-space: nowrap; }
+    .lecture-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .lecture { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 26px; min-height: 216px; box-shadow: var(--shadow); display: flex; flex-direction: column; text-decoration: none; transition: transform .15s, border-color .15s, box-shadow .15s; }
+    a.lecture:hover { transform: translateY(-3px); border-color: #a8c0f5; box-shadow: 0 15px 40px rgba(18,34,66,.09); }
+    .lecture-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 19px; }
+    .lecture-number { color: var(--accent); text-transform: uppercase; letter-spacing: .1em; font-size: 12px; font-weight: 800; }
+    .tag { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: var(--accent-light); color: var(--accent-dark); }
+    .tag.soon { background: #f1f3f6; color: #647087; }
+    h3 { margin: 0 0 8px; font-size: 23px; line-height: 1.3; letter-spacing: -.03em; }
+    .desc { color: var(--ink-soft); font-size: 14px; margin: 0 0 19px; }
+    .lecture-bottom { margin-top: auto; display: flex; align-items: center; gap: 7px; font-weight: 750; font-size: 13px; color: var(--accent); }
+    .lecture.upcoming { background: #fafbfd; box-shadow: none; }
+    .lecture.upcoming .lecture-bottom { color: #8994a5; }
+    .about { margin-top: 68px; padding-top: 38px; border-top: 1px solid var(--border); }
+    .about p { color: var(--ink-soft); max-width: 750px; margin-top: 12px; }
+    footer { border-top: 1px solid var(--border); background: #fff; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 24px 0; color: #748096; font-size: 13px; }
+    @media (max-width: 680px) {
+      .nav { min-height: 68px; }
+      .navlinks { gap: 14px; }
+      .hero { padding: 55px 0 52px; }
+      .lead { font-size: 16px; }
+      .lecture-grid { grid-template-columns: 1fr; }
+      .lecture { min-height: 195px; padding: 23px; }
+      main { padding-top: 46px; }
+      .brand-name { font-size: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="container nav">
+      <a class="brand" href="index.html" aria-label="Foundations of Machine Learning home">
+        <span class="brandmark">ML</span>
+        <span class="brand-name">Foundations of ML</span>
+      </a>
+      <nav class="navlinks" aria-label="Main navigation">
+        <a href="#lectures">Lectures</a>
+        <a href="#about">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container">
+      <p class="eyebrow">Course Materials · Machine Learning</p>
+      <h1>Foundations of<br>Machine Learning</h1>
+      <p class="lead">An introduction to the mathematical ideas, algorithms, and practical principles underlying machine learning. Browse lecture notes and course resources below.</p>
+      <a class="primary-link" href="#lectures">Explore lectures <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+
+  <main class="container">
+    <section id="lectures" aria-labelledby="lectures-heading">
+      <div class="section-head">
+        <div>
+          <h2 id="lectures-heading">Course Lectures</h2>
+          <p class="section-subtitle">Select a lecture to open its dedicated webpage.</p>
+        </div>
+        <span class="count">2 lectures available</span>
+      </div>
+      <div class="lecture-grid">
+        <!-- IMPORTANT: Upload a file named lecture1.html to the SAME GitHub repo folder. -->
+        <a class="lecture" href="lecture1.html">
+          <div class="lecture-top">
+            <span class="lecture-number">Lecture 01</span>
+            <span class="tag">View notes</span>
+          </div>
+          <h3>Linear Regression</h3>
+          <p class="desc">Least squares, gradient descent, model assumptions, statistical inference, and feature scaling.</p>
+          <div class="lecture-bottom">Open lecture <span aria-hidden="true">↗</span></div>
+        </a>
+
+        <!-- IMPORTANT: Upload a file named lecture2.html to the SAME GitHub repo folder. -->
+        <a class="lecture" href="lecture2.html">
+          <div class="lecture-top">
+            <span class="lecture-number">Lecture 02</span>
+            <span class="tag">View notes</span>
+          </div>
+          <h3>Logistic Regression</h3>
+          <p class="desc">Binary classification, the sigmoid function, cross-entropy loss, and decision boundaries.</p>
+          <div class="lecture-bottom">Open lecture <span aria-hidden="true">↗</span></div>
+        </a>
+
+        <!-- Sample future topics. Rename and turn into links as your course develops. -->
+        <article class="lecture upcoming">
+          <div class="lecture-top">
+            <span class="lecture-number">Lecture 03</span>
+            <span class="tag soon">Coming soon</span>
+          </div>
+          <h3>Model Evaluation</h3>
+          <p class="desc">Training and test splits, evaluation metrics, overfitting, and generalization.</p>
+          <div class="lecture-bottom">Materials to be added</div>
+        </article>
+
+        <article class="lecture upcoming">
+          <div class="lecture-top">
+            <span class="lecture-number">Lecture 04</span>
+            <span class="tag soon">Coming soon</span>
+          </div>
+          <h3>Regularization &amp; Model Selection</h3>
+          <p class="desc">Bias–variance tradeoff, regularization, cross-validation, and hyperparameters.</p>
+          <div class="lecture-bottom">Materials to be added</div>
+        </article>
+
+        <article class="lecture upcoming">
+          <div class="lecture-top">
+            <span class="lecture-number">Lecture 05</span>
+            <span class="tag soon">Coming soon</span>
+          </div>
+          <h3>Decision Trees &amp; Ensembles</h3>
+          <p class="desc">Tree-based models, splitting criteria, bagging, and boosting.</p>
+          <div class="lecture-bottom">Materials to be added</div>
+        </article>
+
+        <article class="lecture upcoming">
+          <div class="lecture-top">
+            <span class="lecture-number">Lecture 06</span>
+            <span class="tag soon">Coming soon</span>
+          </div>
+          <h3>Neural Networks</h3>
+          <p class="desc">Feedforward networks, backpropagation, and optimization basics.</p>
+          <div class="lecture-bottom">Materials to be added</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="about" id="about" aria-labelledby="about-heading">
+      <h2 id="about-heading">About the course</h2>
+      <p>This site organizes lecture materials for Foundations of Machine Learning. Each lecture has its own webpage so that notes can be updated independently while the course homepage stays easy to navigate.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <span>Foundations of Machine Learning</span>
+      <span>Course lecture notes</span>
+    </div>
+  </footer>
+</body>
+</html>
