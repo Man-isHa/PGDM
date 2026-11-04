@@ -548,83 +548,9 @@ pre.code i{color:var(--muted);font-style:normal}pre.code b{color:var(--blue)}
     <div class="f alert" data-at="1">Assess calibration on data not used to fit the calibrator.</div></div>
 </section>
 
-<!-- ============ PART 7 ============ -->
-<section class="slide divider" data-sec="Part 7" data-title="Scoring probabilities">
-  <div class="num">7</div><h1>Scoring probabilities</h1><p>Log loss, Brier score and proper scoring rules</p>
-</section>
-
-<section class="slide" data-sec="Part 7" data-title="Evaluating probabilities">
-  <h2>Evaluating probabilities, not only labels</h2>
-  <div class="body"><div class="row" style="gap:40px"><div class="col"><div>True label \(y=1\): \(\ \hat p_A=0.55,\ \hat p_B=0.95\)</div>
-    <div class="f" data-at="1">At threshold 0.5 both are correct.</div><div class="f q" data-at="2">Should their probabilities be scored differently?</div><div class="f alert" data-at="3">Yes: use a probability scoring rule.</div></div>
-    <canvas class="cv" data-v="twoprobs" style="width:400px;height:340px"></canvas></div></div>
-</section>
-
-<section class="slide" data-sec="Part 7" data-title="Binary log loss">
-  <h2>Binary log loss</h2>
-  <div class="body"><div class="big">\[\boxed{\ell_{\log}(p,y)=-y\log p-(1-y)\log(1-p)}\]</div>
-    <div class="f" data-at="1">\[\mathrm{LogLoss}=\frac1n\sum_{i=1}^n\ell_{\log}(p_i,y_i)\]</div><div class="f alert" data-at="2">The binary cross-entropy from maximum likelihood.</div></div>
-</section>
-
-<section class="slide" data-sec="Part 7" data-title="Log loss and confident mistakes">
-  <h2>Log loss penalises confident mistakes</h2>
-  <div class="body"><div class="row" style="gap:30px"><div class="col"><div>True label \(y=1\):</div>
-    <table class="tb f" data-at="1"><tbody><tr><td>\(p\)</td><td>0.90</td><td>0.50</td><td>0.01</td></tr><tr><td>\(-\log p\)</td><td>0.105</td><td>0.693</td><td>4.605</td></tr></tbody></table>
-    <div class="f small" data-at="2">A confident wrong probability gets a large penalty.</div></div>
-    <canvas class="cv f" data-at="1" data-v="logmarks" style="width:460px;height:380px"></canvas></div></div>
-</section>
-
-<section class="slide" data-sec="Part 7" data-title="The Brier score">
-  <h2>The Brier score</h2>
-  <div class="body"><div class="row" style="gap:30px"><div class="col"><div>\[\boxed{\ell_{\rm Brier}(p,y)=(p-y)^2}\]</div>
-    <div class="f" data-at="1">\[\mathrm{Brier}=\frac1n\sum_{i=1}^n(p_i-y_i)^2\]</div><ul class="items" style="font-size:22px"><li class="f" data-at="2">Lower is better</li><li class="f" data-at="3">Binary Brier loss lies in \([0,1]\)</li></ul></div>
-    <canvas class="cv" data-v="brier" style="width:460px;height:380px"></canvas></div></div>
-</section>
-
-<section class="slide" data-sec="Part 7" data-title="Exercise: log loss and Brier">
-  <h2>Exercise: log loss and Brier score</h2>
-  <div class="body"><div class="row" style="gap:30px"><div class="col"><div>\(y=1\), predicted \(p=0.8\).</div><div class="f q" data-at="1">Exercise (1 minute): both losses?</div>
-    <div class="f" data-at="2">\[\ell_{\log}=-\log0.8\approx\boxed{0.223},\qquad\ell_{\rm Brier}=(0.8-1)^2=\boxed{0.04}\]</div><div class="f q" data-at="3">What if \(p=0.01\)?</div></div>
-    <canvas class="cv f" data-at="2" data-v="exloss" style="width:460px;height:380px"></canvas></div></div>
-</section>
-
-<section class="slide" data-sec="Part 7" data-title="Proper scoring rules">
-  <h2>Why are these called proper scoring rules?</h2>
-  <div class="body"><div class="row" style="gap:30px"><div class="col"><div>True probability of \(Y=1\): \(q\).</div>
-    <div class="f" data-at="1"><b>Proper:</b> predicting \(p=q\) minimises expected loss.</div><div class="f" data-at="2"><b>Strictly proper:</b> the minimiser is unique.</div><div class="f alert" data-at="3">Log loss and Brier are strictly proper.</div></div>
-    <canvas class="cv" data-v="proper" style="width:480px;height:400px"></canvas></div></div>
-</section>
-
-<section class="slide" data-sec="Part 7" data-title="Why Brier is proper">
-  <h2>Why is the Brier score proper?</h2>
-  <div class="body"><div class="small">\(Y\sim\mathrm{Bernoulli}(q)\):</div><div>\[\mathbb E[(p-Y)^2]=q(p-1)^2+(1-q)p^2\]</div>
-    <div class="f big" data-at="1">\[\boxed{\mathbb E[(p-Y)^2]=(p-q)^2+q(1-q)}\]</div><div class="f q" data-at="2">Which \(p\) minimises this?</div><div class="f big" data-at="3">\[\boxed{p=q}\]</div></div>
-</section>
-
-<section class="slide" data-sec="Part 7" data-title="Why log loss is proper">
-  <h2>Why is log loss proper?</h2>
-  <div class="body"><div>\[L(p)=-q\log p-(1-q)\log(1-p)\]</div>
-    <div class="f" data-at="1">\[\frac{dL}{dp}=-\frac qp+\frac{1-q}{1-p}=\frac{p-q}{p(1-p)}\]</div>
-    <div class="f big" data-at="2">\[\boxed{p=q}\ \text{ is the unique minimiser for }0<q<1\]</div>
-    <div class="f tiny" data-at="3">\(q\in\{0,1\}\): minimised at \(p=q\) under the usual extended definition.</div></div>
-</section>
-
-<section class="slide" data-sec="Part 7" data-title="Log loss vs Brier">
-  <h2>Log loss versus Brier score</h2>
-  <div class="body"><table class="tb" style="font-size:22px"><thead><tr><th class="l"></th><th>Log loss</th><th>Brier</th></tr></thead><tbody class="stag"><tr><td class="l">Binary loss</td><td>\(-y\log p-(1-y)\log(1-p)\)</td><td>\((p-y)^2\)</td></tr><tr><td class="l">Maximum</td><td>unbounded</td><td>1</td></tr><tr><td class="l">Proper</td><td>strictly</td><td>strictly</td></tr></tbody></table>
-    <div class="f alert" data-at="1">Both reward honest probabilistic forecasts.</div></div>
-</section>
-
 <section class="slide" data-sec="Wrap-up" data-title="Which metric?">
   <h2>Which metric should you choose?</h2>
-  <div class="body"><div class="mgrid"><div><b>ROC AUC</b>Can the model rank positives above negatives?</div><div class="f" data-at="1"><b>PR curve</b>How reliable are positive predictions when positives are rare?</div><div class="f" data-at="2"><b>Calibration, proper scores</b>Are the probabilities meaningful?</div><div class="f" data-at="3"><b>Expected cost</b>Which action should we take?</div></div></div>
-</section>
-
-<section class="slide" data-sec="Wrap-up" data-title="Final challenge">
-  <h2>Final classroom challenge</h2>
-  <div class="body"><div class="big">A screening model has AUC = 0.92.</div>
-    <ol class="items" style="font-size:28px"><li class="f" data-at="1">Are its probabilities calibrated?</li><li class="f" data-at="2">Is 0.5 the best threshold?</li><li class="f" data-at="3">Can we ignore precision if prevalence is 1%?</li></ol>
-    <div class="f alert" data-at="4">No, no and no. Ranking, calibration and decisions differ.</div></div>
+  <div class="body"><div class="mgrid"><div><b>ROC AUC</b>Can the model rank positives above negatives?</div><div class="f" data-at="1"><b>PR curve</b>How reliable are positive predictions when positives are rare?</div><div class="f" data-at="2"><b>Calibration</b>Are the probabilities meaningful?</div><div class="f" data-at="3"><b>Expected cost</b>Which action should we take?</div></div></div>
 </section>
 
 </div></div>
