@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Learning with Backpropagation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6ECF2; --stage:#F7F9FC; --ink:#16263A; --soft:#5B6B7E; --line:#C5D0DC;
+  --blue:#2457C5; --blue-pale:#DCE6FA; --amber:#D07A00; --amber-pale:#FBE6BF;
+  --panel:#FFFFFF; --bad:#C2413A;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#070D16; --stage:#0F1A29; --ink:#E6EDF5; --soft:#94A4B7; --line:#2B3C52;
+    --blue:#7FA8FF; --blue-pale:#1A2B4C; --amber:#FFB23E; --amber-pale:#4A3511;
+    --panel:#17263A; --bad:#FF7B72;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#070D16; --stage:#0F1A29; --ink:#E6EDF5; --soft:#94A4B7; --line:#2B3C52;
+  --blue:#7FA8FF; --blue-pale:#1A2B4C; --amber:#FFB23E; --amber-pale:#4A3511;
+  --panel:#17263A; --bad:#FF7B72;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);overflow:hidden;font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif}
+#deck{position:relative;width:100%;height:100%;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;background:var(--stage);transform-origin:center;border-radius:6px;overflow:hidden;font-size:26px;line-height:1.35}
+.slide{position:absolute;inset:0;padding:52px 76px 70px;display:flex;flex-direction:column;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s .35s}
+.slide.on{opacity:1;visibility:visible;transition:opacity .35s ease}
+h1{font-size:76px;line-height:1.02;font-weight:800;letter-spacing:-.02em;margin:0}
+h2{font-size:40px;line-height:1.1;font-weight:800;letter-spacing:-.015em;margin:0 0 6px}
+p{margin:0}
+.body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:26px;min-height:0;text-align:center}
+.row{display:flex;align-items:center;justify-content:center;gap:56px;width:100%}
+.col{display:flex;flex-direction:column;align-items:center;gap:16px;flex:1;min-width:0}
+.left{align-items:flex-start;text-align:left}
+.soft{color:var(--soft)} .small{font-size:20px} .big{font-size:32px}
+.imp{color:var(--blue);font-weight:600}
+.fire{color:var(--amber);font-weight:600}
+b,strong{font-weight:600}
+.frag{opacity:0;transform:translateY(8px);transition:opacity .45s ease,transform .45s ease}
+.frag.show{opacity:1;transform:none}
+/* math */
+.math{font-family:'STIX Two Text','Cambria Math',Georgia,serif;font-size:34px;line-height:1.3;white-space:nowrap}
+.math i{font-style:italic}
+.math sub,.math sup{font-size:.62em}
+.math.sm{font-size:27px}
+.boxed{display:inline-block;border:2px solid var(--blue);border-radius:8px;padding:10px 26px;background:var(--panel)}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.86em;line-height:1.15}
+.fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 .3em 2px}
+.fr>span:last-child{padding:2px .3em 0}
+.cases{display:inline-flex;align-items:center;gap:10px}
+.cases .brace{font-size:96px;line-height:.9;font-weight:400;transform:scaleX(.7);margin:-10px -6px 0}
+.cases .rows{display:grid;grid-template-columns:auto auto;column-gap:26px;row-gap:4px;text-align:left}
+.cases .rows span:nth-child(even){font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:24px;color:var(--soft);align-self:center}
+.ineq{display:grid;grid-template-columns:auto auto auto;column-gap:22px;row-gap:8px;text-align:left;align-items:baseline}
+/* figures */
+figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:10px}
+figure img{display:block;max-width:100%;border-radius:10px;background:#fff}
+figcaption{font-size:18px;color:var(--soft)}
+.stack{position:relative;border-radius:10px;overflow:hidden;background:#000}
+.stack img{display:block;width:100%;height:100%;object-fit:contain;background:#000;border-radius:0}
+.stack img+img{position:absolute;inset:0}
+.stack img.frag{transform:none;transition:opacity .9s ease}
+/* tables */
+table.tt{border-collapse:collapse;font-family:'STIX Two Text',Georgia,serif;font-size:28px}
+.tt th,.tt td{padding:5px 20px;text-align:center}
+.tt thead th{border-bottom:2px solid var(--ink);font-weight:600}
+.tt th:nth-child(2),.tt td:nth-child(2){border-right:1.5px solid var(--line)}
+.tt tr.hl td{background:var(--amber-pale)}
+.tt td.ok{color:var(--blue)} .tt td.no{color:var(--bad)}
+.tt td.one{color:var(--amber);font-weight:600}
+/* plots */
+svg{display:block;overflow:visible}
+.ax{stroke:var(--soft);stroke-width:1.4}
+.tk{fill:var(--soft);font-size:16px;font-family:'STIX Two Text',Georgia,serif}
+.cv{fill:none;stroke:var(--blue);stroke-width:3.6;stroke-linejoin:round;stroke-linecap:round}
+.cv.thin{stroke-width:2;stroke:var(--soft);stroke-dasharray:6 6}
+.cv.amber{stroke:var(--amber)}
+.cv.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.5s ease .2s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.kink{fill:var(--amber);stroke:var(--stage);stroke-width:2}
+.st{fill:var(--soft);font-size:16px;font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.mt{fill:var(--ink);font-size:24px;font-family:'STIX Two Text',Georgia,serif;font-style:italic}
+/* networks */
+.net line{stroke:var(--line);stroke-width:1.5;transition:stroke .3s}
+.net .eg.on line{stroke:var(--amber);stroke-width:2.2}
+.net circle{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.6;transition:fill .3s,stroke .3s}
+.net .ng.on circle{fill:var(--amber);stroke:var(--amber)}
+.flow{stroke:var(--soft);stroke-width:2;fill:none;stroke-dasharray:7 9;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.node{fill:var(--blue-pale);stroke:var(--blue);stroke-width:3}
+.node.lit{fill:var(--amber);stroke:var(--amber)}
+.edge{stroke:var(--soft);stroke-width:2;fill:none}
+.edge.lit{stroke:var(--amber);stroke-width:3}
+/* gate widget */
+.gate{display:flex;align-items:center;justify-content:center;gap:44px;width:100%}
+.gate .region{fill:var(--blue-pale)}
+.gate .bline{stroke:var(--blue);stroke-width:3.5;stroke-linecap:round}
+.gate .frame{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.gate .pt{stroke-width:3;stroke:var(--soft);fill:var(--stage)}
+.gate .pt.t1{stroke:var(--amber);fill:var(--amber)}
+.gate .pt.bad{stroke:var(--bad);stroke-dasharray:4 3}
+.gate .pt.cur{stroke-width:6;stroke:var(--ink)}
+.gate .pl{font-size:15px;fill:var(--soft);font-family:'STIX Two Text',Georgia,serif}
+.gctl>button{align-self:flex-start}
+.gctl{display:flex;flex-direction:column;gap:12px;align-items:stretch;width:330px;text-align:left}
+.sl{display:grid;grid-template-columns:54px 1fr 56px;align-items:center;gap:10px;font-family:'STIX Two Text',Georgia,serif;font-size:26px}
+.sl.wide{grid-template-columns:150px 1fr 30px;white-space:nowrap;font-family:inherit;font-size:21px}
+.sl output{text-align:right;font-variant-numeric:tabular-nums;font-size:22px}
+input[type=range]{width:100%;accent-color:var(--blue);height:26px;margin:0;cursor:pointer}
+.status{font-size:21px;min-height:58px;color:var(--soft)}
+.status.win{color:var(--blue);font-weight:600}
+.live{font-size:22px;white-space:nowrap}
+button{font:inherit;font-size:19px;color:var(--ink);background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:7px 16px;cursor:pointer}
+button:hover{border-color:var(--blue)}
+button.act{background:var(--blue);border-color:var(--blue);color:var(--stage)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.log{font-family:'STIX Two Text',Georgia,serif;font-size:21px;white-space:nowrap;line-height:1.5;min-height:112px}
+.stat{display:flex;flex-direction:column;align-items:flex-start;gap:0;text-align:left}
+.stat .n{font-size:44px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+.stat .l{font-size:19px;color:var(--soft)}
+canvas{display:block;border-radius:10px;border:1.5px solid var(--line)}
+ul.pts,ol.pts{margin:0;padding-left:1.1em;text-align:left;display:flex;flex-direction:column;gap:22px;font-size:30px}
+.bar{height:16px;border-radius:8px;background:var(--line);width:100%;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--amber);border-radius:8px}
+/* history */
+.year{font-size:112px;font-weight:800;line-height:.95;letter-spacing:-.03em;color:var(--blue)}
+.tl{position:absolute;left:76px;right:76px;bottom:64px;height:46px}
+.tl:before{content:"";position:absolute;left:0;right:0;top:9px;height:2px;background:var(--line)}
+.tl span{position:absolute;top:0;transform:translateX(-50%);font-size:15px;color:var(--soft);padding-top:24px;font-variant-numeric:tabular-nums}
+.tl span:before{content:"";position:absolute;left:50%;top:4px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--stage);border:2px solid var(--soft)}
+.tl span.past:before{background:var(--soft)}
+.tl span.now{color:var(--amber);font-weight:600}
+.tl span.now:before{background:var(--amber);border-color:var(--amber);box-shadow:0 0 0 6px var(--amber-pale)}
+.hist .body{padding-bottom:70px}
+/* chrome */
+#bar{position:absolute;left:0;bottom:0;height:4px;background:var(--blue);transition:width .3s}
+#nav{position:absolute;right:26px;bottom:16px;display:flex;align-items:center;gap:10px;font-size:16px;color:var(--soft);font-variant-numeric:tabular-nums}
+#nav button{font-size:18px;padding:3px 12px;line-height:1.2}
+@media (prefers-reduced-motion: reduce){
+  .flow,.cv.draw{animation:none;stroke-dashoffset:0}
+  .frag,.slide{transition:none}
+}
+.gr{color:var(--amber)} .fw{color:var(--blue)}
+.op{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1;margin:0 .14em}
+.op .sg{font-size:1.5em;line-height:1.05}
+.op .lim{font-size:.5em;min-height:1.15em;line-height:1.15}
+.ub{display:inline-flex;flex-direction:column;align-items:center;vertical-align:top}
+.ubl{font-size:.62em;border-top:1.5px solid var(--soft);margin-top:5px;padding-top:1px;color:var(--soft);align-self:stretch;text-align:center}
+.tx{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:.74em}
+.bp{font-size:1.55em;font-weight:300;vertical-align:-.14em;line-height:1}
+.math .boxed{padding:10px 24px}
+.legend{display:grid;grid-template-columns:auto auto;column-gap:22px;row-gap:16px;align-items:center;text-align:left;font-size:20px}
+/* annotated network */
+.nv line{stroke:var(--line);stroke-width:1.6;transition:stroke .3s}
+.nv line.fw{stroke:var(--blue);stroke-width:2}
+.nv line.gr{stroke:var(--amber);stroke-width:3.2}
+.nv circle{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.6;transition:fill .3s,stroke .3s}
+.nv circle.gr{fill:var(--amber-pale);stroke:var(--amber)}
+.nv circle.dead{fill:var(--stage);stroke:var(--line)}
+.nv circle.off{fill:var(--stage);stroke:var(--line)}
+.nv circle.pick{cursor:pointer}
+.nv .nm{font:italic 20px 'STIX Two Text',Georgia,serif;fill:var(--ink);pointer-events:none}
+.nv .tg{font:17px 'STIX Two Text',Georgia,serif;fill:var(--ink);paint-order:stroke;stroke:var(--stage);stroke-width:5px;stroke-linejoin:round}
+.nv .tg .b{fill:var(--amber);font-weight:600}
+.nv .el{font:600 18px 'STIX Two Text',Georgia,serif;fill:var(--amber);paint-order:stroke;stroke:var(--stage);stroke-width:6px;stroke-linejoin:round}
+.nv .el.k{fill:var(--ink)}
+/* loop */
+.loop{display:flex;align-items:center;gap:14px}
+.lp{padding:14px 26px;border-radius:999px;border:2px solid var(--line);background:var(--panel);font-size:24px;font-weight:600;transition:background .35s,border-color .35s,color .35s}
+.lp.on{background:var(--amber);border-color:var(--amber);color:var(--stage)}
+.lpa{color:var(--soft);font-size:26px}
+/* chain + pipe */
+.chain{display:grid;grid-template-columns:110px 96px 110px 96px 110px 96px 110px 96px 110px;justify-items:center;align-items:center;row-gap:16px}
+.po{padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel);font-size:23px;min-width:64px;text-align:center}
+.chain .po{font-size:28px;min-width:96px;border-color:var(--blue);border-width:2px}
+.pa{color:var(--soft);font-size:24px}
+.pa.fwd{color:var(--blue);font-size:30px}
+.back{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--amber)}
+.back>span:first-child{font-size:32px;line-height:1}
+.back .math{font-size:23px}
+.pipe{display:grid;grid-template-columns:70px 30px 128px 30px 70px 30px 128px 30px 70px 30px 128px 30px 70px 30px 100px 30px 70px;justify-items:center;align-items:center;row-gap:12px}
+.pipe>div{white-space:nowrap}
+.pv{width:66px;height:66px;border-radius:50%;border:2.6px solid var(--blue);background:var(--blue-pale);display:flex;align-items:center;justify-content:center;font-size:24px}
+.pg{color:var(--amber);font-size:21px}
+.pg.big{font-size:32px;font-weight:600}
+.pn{font-size:18px;color:var(--soft)}
+.pd{color:var(--soft);font-size:24px}
+/* multilayer picture */
+.lb{position:absolute;transform:translateX(-50%);font-size:20px;transition:opacity .45s;white-space:nowrap}
+.lb.off{opacity:0}
+.lb.hd{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:17px;color:var(--soft)}
+/* dims */
+.dm{display:flex;flex-direction:column;gap:16px;margin-top:14px}
+.dr{display:flex;align-items:center;gap:12px}
+.dl{width:104px;text-align:left;font-size:20px;font-weight:600}
+.mx{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px}
+.mg{display:grid;gap:2px}
+.mg i{width:22px;height:22px;border-radius:3px;display:block}
+.mg.f i{background:var(--blue-pale);border:1.5px solid var(--blue)}
+.mg.g i{background:var(--amber-pale);border:1.5px solid var(--amber)}
+.mc{font-size:20px}
+.md{font-size:16px;color:var(--soft);font-variant-numeric:tabular-nums}
+.mo{font-size:26px;padding:0 2px;margin-bottom:46px}
+/* table */
+table.cmp{border-collapse:collapse;font-size:23px}
+.cmp th,.cmp td{padding:13px 30px;text-align:center}
+.cmp thead th{border-bottom:2px solid var(--ink);font-weight:600}
+.cmp td:first-child{text-align:left;font-weight:600;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:22px}
+.cmp tr.frag{transform:none}
+/* softmax bars */
+.sbars{display:flex;gap:26px;align-items:flex-end;height:230px}
+.sbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;width:74px}
+.sbar>i{display:block;width:100%;background:var(--blue);border-radius:6px 6px 0 0;transition:height .15s}
+.sbar>b{font-variant-numeric:tabular-nums;font-size:20px}
+</style>
+</head>
+<body>
+<div id="deck"><div id="stage">
+<!-- 1 -->
+<section class="slide">
+  <div class="row" style="flex:1;gap:30px">
+    <div class="col left" style="flex:1.25;gap:22px">
+      <p class="soft">Foundations of Machine Learning</p>
+      <h1>Learning with Backpropagation</h1>
+      <p class="soft big">One hidden layer: regression and classification</p>
+      <p class="imp">2 inputs → 4 ReLUs → 1 or 3 outputs</p>
+    </div>
+    <div class="col" data-v="hero"></div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <h2>Today’s question</h2>
+  <div class="body" style="gap:50px">
+    <p class="big">How do we learn <span class="imp">every weight</span> in a neural network?</p>
+    <div data-v="loop" data-l="Forward pass|Loss|Chain rule|Gradient step"></div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <h2>Two networks, one hidden layer</h2>
+  <div class="body">
+    <div class="row" style="gap:20px">
+      <div class="col" style="gap:4px"><div data-v="nv" data-kind="reg" data-mode="plain" data-sc=".82"></div><p><b>Regression:</b> 1 linear output</p></div>
+      <div class="col" style="gap:4px"><div data-v="nv" data-kind="cls" data-mode="plain" data-sc=".82"></div><p><b>Classification:</b> 3 outputs, softmax</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <h2>Notation (one training example)</h2>
+  <div class="body">
+    <div class="row" style="gap:36px">
+      <div data-v="nv" data-kind="reg" data-mode="notation" style="flex:none"></div>
+      <div class="legend">
+        <span class="math sm" data-m="x = (x_1, x_2)^\top"></span><span>input</span>
+        <span class="math sm" data-m="z_j"></span><span>pre-activation of hidden neuron <i>j</i></span>
+        <span class="math sm" data-m="h_j = \ReLU(z_j)"></span><span>hidden output, <i>j</i> = 1…4</span>
+        <span class="math sm" data-m="w_{ji}, b_j"></span><span>input <i>i</i> → hidden <i>j</i>; hidden bias</span>
+        <span class="math sm" data-m="v_j, c"></span><span>hidden <i>j</i> → output; output bias</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <h2>The ReLU derivative</h2>
+  <div class="body" style="gap:16px">
+    <div data-v="reluD"></div>
+    <p class="soft small">At <span class="math" style="font-size:21px" data-m="z_j = 0"></span> we choose derivative 0, a common implementation convention.</p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide" data-steps="3">
+  <h2>Regression: the forward pass</h2>
+  <div class="body">
+    <div class="row" style="gap:36px">
+      <div data-v="nv" data-kind="reg" data-mode="fwd" style="flex:none"></div>
+      <div class="col left" style="gap:30px">
+        <div class="math sm frag" data-m="z_j = w_{j1}x_1 + w_{j2}x_2 + b_j"></div>
+        <div class="math sm frag" data-m="h_j = \ReLU(z_j)"></div>
+        <div class="math sm frag" data-m="\yhat = \sum_{j=1}^{4} v_j h_j + c"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <h2>Regression: choose a loss</h2>
+  <div class="body">
+    <div class="row" style="gap:44px">
+      <div class="col" style="flex:none"><div data-v="lossPlot"></div></div>
+      <div class="col left" style="gap:26px" id="lossSide">
+        <div class="math" data-m="\boxed{\L = \frac{1}{2}(\yhat - y)^2}"></div>
+      </div>
+    </div>
+    <p class="soft small frag">Why the factor ½? It cancels when we differentiate: the slope is exactly <span class="math" style="font-size:21px" data-m="\yhat - y"></span>.</p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <h2>Backpropagation = repeated chain rule</h2>
+  <div class="body" style="gap:30px">
+    <div class="chain">
+      <div class="math po" data-m="x" style="grid-column:1"></div><div class="pa fwd">→</div>
+      <div class="math po" data-m="z_j"></div><div class="pa fwd">→</div>
+      <div class="math po" data-m="h_j"></div><div class="pa fwd">→</div>
+      <div class="math po" data-m="\yhat"></div><div class="pa fwd">→</div>
+      <div class="math po" data-m="\L"></div>
+      <div class="back frag" data-f="4" style="grid-row:2;grid-column:2"><span>←</span><span class="math" data-m="\dd{z_j}{w_{ji}}"></span></div>
+      <div class="back frag" data-f="3" style="grid-row:2;grid-column:4"><span>←</span><span class="math" data-m="\dd{h_j}{z_j}"></span></div>
+      <div class="back frag" data-f="2" style="grid-row:2;grid-column:6"><span>←</span><span class="math" data-m="\dd{\yhat}{h_j}"></span></div>
+      <div class="back frag" data-f="1" style="grid-row:2;grid-column:8"><span>←</span><span class="math" data-m="\d{\yhat}"></span></div>
+    </div>
+    <div class="math sm frag" data-f="5" data-m="\d{w_{ji}} = \g{\d{\yhat} \cdot \dd{\yhat}{h_j} \cdot \dd{h_j}{z_j} \cdot \dd{z_j}{w_{ji}}}"></div>
+    <p class="soft small">Start at the loss and multiply local derivatives on the way back.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <h2>Regression, step 1: loss to prediction</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:28px">
+      <div class="math sm" data-m="\L = \frac{1}{2}(\yhat - y)^2"></div>
+      <div class="math frag" data-m="\boxed{\d{\yhat} = \yhat - y}"></div>
+      <p class="soft small frag">Call this the output error <span class="math" style="font-size:22px" data-m="e = \yhat - y"></span>.</p>
+    </div>
+    <div data-v="nv" data-kind="reg" data-mode="e" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <h2>Regression, step 2: output weights</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:24px">
+      <div class="math sm" data-m="\yhat = \sum_{j=1}^{4} v_j h_j + c"></div>
+      <div class="math sm frag" data-m="\dd{\yhat}{v_j} = h_j"></div>
+      <div class="math frag" data-m="\boxed{\d{v_j} = \under{(\yhat - y)}{e} h_j}"></div>
+    </div>
+    <div data-v="nv" data-kind="reg" data-mode="v" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <h2>Regression, step 3: output bias</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:28px">
+      <div class="math sm" data-m="\dd{\yhat}{c} = 1"></div>
+      <div class="math frag" data-m="\boxed{\d{c} = \yhat - y = e}"></div>
+    </div>
+    <div data-v="nv" data-kind="reg" data-mode="c" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <h2>Regression, step 4: error reaches the hidden outputs</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:28px">
+      <div class="math sm" data-m="\dd{\yhat}{h_j} = v_j"></div>
+      <div class="math frag" data-m="\boxed{\d{h_j} = \under{(\yhat - y)}{e} v_j}"></div>
+    </div>
+    <div data-v="nv" data-kind="reg" data-mode="h" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 13 -->
+<section class="slide">
+  <h2>Regression, step 5: pass through the ReLU</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:24px">
+      <div class="math sm" data-m="h_j = \ReLU(z_j)"></div>
+      <div class="math sm frag" data-m="\d{z_j} = \d{h_j} \dd{h_j}{z_j}"></div>
+      <div class="math sm frag" data-m="\boxed{\delta_j := \d{z_j} = e v_j \one[z_j &gt; 0]}"></div>
+    </div>
+    <div data-v="nv" data-kind="reg" data-mode="relu" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 14 -->
+<section class="slide">
+  <h2>Regression, step 6: input-to-hidden weights</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:24px">
+      <div class="math sm" data-m="z_j = w_{j1}x_1 + w_{j2}x_2 + b_j"></div>
+      <div class="math sm frag" data-m="\dd{z_j}{w_{ji}} = x_i"></div>
+      <div class="math frag" data-m="\boxed{\d{w_{ji}} = \delta_j x_i}"></div>
+    </div>
+    <div data-v="nv" data-kind="reg" data-mode="w" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 15 -->
+<section class="slide">
+  <h2>Regression, step 7: hidden biases</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:28px">
+      <div class="math sm" data-m="\dd{z_j}{b_j} = 1"></div>
+      <div class="math frag" data-m="\boxed{\d{b_j} = \delta_j}"></div>
+    </div>
+    <div data-v="nv" data-kind="reg" data-mode="b" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 16 -->
+<section class="slide">
+  <h2>Regression: all gradients in one place</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:22px">
+      <div class="math sm frag" data-m="e = \yhat - y"></div>
+      <div class="math sm frag" data-m="\d{v_j} = e h_j, \quad \d{c} = e"></div>
+      <div class="math sm frag" data-m="\delta_j = e v_j \one[z_j &gt; 0]"></div>
+      <div class="math sm frag" data-m="\d{w_{ji}} = \delta_j x_i, \quad \d{b_j} = \delta_j"></div>
+    </div>
+    <div data-v="nv" data-kind="reg" data-mode="all" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 17 -->
+<section class="slide">
+  <h2>Regression: one gradient-descent update</h2>
+  <div class="body"><div class="row" style="gap:40px">
+    <div class="col left" style="gap:18px">
+      <div class="math sm" data-m="\boxed{w_{ji} \leftarrow w_{ji} - \eta \delta_j x_i}"></div>
+      <div class="math sm" data-m="\boxed{v_j \leftarrow v_j - \eta e h_j}"></div>
+      <p class="soft small">Biases: <span class="math" style="font-size:21px" data-m="b_j \leftarrow b_j - \eta \delta_j"></span> and <span class="math" style="font-size:21px" data-m="c \leftarrow c - \eta e"></span></p>
+      <div class="gctl" id="trainCtl" style="width:400px;margin-top:6px"></div>
+    </div>
+    <div class="col" style="flex:none"><div data-v="train"></div><p class="soft small">Loss on our example after each update</p></div>
+  </div></div>
+</section>
+
+<!-- 18 -->
+<section class="slide" data-steps="2">
+  <h2>Classification: what changes?</h2>
+  <div class="body">
+    <div class="row" style="gap:36px">
+      <div data-v="nv" data-kind="cls" data-mode="fwd" style="flex:none"></div>
+      <div class="col left" style="gap:30px">
+        <div class="math sm frag" data-m="s_k = \sum_{j=1}^{4} V_{kj}h_j + c_k"></div>
+        <div class="math frag" data-m="p_k = \frac{e^{s_k}}{\sum_{r=1}^{3} e^{s_r}}"></div>
+        <p class="soft small">The hidden layer stays the same. The output has three logits and a softmax.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide">
+  <h2>Classification: cross-entropy loss</h2>
+  <div class="body">
+    <div class="row" style="gap:44px">
+      <div class="col" style="flex:none"><div data-v="ce"></div></div>
+      <div class="col left" style="gap:22px" id="ceSide">
+        <p>Target: one-hot <span class="math sm" data-m="y = (y_1, y_2, y_3)^\top"></span></p>
+        <div class="math sm" data-m="\boxed{\L = -\sum_{k=1}^{3} y_k \log p_k}"></div>
+        <p class="frag">True class 2: <span class="math sm" data-m="y = (0, 1, 0)"></span>, so <span class="math sm" data-m="\L = -\log p_2"></span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide">
+  <h2>Softmax: derivative with respect to a logit</h2>
+  <div class="body">
+    <div class="row" style="gap:50px">
+      <div data-v="softmax" style="flex:none"></div>
+      <div class="col left" style="gap:26px">
+        <div class="math sm" data-m="p_k = \frac{e^{s_k}}{\sum_{r} e^{s_r}}"></div>
+        <div class="math sm frag" data-m="\boxed{\dd{p_k}{s_m} = p_k \big(\one[k=m] - p_m\big)}"></div>
+        <p class="soft small">Move one logit: every probability changes, because they share the denominator.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide">
+  <h2>Classification, step 1: loss to logits</h2>
+  <div class="body"><div class="row" style="gap:30px">
+    <div class="col left" style="gap:18px">
+      <div class="math sm" style="font-size:25px" data-m="\d{s_m} = \sum_{k=1}^{3} \d{p_k} \dd{p_k}{s_m}"></div>
+      <div class="math sm frag" style="font-size:25px" data-m="= -\sum_{k} y_k \big(\one[k=m] - p_m\big)"></div>
+      <div class="math frag" data-m="\boxed{\d{s_m} = p_m - y_m}"></div>
+      <p class="soft small frag">Uses <span class="math" style="font-size:21px" data-m="\sum_{k} y_k = 1"></span>. Softmax and cross-entropy simplify together.</p>
+    </div>
+    <div data-v="nv" data-kind="cls" data-mode="s" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 22 -->
+<section class="slide">
+  <h2>Classification, step 2: output-layer weights</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:24px">
+      <div class="math sm" data-m="s_k = \sum_{j=1}^{4} V_{kj}h_j + c_k"></div>
+      <div class="math sm frag" data-m="\dd{s_k}{V_{kj}} = h_j"></div>
+      <div class="math sm frag" data-m="\boxed{\d{V_{kj}} = (p_k - y_k) h_j}"></div>
+    </div>
+    <div data-v="nv" data-kind="cls" data-mode="V" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 23 -->
+<section class="slide">
+  <h2>Classification, step 3: output biases</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:28px">
+      <div class="math sm" data-m="\dd{s_k}{c_k} = 1"></div>
+      <div class="math frag" data-m="\boxed{\d{c_k} = p_k - y_k}"></div>
+    </div>
+    <div data-v="nv" data-kind="cls" data-mode="c" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 24 -->
+<section class="slide">
+  <h2>Classification, step 4: error reaches the hidden outputs</h2>
+  <div class="body"><div class="row" style="gap:30px">
+    <div class="col left" style="gap:26px">
+      <div class="math sm" style="font-size:25px" data-m="\d{h_j} = \sum_{k=1}^{3} \d{s_k} \dd{s_k}{h_j}"></div>
+      <div class="math sm frag" style="font-size:25px" data-m="\boxed{\d{h_j} = \sum_{k=1}^{3} V_{kj}(p_k - y_k)}"></div>
+    </div>
+    <div data-v="nv" data-kind="cls" data-mode="h" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 25 -->
+<section class="slide">
+  <h2>Classification, step 5: pass through the ReLU</h2>
+  <div class="body"><div class="row" style="gap:30px">
+    <div class="col left" style="gap:26px">
+      <div class="math sm" style="font-size:25px" data-m="\delta_j := \d{z_j} = \d{h_j} \ReLU'(z_j)"></div>
+      <div class="math sm frag" style="font-size:23px" data-m="\boxed{\delta_j = \big(\sum_{k=1}^{3} V_{kj}(p_k - y_k)\big) \one[z_j &gt; 0]}"></div>
+    </div>
+    <div data-v="nv" data-kind="cls" data-mode="relu" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 26 -->
+<section class="slide">
+  <h2>Classification, step 6: hidden parameters</h2>
+  <div class="body"><div class="row" style="gap:36px">
+    <div class="col left" style="gap:22px">
+      <div class="math sm" data-m="z_j = \sum_{i=1}^{2} w_{ji}x_i + b_j"></div>
+      <div class="math sm frag" data-m="\boxed{\d{w_{ji}} = \delta_j x_i}"></div>
+      <div class="math sm frag" data-m="\boxed{\d{b_j} = \delta_j}"></div>
+      <p class="soft small frag">Exactly the same last chain-rule step as regression.</p>
+    </div>
+    <div data-v="nv" data-kind="cls" data-mode="w" style="flex:none"></div>
+  </div></div>
+</section>
+
+<!-- 27 -->
+<section class="slide">
+  <h2>Regression vs. classification</h2>
+  <div class="body">
+    <table class="cmp">
+      <thead><tr><th></th><th>Regression</th><th>3-class classification</th></tr></thead>
+      <tbody>
+        <tr class="frag"><td>Output</td><td class="math sm" data-m="\yhat = \sum_{j} v_j h_j + c"></td><td class="math sm" data-m="p = \softmax(s)"></td></tr>
+        <tr class="frag"><td>Loss</td><td class="math sm" data-m="\frac{1}{2}(\yhat - y)^2"></td><td class="math sm" data-m="-\sum_{k} y_k \log p_k"></td></tr>
+        <tr class="frag"><td>Output error</td><td class="math sm" data-m="\g{e = \yhat - y}"></td><td class="math sm" data-m="\g{e_k = p_k - y_k}"></td></tr>
+        <tr class="frag"><td>Hidden error</td><td class="math sm" data-m="\g{e v_j \ReLU'(z_j)}"></td><td class="math sm" data-m="\g{\sum_{k} V_{kj}e_k \ReLU'(z_j)}"></td></tr>
+      </tbody>
+    </table>
+    <p class="imp frag">Same chain rule; different output loss and error.</p>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide">
+  <h2>Now use vectors and matrices</h2>
+  <div class="body" style="gap:34px">
+    <div data-pipe="fwd"></div>
+    <div class="row" style="gap:60px">
+      <div class="math sm frag" data-m="z_1 = W_1 x + b_1, \quad h = \ReLU(z_1)"></div>
+      <div class="math sm frag" data-m="z_2 = W_2 h + b_2"></div>
+    </div>
+    <p class="soft small"><i>K</i> = 1 output for regression, <i>K</i> = 3 for classification.</p>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide">
+  <h2>One hidden layer: the backward pass</h2>
+  <div class="body" style="gap:26px">
+    <div data-pipe="bwd"></div>
+    <div class="math sm frag" data-f="3" data-m="\boxed{\delta_1 = (W_2^\top \delta_2) \odot \ReLU'(z_1)}"></div>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide">
+  <h2>Start with the right output error</h2>
+  <div class="body" style="gap:34px">
+    <div class="legend" style="grid-template-columns:auto auto;column-gap:40px;row-gap:30px;font-size:26px">
+      <span><b>Regression</b> (linear + squared error)</span><span class="math" data-m="\g{\delta_2 = \yhat - y}"></span>
+      <span class="frag"><b>Classification</b> (softmax + cross-entropy)</span><span class="math frag" data-f="1" data-m="\g{\delta_2 = p - y}"></span>
+    </div>
+    <p class="big frag">All remaining backward equations are identical.</p>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide">
+  <h2>Same network, new names</h2>
+  <div class="body" style="gap:28px">
+    <div data-pipe="rename"></div>
+    <p class="frag" data-f="2">The layer number moves to a superscript: <span class="math sm" data-m="W_1 \to W^{(1)}"></span>, <span class="math sm" data-m="\delta_1 \to \delta^{(1)}"></span>.</p>
+    <p class="frag" data-f="3">Every layer’s output is now called <span class="math sm" data-m="a"></span>: the input is <span class="math sm" data-m="a^{(0)}"></span>, the hidden output <span class="math sm" data-m="h"></span> is <span class="math sm" data-m="a^{(1)}"></span>.</p>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide" data-steps="3">
+  <h2>Many layers: the forward pass in one picture</h2>
+  <div class="body"><div data-v="ml" data-mode="fwd"></div></div>
+</section>
+
+<!-- 33 -->
+<section class="slide">
+  <h2>Many layers: forward pass</h2>
+  <div class="body" style="gap:30px">
+    <p>For layers <span class="math sm" data-m="\ell = 1, \ldots, L"></span>, starting from <span class="math sm" data-m="a^{(0)} = x"></span>:</p>
+    <div class="math frag" data-m="\boxed{z^{(\ell)} = W^{(\ell)}a^{(\ell-1)} + b^{(\ell)}}"></div>
+    <div class="math frag" data-m="\boxed{a^{(\ell)} = g^{(\ell)}(z^{(\ell)})}"></div>
+    <p class="soft small frag"><span class="math" style="font-size:21px" data-m="g^{(\ell)}"></span> may be ReLU in hidden layers; the output activation depends on the task.</p>
+  </div>
+</section>
+
+<!-- 34 -->
+<section class="slide" data-steps="6">
+  <h2>Many layers: the backward pass in one picture</h2>
+  <div class="body"><div data-v="ml" data-mode="bwd"></div></div>
+</section>
+
+<!-- 35 -->
+<section class="slide">
+  <h2>Many layers: backpropagation</h2>
+  <div class="body" style="gap:24px">
+    <p>First the output error:</p>
+    <div class="math sm" data-m="\g{\delta^{(L)}} = \nabla_{z^{(L)}}\L"></div>
+    <p class="frag">Then from <span class="math sm" data-m="\ell = L-1"></span> down to 1:</p>
+    <div class="math sm frag" data-m="\boxed{\g{\delta^{(\ell)}} = \big((W^{(\ell+1)})^\top \g{\delta^{(\ell+1)}}\big) \odot (g^{(\ell)})'(z^{(\ell)})}"></div>
+  </div>
+</section>
+
+<!-- 36 -->
+<section class="slide">
+  <h2>Many layers: parameter gradients</h2>
+  <div class="body" style="gap:30px">
+    <p>At each layer <span class="math sm" data-m="\ell"></span>:</p>
+    <div class="math frag" data-m="\boxed{\nabla_{W^{(\ell)}}\L = \g{\delta^{(\ell)}} \f{(a^{(\ell-1)})^\top}}"></div>
+    <div class="math frag" data-m="\boxed{\nabla_{b^{(\ell)}}\L = \g{\delta^{(\ell)}}}"></div>
+    <p class="soft small frag">The outer product automatically has the shape of the weight matrix.</p>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide">
+  <h2>Dimension check: every shape fits</h2>
+  <div class="body"><div class="row" style="gap:40px;align-items:center">
+    <div data-v="dims" style="flex:none"></div>
+    <div class="col left" style="gap:20px">
+      <div class="math sm" style="font-size:27px" data-m="W^{(\ell)} \in \R^{n_\ell \times n_{\ell-1}}"></div>
+      <div class="math sm" style="font-size:27px" data-m="z^{(\ell)}, a^{(\ell)}, b^{(\ell)}, \delta^{(\ell)} \in \R^{n_\ell}"></div>
+      <div class="math sm" style="font-size:27px" data-m="\nabla_{W^{(\ell)}}\L \in \R^{n_\ell \times n_{\ell-1}}"></div>
+      <p class="soft small">Layer sizes here: <span class="math" style="font-size:21px" data-m="(n_0, n_1, n_2, n_3) = (2, 4, 3, 2)"></span>. In each product the inner sizes match, and the result has the same shape as the left-hand side.</p>
+    </div>
+  </div></div>
+</section>
+
+<!-- 38 -->
+<section class="slide">
+  <h2>Gradient descent: update every layer</h2>
+  <div class="body"><div class="row" style="gap:40px">
+    <div class="col left" style="gap:20px">
+      <p>For <span class="math sm" data-m="\ell = 1, \ldots, L"></span>:</p>
+      <div class="math sm" style="font-size:25px" data-m="\boxed{W^{(\ell)} \leftarrow W^{(\ell)} - \eta \nabla_{W^{(\ell)}}\L}"></div>
+      <div class="math sm" style="font-size:25px" data-m="\boxed{b^{(\ell)} \leftarrow b^{(\ell)} - \eta \nabla_{b^{(\ell)}}\L}"></div>
+      <div class="gctl" id="gdCtl" style="width:400px"></div>
+    </div>
+    <div class="col" style="flex:none"><div data-v="gd"></div><p class="soft small">One example at a time is SGD; averaging over a mini-batch is mini-batch SGD.</p></div>
+  </div></div>
+</section>
+
+<!-- 39 -->
+<section class="slide">
+  <h2>Training loop</h2>
+  <div class="body" style="gap:44px">
+    <div data-v="loop" data-l="Forward|Loss|Backward|Update"></div>
+    <ol class="pts" style="font-size:25px;gap:12px">
+      <li class="frag"><b>Forward:</b> compute each <span class="math sm" style="font-size:24px" data-m="z^{(\ell)}, a^{(\ell)}"></span>.</li>
+      <li class="frag"><b>Loss:</b> compare the prediction with the target.</li>
+      <li class="frag"><b>Backward:</b> compute <span class="math sm" style="font-size:24px" data-m="\delta^{(L)}, \ldots, \delta^{(1)}"></span>.</li>
+      <li class="frag"><b>Update:</b> change the weights and biases.</li>
+      <li class="frag">Repeat over training examples or mini-batches.</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide">
+  <h2>Three things to remember</h2>
+  <div class="body" style="gap:40px">
+    <ol class="pts">
+      <li class="frag">The <span class="imp">chain rule</span> sends loss information backward.</li>
+      <li class="frag"><span class="math sm" data-m="\delta^{(\ell)}"></span> measures sensitivity to a layer’s pre-activation.</li>
+      <li class="frag">Gradient descent uses these gradients to improve <span class="imp">all</span> layers.</li>
+    </ol>
+    <p class="big frag">Forward → Loss → Backward → Update</p>
+  </div>
+</section>
+
+<div id="bar"></div>
+<div id="nav"><button id="prev" aria-label="Previous slide">‹</button><span id="count"></span><button id="next" aria-label="Next slide">›</button></div>
+</div></div>
+<script>
+
+(function(){
+'use strict';
+const NS='http://www.w3.org/2000/svg';
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function S(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e}
+function H(tag,cls,parent,html){const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;if(parent)parent.appendChild(e);return e}
+function tween(ms,fn,done){if(RM){fn(1);done&&done();return()=>{}}let s=null,id;const f=t=>{if(s===null)s=t;const u=Math.min(1,(t-s)/ms);fn(u);if(u<1)id=requestAnimationFrame(f);else done&&done()};id=requestAnimationFrame(f);return()=>cancelAnimationFrame(id)}
+const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+const fmt=v=>(Math.abs(v)<5e-7?0:v).toFixed(1).replace('-','−');
+const relu=x=>x>0?x:0, sig=x=>1/(1+Math.exp(-x));
+let uid=0;
+
+function Plot(host,o){
+  const w=o.w,h=o.h,p=o.pad==null?30:o.pad;
+  const svg=S('svg',{viewBox:'0 0 '+w+' '+h,width:w,height:h,role:'img','aria-label':o.label||'Plot'},host);
+  const sx=x=>p+(x-o.x[0])/(o.x[1]-o.x[0])*(w-2*p), sy=y=>h-p-(y-o.y[0])/(o.y[1]-o.y[0])*(h-2*p);
+  const id='cp'+(uid++);const cp=S('clipPath',{id:id},svg);S('rect',{x:p-3,y:p-3,width:w-2*p+6,height:h-2*p+6},cp);
+  const y0=Math.max(o.y[0],Math.min(o.y[1],0)),x0=Math.max(o.x[0],Math.min(o.x[1],0));
+  S('line',{x1:sx(o.x[0]),x2:sx(o.x[1]),y1:sy(y0),y2:sy(y0),class:'ax'},svg);
+  S('line',{x1:sx(x0),x2:sx(x0),y1:sy(o.y[0]),y2:sy(o.y[1]),class:'ax'},svg);
+  (o.xt||[]).forEach(t=>{S('line',{x1:sx(t),x2:sx(t),y1:sy(y0)-4,y2:sy(y0)+4,class:'ax'},svg);S('text',{x:sx(t),y:sy(y0)+21,'text-anchor':'middle',class:'tk'},svg,String(t).replace('-','−'))});
+  (o.yt||[]).forEach(t=>{S('line',{x1:sx(x0)-4,x2:sx(x0)+4,y1:sy(t),y2:sy(t),class:'ax'},svg);S('text',{x:sx(x0)-9,y:sy(t)+5,'text-anchor':'end',class:'tk'},svg,String(t).replace('-','−'))});
+  const g=S('g',{'clip-path':'url(#'+id+')'},svg);
+  const d=(fn,n)=>{n=n||260;let s='';for(let i=0;i<=n;i++){const x=o.x[0]+(o.x[1]-o.x[0])*i/n;s+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(fn(x)).toFixed(1)}return s};
+  return{svg,g,sx,sy,d,curve(fn,cls){return S('path',{d:d(fn),class:'cv '+(cls||'')},g)}};
+}
+function redraw(path){path.setAttribute('pathLength','1');path.classList.remove('draw');void path.getBoundingClientRect();path.classList.add('draw')}
+function Slider(parent,label,min,max,step,val,fn,wide,f){
+  const l=H('label','sl'+(wide?' wide':''),parent);H('span','',l,label);
+  const i=H('input','',l);i.type='range';i.min=min;i.max=max;i.step=step;i.value=val;
+  const o=H('output','',l);const show=()=>{o.textContent=f?f(+i.value):fmt(+i.value)};show();
+  i.addEventListener('input',()=>{show();fn(+i.value)});
+  return{el:i,set(v){i.value=v;show()},get v(){return +i.value}};
+}
+function Net(host,layers,o){
+  o=o||{};const w=o.w||460,h=o.h||300,r=o.r||15,L=layers.length;
+  const svg=S('svg',{viewBox:'0 0 '+w+' '+h,width:w,height:h,class:'net',role:'img','aria-label':'Diagram of a layered neural network'},host);
+  const pos=layers.map((n,l)=>Array.from({length:n},(_,i)=>[r+12+l*(w-2*r-24)/(L-1),h/2+(i-(n-1)/2)*Math.min(o.gap||64,(h-2*r-8)/Math.max(n-1,1))]));
+  const eg=[],ng=[];
+  for(let l=0;l<L-1;l++){const g=S('g',{class:'eg'},svg);pos[l].forEach(a=>pos[l+1].forEach(b=>S('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1]},g)));eg.push(g)}
+  for(let l=0;l<L;l++){const g=S('g',{class:'ng'},svg);pos[l].forEach((a,i)=>{S('circle',{cx:a[0],cy:a[1],r:r},g);if(o.labels&&o.labels[l]&&o.labels[l][i])S('text',{x:a[0],y:a[1]+7,'text-anchor':'middle',class:'mt',style:'font-size:'+(r*.95)+'px'},g,o.labels[l][i])});ng.push(g)}
+  let iv;
+  return{svg,pos,start(back){this.stop();if(RM)return;const seq=[];for(let l=0;l<L;l++){seq.push(ng[l]);if(l<L-1)seq.push(eg[l])}if(back)seq.reverse();let k=0;
+    const tick=()=>{ng.concat(eg).forEach(g=>g.classList.remove('on'));if(k<seq.length)seq[k].classList.add('on');k=(k+1)%(seq.length+2)};tick();iv=setInterval(tick,o.ms||480)},
+    stop(){clearInterval(iv);ng.concat(eg).forEach(g=>g.classList.remove('on'))}};
+}
+
+/* ---------- mini math ---------- */
+const SYM={partial:'∂',L:'ℒ',eta:'<i>η</i>',delta:'<i>δ</i>',nabla:'∇',odot:'⊙',leftarrow:'←',gets:'← ',to:'→',cdot:'·',in:'∈',R:'ℝ',times:'×',top:'⊤',ell:'<i>ℓ</i>',ldots:'…',quad:'&emsp;',one:'<b>1</b>',yhat:'<i>ŷ</i>',ReLU:'ReLU',softmax:'softmax',log:'log ',max:'max',lb:'{',rb:'}'};
+function M(s){let i=0;
+  const fr=(a,b)=>'<span class="fr"><span>'+a+'</span><span>'+b+'</span></span>';
+  function atom(){const c=s[i];
+    if(c==='{'){i++;const r=seq('}');i++;return r}
+    if(c==='\\'){let j=i+1;while(j<s.length&&/[a-zA-Z]/.test(s[j]))j++;const n=s.slice(i+1,j);i=j;
+      if(n==='frac'){const a=atom(),b=atom();return fr(a,b)}
+      if(n==='d')return fr('∂ℒ','∂'+atom());
+      if(n==='dd'){const a=atom(),b=atom();return fr('∂'+a,'∂'+b)}
+      if(n==='sum'){let lo='',hi='';for(;;){if(s[i]==='_'){i++;lo=atom()}else if(s[i]==='^'){i++;hi=atom()}else break}return '<span class="op"><span class="lim">'+hi+'</span><span class="sg">∑</span><span class="lim">'+lo+'</span></span>'}
+      if(n==='text'){i++;const e=s.indexOf('}',i),t=s.slice(i,e);i=e+1;return '<span class="tx">'+t+'</span>'}
+      if(n==='boxed')return '<span class="boxed">'+atom()+'</span>';
+      if(n==='under'){const a=atom(),b=atom();return '<span class="ub"><span>'+a+'</span><span class="ubl">'+b+'</span></span>'}
+      if(n==='g')return '<span class="gr">'+atom()+'</span>';
+      if(n==='f')return '<span class="fw">'+atom()+'</span>';
+      if(n==='big')return '<span class="bp">'+s[i++]+'</span>';
+      return SYM[n]!=null?SYM[n]:n}
+    i++;
+    if(/[a-zA-Z]/.test(c))return '<i>'+c+'</i>';
+    if(c==='-')return '−';if(c==="'")return '′';if(c==='<')return '&lt;';if(c==='>')return '&gt;';
+    return c}
+  function seq(end){let o='';while(i<s.length&&s[i]!==end){const c=s[i];
+    if(c==='_'){i++;o+='<sub>'+atom()+'</sub>'}else if(c==='^'){i++;o+='<sup>'+atom()+'</sup>'}else o+=atom()}return o}
+  return seq(null)}
+document.querySelectorAll('[data-m]').forEach(e=>{e.innerHTML=M(e.dataset.m)});
+
+/* ---------- pipes (built before the deck counts fragments) ---------- */
+document.querySelectorAll('[data-pipe]').forEach(el=>{
+  const mode=el.dataset.pipe,kind=['v','o','v','o','v','o','v','o','v'];
+  const top=['x','W_1, b_1','z_1','\\ReLU','h','W_2, b_2','z_2','\\text{loss}','\\L'];
+  const nw=['a^{(0)}','W^{(1)}, b^{(1)}','z^{(1)}','g^{(1)}','a^{(1)}','W^{(2)}, b^{(2)}','z^{(2)}'];
+  el.classList.add('pipe');
+  const cell=(r,c,cls,m,f)=>{const d=H('div',cls,el,'<span>'+M(m)+'</span>');d.style.gridRow=r;d.style.gridColumn=2*c+1;if(f){d.classList.add('frag');d.dataset.f=f}return d};
+  top.forEach((m,c)=>{cell(1,c,'math '+(kind[c]==='v'?'pv':'po'),m);if(c<8){const a=H('div','pa',el,'→');a.style.gridRow=1;a.style.gridColumn=2*c+2}});
+  if(mode==='fwd')[['\\R^2'],['\\R^{4\\times 2}, \\R^4'],['\\R^4'],null,['\\R^4'],['\\R^{K\\times 4}, \\R^K'],['\\R^K']].forEach((m,c)=>{if(m)cell(2,c,'math pn',m[0])});
+  if(mode==='bwd'){
+    cell(2,6,'math pg big','\\delta_2',1);cell(2,7,'pn','\\text{start here}',1);
+    cell(3,5,'math pg','\\nabla_{W_2}\\L = \\delta_2 h^\\top',2);cell(4,5,'math pg','\\nabla_{b_2}\\L = \\delta_2',2);
+    cell(2,5,'math pg','\\gets W_2^\\top',3);cell(2,3,'math pg','\\gets \\odot \\ReLU\'(z_1)',3);cell(2,2,'math pg big','\\delta_1',3);
+    cell(3,1,'math pg','\\nabla_{W_1}\\L = \\delta_1 x^\\top',4);cell(4,1,'math pg','\\nabla_{b_1}\\L = \\delta_1',4);
+  }
+  if(mode==='rename')nw.forEach((m,c)=>{cell(2,c,'pd','↓',1);cell(3,c,'math '+(kind[c]==='v'?'pv':'po'),m,1)});
+});
+
+/* ---------- shared numeric example ---------- */
+const MODEL=(()=>{const x=[1,2],W=[[1,-1],[.5,.5],[-1,.5],[-.5,-1]],b=[0,-.5,.5,0];
+  const z=W.map((r,j)=>r[0]*x[0]+r[1]*x[1]+b[j]),h=z.map(relu);
+  const v=[1,2,-1,.5],c=.5,yh=v.reduce((a,q,j)=>a+q*h[j],c),y=1,e=yh-y,dh=v.map(q=>e*q),d=dh.map((g,j)=>z[j]>0?g:0);
+  const Vm=[[1,1,0,0],[0,-1,2,1],[1,0,-1,0]],cc=[0,.5,0],s=Vm.map((r,k)=>r.reduce((a,w,j)=>a+w*h[j],cc[k])),ex=s.map(Math.exp),Z=ex.reduce((a,q)=>a+q,0),p=ex.map(q=>q/Z),yk=[0,1,0],ek=p.map((q,k)=>q-yk[k]);
+  const dhc=h.map((_,j)=>Vm.reduce((a,r,k)=>a+r[j]*ek[k],0)),dc=dhc.map((g,j)=>z[j]>0?g:0);
+  return{x,W,b,z,h,reg:{v,c,yh,y,e,dh,d},cls:{V:Vm,c:cc,s,p,y:yk,e:ek,dh:dhc,d:dc}}})();
+const n2=v=>String(Math.round(v*100)/100).replace('-','−');
+
+const V={};
+V.hero=el=>{const n=Net(el,[2,4,3],{w:470,h:380,r:20,gap:86,ms:430});let back=false,iv;
+  return{enter(){back=false;n.start(false);if(!RM)iv=setInterval(()=>{back=!back;n.start(back)},430*7)},leave(){clearInterval(iv);n.stop()}}};
+
+V.loop=el=>{el.classList.add('loop');const L=el.dataset.l.split('|'),it=[];
+  L.forEach((t,i)=>{it.push(H('div','lp',el,t));H('div','lpa',el,i<L.length-1?'→':'↺')});let k=0,iv;
+  const tick=()=>{it.forEach((d,i)=>d.classList.toggle('on',i===k));k=(k+1)%it.length};
+  return{enter(){k=0;tick();if(!RM)iv=setInterval(tick,900)},leave(){clearInterval(iv)}}};
+
+V.nv=el=>{
+  const kind=el.dataset.kind||'reg',mode=el.dataset.mode,D=MODEL,R=D[kind],K=kind==='reg'?1:3,SB='₁₂₃₄',sc=+el.dataset.sc||1;
+  el.style.cssText+=';display:flex;flex-direction:column;align-items:center;gap:2px';
+  const svg=S('svg',{viewBox:'0 0 590 400',width:590*sc,height:400*sc,class:'nv',role:'img','aria-label':'Network with 2 inputs, 4 hidden ReLU units and '+K+(K>1?' outputs':' output')},el);
+  const cap=mode==='plain'?null:H('p','soft small',el);if(cap)cap.style.minHeight='28px';
+  const PI=[[70,140],[70,260]],PH=[58,148,238,328].map(y=>[285,y]),PO=K===1?[[490,193]]:[[490,103],[490,193],[490,283]];
+  const eIH=PH.map(h=>PI.map(p=>S('line',{x1:p[0],y1:p[1],x2:h[0],y2:h[1]},svg)));
+  const eHO=PO.map(o=>PH.map(h=>S('line',{x1:h[0],y1:h[1],x2:o[0],y2:o[1]},svg)));
+  const lg=S('g',{},svg);
+  const mk=(p,name)=>{const c=S('circle',{cx:p[0],cy:p[1],r:24},svg);S('text',{x:p[0],y:p[1]+6,'text-anchor':'middle',class:'nm'},svg,name);
+    const t=S('text',{x:p[0],y:p[1]+43,'text-anchor':'middle',class:'tg'},svg),a=S('tspan',{},t),b=S('tspan',{class:'b'},t);return{c,a,b,p}};
+  const nI=PI.map((p,i)=>mk(p,'x'+SB[i])),nH=PH.map((p,j)=>mk(p,'h'+SB[j])),nO=PO.map((p,k)=>mk(p,K===1?'ŷ':'p'+SB[k]));
+  const tag=(n,a,b)=>{n.a.textContent=a||'';n.b.textContent=(a&&b?'\u2003':'')+(b||'')};
+  const lab=(a,b,t,txt,k)=>S('text',{x:a[0]+(b[0]-a[0])*t,y:a[1]+(b[1]-a[1])*t-6,'text-anchor':'middle',class:'el'+(k?' k':'')},lg,txt);
+  const pickable=mode==='V'?nO:((mode==='w'||mode==='notation'||(mode==='h'&&K===3))?nH:null);
+  let step=0,sel=1,iv=null;
+  function draw(){
+    const cls=(e,c)=>e.setAttribute('class',c);
+    eIH.concat(eHO).forEach(r=>r.forEach(e=>cls(e,'')));
+    nI.concat(nH,nO).forEach(n=>{cls(n.c,'');tag(n)});lg.innerHTML='';if(cap)cap.innerHTML='';
+    if(pickable)pickable.forEach(n=>n.c.classList.add('pick'));
+    const all=(E,c)=>E.forEach(r=>r.forEach(e=>cls(e,c)));
+    const dead=()=>nH.forEach((n,j)=>{if(D.z[j]<=0)n.c.classList.add('dead')});
+    const gr=n=>n.c.classList.add('gr'),j=sel;
+    if(mode==='fwd'){nI.forEach((n,i)=>tag(n,n2(D.x[i])));
+      if(K===1){if(step<1)nH.concat(nO).forEach(n=>n.c.classList.add('off'));else if(step<3)nO[0].c.classList.add('off');
+        if(step>=1){all(eIH,'fw');nH.forEach((n,q)=>tag(n,'z = '+n2(D.z[q])))}
+        if(step>=2){nH.forEach((n,q)=>tag(n,'h = '+n2(D.h[q])));dead()}
+        if(step>=3){all(eHO,'fw');tag(nO[0],'ŷ = '+n2(R.yh))}}
+      else{all(eIH,'fw');nH.forEach((n,q)=>tag(n,'h = '+n2(D.h[q])));dead();
+        if(step<1)nO.forEach(n=>n.c.classList.add('off'));
+        if(step>=1){all(eHO,'fw');nO.forEach((n,k)=>tag(n,'s = '+n2(R.s[k])))}
+        if(step>=2)nO.forEach((n,k)=>tag(n,'p = '+n2(R.p[k])))}}
+    else if(mode==='notation'){eIH[j].forEach((e,i)=>{cls(e,'fw');lab(PI[i],PH[j],.42,'w'+SB[j]+SB[i],1)});cls(eHO[0][j],'fw');lab(PH[j],PO[0],.5,'v'+SB[j],1);
+      tag(nH[j],'z'+SB[j]+' → h'+SB[j]+',  bias b'+SB[j]);tag(nO[0],'bias c');cap.innerHTML='Click a hidden neuron to see its weights.'}
+    else if(mode==='e'){gr(nO[0]);tag(nO[0],'ŷ = '+n2(R.yh),'e = '+n2(R.e));cap.innerHTML='The target is <i>y</i> = 1, so the error is <i>e</i> = <i>ŷ</i> − <i>y</i> = '+n2(R.e)+'.'}
+    else if(mode==='v'){nH.forEach((n,q)=>tag(n,'h = '+n2(D.h[q])));dead();gr(nO[0]);tag(nO[0],'','e = '+n2(R.e));
+      eHO[0].forEach((e,q)=>{cls(e,'gr');lab(PH[q],PO[0],.36,n2(R.e*D.h[q]))});cap.innerHTML='On each amber edge: ∂ℒ/∂<i>v<sub>j</sub></i> = <i>e</i> · <i>h<sub>j</sub></i>'}
+    else if(mode==='c'){if(K===1){gr(nO[0]);tag(nO[0],'','∂ℒ/∂c = '+n2(R.e))}else nO.forEach((n,k)=>{gr(n);tag(n,'','∂ℒ/∂c = '+n2(R.e[k]))});
+      cap.innerHTML='A bias feeds its output directly, so its gradient is the error itself.'}
+    else if(mode==='h'&&K===1){tag(nO[0],'','e = '+n2(R.e));gr(nO[0]);eHO[0].forEach((e,q)=>{cls(e,'gr');lab(PH[q],PO[0],.5,'v = '+n2(R.v[q]),1)});
+      nH.forEach((n,q)=>{gr(n);tag(n,'','∂ℒ/∂h = '+n2(R.dh[q]))});cap.innerHTML='The error travels back along each weight <i>v<sub>j</sub></i>.'}
+    else if(mode==='h'){nO.forEach((n,k)=>{gr(n);tag(n,'','e = '+n2(R.e[k]));cls(eHO[k][j],'gr');lab(PH[j],PO[k],.66,'V = '+n2(R.V[k][j]),1)});
+      gr(nH[j]);tag(nH[j],'','∂ℒ/∂h = '+n2(R.dh[j]));cap.innerHTML='A hidden neuron collects error from all three classes. Click a hidden neuron.'}
+    else if(mode==='relu'){nH.forEach((n,q)=>{tag(n,'z = '+n2(D.z[q]),'δ = '+n2(R.d[q]));if(D.z[q]>0)gr(n)});dead();cap.innerHTML='Where <i>z</i> ≤ 0 the ReLU is off and blocks the error: <i>δ</i> = 0.'}
+    else if(mode==='w'){nI.forEach((n,i)=>tag(n,'x = '+n2(D.x[i])));gr(nH[j]);tag(nH[j],'','δ = '+n2(R.d[j]));
+      eIH[j].forEach((e,i)=>{cls(e,'gr');lab(PI[i],PH[j],.36,n2(R.d[j]*D.x[i]))});cap.innerHTML='On each amber edge: ∂ℒ/∂<i>w<sub>ji</sub></i> = <i>δ<sub>j</sub></i> · <i>x<sub>i</sub></i>. Click a hidden neuron.'}
+    else if(mode==='b'){nH.forEach((n,q)=>{tag(n,'','∂ℒ/∂b = '+n2(R.d[q]));if(D.z[q]>0)gr(n)});dead();cap.innerHTML='Each hidden bias gets its neuron’s <i>δ<sub>j</sub></i>.'}
+    else if(mode==='s'){nO.forEach((n,k)=>{gr(n);tag(n,'p = '+n2(R.p[k]),'p − y = '+n2(R.e[k]))});cap.innerHTML='The true class is 2, so <i>y</i> = (0, 1, 0).'}
+    else if(mode==='V'){nH.forEach((n,q)=>tag(n,'h = '+n2(D.h[q])));dead();gr(nO[j]);tag(nO[j],'','e = '+n2(R.e[j]));
+      eHO[j].forEach((e,q)=>{cls(e,'gr');lab(PH[q],PO[j],.36,n2(R.e[j]*D.h[q]))});cap.innerHTML='On each amber edge: ∂ℒ/∂<i>V<sub>kj</sub></i> = (<i>p<sub>k</sub></i> − <i>y<sub>k</sub></i>) · <i>h<sub>j</sub></i>. Click an output.'}
+    else if(mode==='all'){if(step>=1){gr(nO[0]);tag(nO[0],'','e = '+n2(R.e))}if(step>=2)all(eHO,'gr');
+      if(step>=3){nH.forEach((n,q)=>{tag(n,'','δ = '+n2(R.d[q]));if(D.z[q]>0)gr(n)});dead()}if(step>=4)eIH.forEach((r,q)=>r.forEach(e=>cls(e,D.z[q]>0?'gr':'')));
+      cap.innerHTML='The error flows from the output back to every weight.'}
+  }
+  if(pickable)pickable.forEach((n,q)=>n.c.addEventListener('click',()=>{clearInterval(iv);iv=null;sel=q;draw()}));
+  draw();
+  return{enter(){clearInterval(iv);if(pickable){sel=1;draw();if(!RM)iv=setInterval(()=>{sel=(sel+1)%pickable.length;draw()},1900)}},
+    step(k){step=k;draw()},leave(){clearInterval(iv)}};
+};
+
+V.reluD=el=>{
+  el.style.cssText='display:flex;flex-direction:column;align-items:center;gap:8px';
+  const row=H('div','row',el);row.style.gap='50px';
+  const c1=H('div','col',row),c2=H('div','col',row);
+  H('div','math sm',c1,M('h_j = \\max\\lb 0, z_j\\rb'));
+  const p1=Plot(c1,{w:430,h:280,x:[-3,3],y:[-.6,3],xt:[-2,2],yt:[1,2],pad:22,label:'ReLU'});p1.curve(relu);
+  const d1=S('circle',{r:8,class:'kink'},p1.svg),tn=S('path',{class:'cv amber',style:'stroke-width:3'},p1.g);
+  const lbl=H('div','math sm',c2);
+  const p2=Plot(c2,{w:430,h:280,x:[-3,3],y:[-.3,1.5],xt:[-2,2],yt:[1],pad:22,label:'Derivative of ReLU: 0 below zero, 1 above'});
+  S('path',{d:'M'+p2.sx(-3)+' '+p2.sy(0)+'L'+p2.sx(0)+' '+p2.sy(0),class:'cv'},p2.g);S('path',{d:'M'+p2.sx(0)+' '+p2.sy(1)+'L'+p2.sx(3)+' '+p2.sy(1),class:'cv'},p2.g);
+  S('circle',{cx:p2.sx(0),cy:p2.sy(1),r:6,style:'fill:var(--stage);stroke:var(--blue);stroke-width:3'},p2.svg);S('circle',{cx:p2.sx(0),cy:p2.sy(0),r:6,style:'fill:var(--blue)'},p2.svg);
+  const d2=S('circle',{r:8,class:'kink'},p2.svg);
+  const c=H('div','gctl',el);c.style.width='560px';let stop=null;
+  function draw(z){const g=z>0?1:0;d1.setAttribute('cx',p1.sx(z));d1.setAttribute('cy',p1.sy(relu(z)));d2.setAttribute('cx',p2.sx(z));d2.setAttribute('cy',p2.sy(g));
+    tn.setAttribute('d','M'+p1.sx(z-.8)+' '+p1.sy(relu(z)-.8*g)+'L'+p1.sx(z+.8)+' '+p1.sy(relu(z)+.8*g));
+    lbl.innerHTML=M("\\ReLU'(z_j) = ")+'<b class="gr">'+g+'</b>'}
+  const sl=Slider(c,'<i>z<sub>j</sub></i>',-3,3,.1,1.5,v=>{stop&&stop();draw(v)});draw(1.5);
+  return{enter(){stop&&stop();sl.set(1.5);draw(1.5);let cancel=null;const t=setTimeout(()=>{cancel=tween(2200,u=>{const z=1.5-3.5*ease(u);sl.set(z);draw(z)})},700);stop=()=>{clearTimeout(t);cancel&&cancel()}},leave(){stop&&stop()}};
+};
+
+V.lossPlot=el=>{
+  const y=1,p=Plot(el,{w:560,h:380,x:[-2,4],y:[-.4,4.6],xt:[-1,1,2,3],yt:[1,2,3,4],pad:26,label:'Squared-error loss as a function of the prediction'});
+  p.curve(v=>.5*(v-y)*(v-y));S('text',{x:p.sx(4)-4,y:p.sy(0)+22,'text-anchor':'end',class:'tk',style:'font-style:italic'},p.svg,'ŷ');
+  S('text',{x:p.sx(1),y:p.sy(0)+40,'text-anchor':'middle',class:'st'},p.svg,'target y = 1');
+  const tn=S('path',{class:'cv amber',style:'stroke-width:3'},p.g),dot=S('circle',{r:8,class:'kink'},p.svg);
+  const side=document.getElementById('lossSide');
+  const a=H('div','stat',side,'<span class="n"></span><span class="l">loss ℒ</span>'),b=H('div','stat',side,'<span class="n" style="color:var(--amber)"></span><span class="l">slope ∂ℒ/∂ŷ = ŷ − y</span>');
+  const c=H('div','gctl',side);c.style.width='330px';
+  function draw(v){const L=.5*(v-y)*(v-y),g=v-y;dot.setAttribute('cx',p.sx(v));dot.setAttribute('cy',p.sy(L));
+    tn.setAttribute('d','M'+p.sx(v-.9)+' '+p.sy(L-.9*g)+'L'+p.sx(v+.9)+' '+p.sy(L+.9*g));a.firstChild.textContent=L.toFixed(2);b.firstChild.textContent=n2(g)}
+  const sl=Slider(c,'<i>ŷ</i>',-2,4,.1,2,draw);draw(2);
+  return{enter(){sl.set(2);draw(2)}};
+};
+
+V.train=el=>{
+  const D=MODEL,p=Plot(el,{w:540,h:360,x:[0,10],y:[0,.56],xt:[2,4,6,8,10],yt:[.25,.5],pad:30,label:'Loss falling toward zero over gradient steps'});
+  const line=S('path',{class:'cv'},p.g),dg=S('g',{},p.svg);
+  S('text',{x:p.sx(10),y:p.sy(0)+40,'text-anchor':'end',class:'st'},p.svg,'update number');
+  const ctl=document.getElementById('trainCtl');
+  const st=H('div','row',ctl);st.style.cssText='justify-content:flex-start;gap:40px';
+  const a=H('div','stat',st,'<span class="n"></span><span class="l">prediction ŷ (target 1)</span>'),b=H('div','stat',st,'<span class="n" style="color:var(--amber)"></span><span class="l">loss ℒ</span>');
+  let W,bb,v,c,hist,eta=.01,iv=null;
+  const fw=()=>{const z=W.map((r,j)=>r[0]*D.x[0]+r[1]*D.x[1]+bb[j]),h=z.map(relu),yh=v.reduce((s,q,j)=>s+q*h[j],c);return{z,h,yh}};
+  function draw(){const f=fw(),L=.5*(f.yh-1)*(f.yh-1);a.firstChild.textContent=f.yh.toFixed(2);b.firstChild.textContent=L.toFixed(3);
+    line.setAttribute('d',hist.map((q,i)=>(i?'L':'M')+p.sx(i).toFixed(1)+' '+p.sy(Math.min(q,.6)).toFixed(1)).join(''));
+    dg.innerHTML='';hist.forEach((q,i)=>S('circle',{cx:p.sx(i),cy:p.sy(Math.min(q,.6)),r:5,class:'kink'},dg))}
+  function reset(){W=D.W.map(r=>r.slice());bb=D.b.slice();v=D.reg.v.slice();c=D.reg.c;const f=fw();hist=[.5*(f.yh-1)*(f.yh-1)];draw()}
+  function step(){if(hist.length>10)return;const f=fw(),e=f.yh-1,d=v.map((q,j)=>f.z[j]>0?e*q:0);
+    v=v.map((q,j)=>q-eta*e*f.h[j]);c-=eta*e;W=W.map((r,j)=>[r[0]-eta*d[j]*D.x[0],r[1]-eta*d[j]*D.x[1]]);bb=bb.map((q,j)=>q-eta*d[j]);
+    const g=fw();hist.push(.5*(g.yh-1)*(g.yh-1));draw()}
+  const stopA=()=>{clearInterval(iv);iv=null};
+  Slider(ctl,'Learning rate <i>η</i>',.002,.03,.002,.01,x=>{eta=x},true,x=>x.toFixed(3));
+  const bs=H('div','btns',ctl);H('button','',bs,'One update').onclick=()=>{stopA();step()};H('button','',bs,'Start over').onclick=()=>{stopA();reset()};
+  reset();
+  return{enter(){stopA();reset();if(!RM){let k=0;iv=setInterval(()=>{step();if(++k>=10)stopA()},520)}},leave(){stopA()}};
+};
+
+V.ce=el=>{
+  const p=Plot(el,{w:560,h:380,x:[0,1],y:[-.3,4.8],xt:[.25,.5,.75,1],yt:[1,2,3,4],pad:28,label:'Cross-entropy loss: large when the true class gets low probability, zero at probability 1'});
+  const f=q=>-Math.log(Math.max(q,.008));p.curve(f);
+  S('text',{x:p.sx(1),y:p.sy(0)+42,'text-anchor':'end',class:'st'},p.svg,'probability given to the true class');
+  const dot=S('circle',{r:8,class:'kink'},p.svg),side=document.getElementById('ceSide');
+  const a=H('div','stat',side,'<span class="n" style="color:var(--amber)"></span><span class="l">loss ℒ = −log p</span>'),c=H('div','gctl',side);c.style.width='330px';
+  function draw(q){dot.setAttribute('cx',p.sx(q));dot.setAttribute('cy',p.sy(f(q)));a.firstChild.textContent=f(q).toFixed(2)}
+  const sl=Slider(c,'<i>p</i><sub>true</sub>',.01,1,.01,.33,draw,false,x=>x.toFixed(2));draw(.33);
+  return{enter(){sl.set(.33);draw(.33)}};
+};
+
+V.softmax=el=>{
+  el.style.cssText+=';display:flex;flex-direction:column;align-items:center;gap:18px';
+  const bars=H('div','sbars',el),B=[0,1,2].map(k=>{const d=H('div','sbar',bars);const v=H('b','',d),i=H('i','',d);H('span','math sm',d,M('p_'+(k+1)));return{v,i}});
+  const c=H('div','gctl',el);c.style.width='360px';const s=MODEL.cls.s.slice();
+  function draw(){const ex=s.map(Math.exp),Z=ex[0]+ex[1]+ex[2];B.forEach((b,k)=>{const q=ex[k]/Z;b.v.textContent=q.toFixed(2);b.i.style.height=(q*150)+'px'})}
+  const sl=[0,1,2].map(k=>Slider(c,'<i>s</i><sub>'+(k+1)+'</sub>',-3,3,.1,s[k],x=>{s[k]=x;draw()}));draw();
+  return{enter(){MODEL.cls.s.forEach((q,k)=>{s[k]=q;sl[k].set(q)});draw()}};
+};
+
+V.ml=el=>{
+  const bw=el.dataset.mode==='bwd',LY=[2,4,3,2],X=[125,392,659,926],W=1050,Hh=236,T=bw?52:66;
+  el.style.cssText='position:relative;width:1050px;height:'+(bw?470:440)+'px';
+  const svg=S('svg',{viewBox:'0 0 '+W+' '+Hh,width:W,height:Hh,class:'nv',style:'position:absolute;left:0;top:'+T+'px',role:'img','aria-label':'A network with an input layer and three further layers'},el);
+  const pos=LY.map((n,l)=>Array.from({length:n},(_,i)=>[X[l],Hh/2+(i-(n-1)/2)*56]));
+  const eg=[],ng=[];
+  for(let l=0;l<3;l++){const g=[];pos[l].forEach(a=>pos[l+1].forEach(b=>g.push(S('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1]},svg))));eg.push(g)}
+  for(let l=0;l<4;l++)ng.push(pos[l].map(a=>S('circle',{cx:a[0],cy:a[1],r:17},svg)));
+  const lab=(x,y,m,cls,size)=>{const d=H('div','math lb '+(cls||''),el,M(m));d.style.left=x+'px';d.style.top=y+'px';if(size)d.style.fontSize=size+'px';return d};
+  const hd=(x,y,t)=>{const d=H('div','lb hd',el,t);d.style.left=x+'px';d.style.top=y+'px';return d};
+  const B=T+Hh+6,show=[];// show: [element, minStep]
+  const mid=l=>(X[l-1]+X[l])/2;
+  if(!bw){
+    ['input','layer 1','layer 2','layer 3 = <i>L</i>'].forEach((t,l)=>hd(X[l],0,t));
+    show.push([lab(X[0],B,'a^{(0)} = x',0,22),0]);
+    for(let l=1;l<=3;l++){show.push([lab(mid(l),26,'\\f{W^{('+l+')}, b^{('+l+')}}',0,23),l]);
+      show.push([lab(X[l],B,'z^{('+l+')} = W^{('+l+')}a^{('+(l-1)+')} + b^{('+l+')}',0,22),l]);show.push([lab(X[l],B+44,'a^{('+l+')} = g^{('+l+')}(z^{('+l+')})',0,22),l])}
+    show.push([lab(X[3],B+90,'\\text{prediction} = a^{(3)} \\to \\L',0,22),3]);
+  }else{
+    hd(X[0],-30,'kept from the forward pass:').style.transform='translateX(-35%)';
+    for(let l=0;l<=3;l++)lab(X[l],0,'\\f{a^{('+l+')}}',0,24);
+    show.push([lab(X[3],B,'\\g{\\delta^{(3)}}',0,30),1]);show.push([lab(X[3],B+46,'= \\nabla_{z^{(3)}}\\L',0,20),1]);
+    for(let l=2;l>=1;l--){const s=2*(3-l)+1;show.push([lab(X[l],B,'\\g{\\delta^{('+l+')}}',0,30),s]);
+      show.push([lab(X[l],B+46,"= \\big((W^{("+(l+1)+")})^\\top \\g{\\delta^{("+(l+1)+")}}\\big) \\odot g'(z^{("+l+")})",0,20),s])}
+    for(let l=3;l>=1;l--)show.push([lab(mid(l),B+104,'\\nabla_{W^{('+l+')}}\\L = \\g{\\delta^{('+l+')}} \\f{(a^{('+(l-1)+')})^\\top}',0,23),2*(3-l)+2]);
+  }
+  return{step(k){show.forEach(s=>s[0].classList.toggle('off',k<s[1]));
+    for(let l=0;l<4;l++)ng[l].forEach(c=>c.setAttribute('class',bw?(l>=1&&k>=2*(3-l)+1?'gr':''):(l<=k?'':'off')));
+    for(let l=1;l<=3;l++)eg[l-1].forEach(e=>e.setAttribute('class',bw?(k>=2*(3-l)+2?'gr':'fw'):(l<=k?'fw':'')))}};
+};
+
+V.dims=el=>{
+  const n=[2,4,3,2];let l=1;el.style.cssText+=';display:flex;flex-direction:column;align-items:flex-start';
+  const bar=H('div','btns',el),bt=[1,2].map(q=>{const b=H('button','',bar,'Layer ℓ = '+q);b.onclick=()=>{l=q;draw()};return b}),body=H('div','dm',el);
+  const mat=(r,c,k,name)=>'<div class="mx"><div class="mg '+k+'" style="grid-template-columns:repeat('+c+',22px)">'+'<i></i>'.repeat(r*c)+'</div><div class="math mc">'+M(name)+'</div><div class="md">'+r+' × '+c+'</div></div>';
+  const op=s=>'<div class="mo">'+s+'</div>',row=(t,h)=>'<div class="dr"><div class="dl">'+t+'</div>'+h+'</div>';
+  function draw(){const a=n[l-1],b=n[l],c=n[l+1];bt.forEach((x,i)=>x.classList.toggle('act',i+1===l));
+    body.innerHTML=row('Forward',mat(b,1,'f','z^{('+l+')}')+op('=')+mat(b,a,'f','W^{('+l+')}')+op('·')+mat(a,1,'f','a^{('+(l-1)+')}')+op('+')+mat(b,1,'f','b^{('+l+')}'))+
+      row('Backward',mat(b,1,'g','\\delta^{('+l+')}')+op('=')+mat(b,c,'f','(W^{('+(l+1)+')})^\\top')+op('·')+mat(c,1,'g','\\delta^{('+(l+1)+')}')+op('⊙')+mat(b,1,'f',"g'(z^{("+l+")})"))+
+      row('Gradient',mat(b,a,'g','\\nabla_{W^{('+l+')}}\\L')+op('=')+mat(b,1,'g','\\delta^{('+l+')}')+op('·')+mat(1,a,'f','(a^{('+(l-1)+')})^\\top'))}
+  draw();return{enter(){l=1;draw()}};
+};
+
+V.gd=el=>{
+  const f=w=>.3*(w-1)*(w-1)+.15*Math.sin(2.2*w)+.7,df=w=>.6*(w-1)+.33*Math.cos(2.2*w);
+  const p=Plot(el,{w:540,h:340,x:[-3,4.5],y:[0,5.8],pad:26,label:'A loss curve with a ball stepping downhill'});p.curve(f);
+  S('text',{x:p.sx(4.5)-4,y:p.sy(0)+22,'text-anchor':'end',class:'st'},p.svg,'a weight');S('text',{x:p.sx(0)+8,y:p.sy(5.8)+14,class:'st'},p.svg,'loss ℒ');
+  const tr=S('g',{},p.g),ball=S('circle',{r:10,class:'kink'},p.svg);let w,eta=.4,iv=null;
+  const place=()=>{ball.setAttribute('cx',p.sx(w));ball.setAttribute('cy',p.sy(f(w)))};
+  const reset=()=>{w=-2.6;tr.innerHTML='';place()};
+  const step=()=>{const w2=Math.max(-3,Math.min(4.5,w-eta*df(w)));S('line',{x1:p.sx(w),y1:p.sy(f(w)),x2:p.sx(w2),y2:p.sy(f(w2)),style:'stroke:var(--amber);stroke-width:2'},tr);S('circle',{cx:p.sx(w),cy:p.sy(f(w)),r:4,style:'fill:var(--amber)'},tr);w=w2;place()};
+  const stopA=()=>{clearInterval(iv);iv=null},ctl=document.getElementById('gdCtl');
+  Slider(ctl,'Learning rate <i>η</i>',.05,3,.05,.4,x=>{eta=x},true,x=>x.toFixed(2));
+  const bs=H('div','btns',ctl);H('button','',bs,'One step').onclick=()=>{stopA();step()};H('button','',bs,'Start over').onclick=()=>{stopA();reset()};reset();
+  return{enter(){stopA();reset();if(!RM){let k=0;iv=setInterval(()=>{step();if(++k>=9)stopA()},600)}},leave(){stopA()}};
+};
+/* ---------- deck ---------- */
+const stage=document.getElementById('stage'),slides=[].slice.call(document.querySelectorAll('.slide'));
+const bar=document.getElementById('bar'),count=document.getElementById('count');
+slides.forEach(s=>{let n=0;s.querySelectorAll('.frag').forEach(f=>{if(f.dataset.f)f._i=+f.dataset.f;else f._i=++n;n=Math.max(n,f._i)});s._n=Math.max(n,+s.dataset.steps||0);s._v=null});
+let cur=-1,step=0;
+function inst(s){if(!s._v){s._v=[];s.querySelectorAll('[data-v]').forEach(e=>{try{s._v.push(V[e.dataset.v](e,s)||{})}catch(err){console.error(e.dataset.v,err)}})}return s._v}
+function go(i,st){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  if(i!==cur){if(cur>=0){slides[cur].classList.remove('on');inst(slides[cur]).forEach(v=>v.leave&&v.leave())}
+    cur=i;slides[cur].classList.add('on');inst(slides[cur]).forEach(v=>v.enter&&v.enter())}
+  step=Math.max(0,Math.min(slides[cur]._n,st));
+  slides[cur].querySelectorAll('.frag').forEach(f=>f.classList.toggle('show',f._i<=step));
+  inst(slides[cur]).forEach(v=>v.step&&v.step(step));
+  count.textContent=(cur+1)+' / '+slides.length;bar.style.width=((cur+1)/slides.length*100)+'%';
+  try{history.replaceState(null,'','#s-'+(cur+1))}catch(e){}
+}
+const next=()=>{if(step<slides[cur]._n)go(cur,step+1);else if(cur<slides.length-1)go(cur+1,0)};
+const prev=()=>{if(step>0)go(cur,step-1);else if(cur>0)go(cur-1,slides[cur-1]._n)};
+document.getElementById('next').onclick=next;document.getElementById('prev').onclick=prev;
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;const t=e.target,inp=t&&(t.tagName==='INPUT'||t.tagName==='BUTTON');
+  if(e.key==='ArrowRight'||e.key==='PageDown'){if(t&&t.tagName==='INPUT'&&e.key==='ArrowRight')return;e.preventDefault();next()}
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){if(t&&t.tagName==='INPUT'&&e.key==='ArrowLeft')return;e.preventDefault();prev()}
+  else if(e.key===' '&&!inp){e.preventDefault();next()}
+  else if(e.key==='Home'&&!inp)go(0,0);else if(e.key==='End'&&!inp)go(slides.length-1,0);
+});
+let tx=null,ty=0;
+stage.addEventListener('touchstart',e=>{const t=e.target;tx=(t.tagName==='INPUT'||t.tagName==='BUTTON')?null:e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+stage.addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)(dx<0?next:prev)();tx=null},{passive:true});
+function fit(){const d=document.getElementById('deck'),s=Math.min(d.clientWidth/1280,d.clientHeight/720);stage.style.transform='translate(-50%,-50%) scale('+s+')'}
+addEventListener('resize',fit);fit();
+function fromHash(){const m=/^#s-(\d+)$/.exec(location.hash);return m?+m[1]-1:0}
+addEventListener('hashchange',()=>{const i=fromHash();if(i!==cur)go(i,0)});
+go(fromHash(),0);
+})();
+</script>
+</body>
+</html>
