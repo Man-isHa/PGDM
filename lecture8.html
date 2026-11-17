@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Optimizing Neural Networks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6ECF2; --stage:#F7F9FC; --ink:#16263A; --soft:#5B6B7E; --line:#C5D0DC;
+  --blue:#2457C5; --blue-pale:#DCE6FA; --amber:#D07A00; --amber-pale:#FBE6BF;
+  --panel:#FFFFFF; --bad:#C2413A;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#070D16; --stage:#0F1A29; --ink:#E6EDF5; --soft:#94A4B7; --line:#2B3C52;
+    --blue:#7FA8FF; --blue-pale:#1A2B4C; --amber:#FFB23E; --amber-pale:#4A3511;
+    --panel:#17263A; --bad:#FF7B72;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#070D16; --stage:#0F1A29; --ink:#E6EDF5; --soft:#94A4B7; --line:#2B3C52;
+  --blue:#7FA8FF; --blue-pale:#1A2B4C; --amber:#FFB23E; --amber-pale:#4A3511;
+  --panel:#17263A; --bad:#FF7B72;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);overflow:hidden;font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif}
+#deck{position:relative;width:100%;height:100%;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;background:var(--stage);transform-origin:center;border-radius:6px;overflow:hidden;font-size:26px;line-height:1.35}
+.slide{position:absolute;inset:0;padding:52px 76px 70px;display:flex;flex-direction:column;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s .35s}
+.slide.on{opacity:1;visibility:visible;transition:opacity .35s ease}
+h1{font-size:76px;line-height:1.02;font-weight:800;letter-spacing:-.02em;margin:0}
+h2{font-size:40px;line-height:1.1;font-weight:800;letter-spacing:-.015em;margin:0 0 6px}
+p{margin:0}
+.body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:26px;min-height:0;text-align:center}
+.row{display:flex;align-items:center;justify-content:center;gap:56px;width:100%}
+.col{display:flex;flex-direction:column;align-items:center;gap:16px;flex:1;min-width:0}
+.left{align-items:flex-start;text-align:left}
+.soft{color:var(--soft)} .small{font-size:20px} .big{font-size:32px}
+.imp{color:var(--blue);font-weight:600}
+.fire{color:var(--amber);font-weight:600}
+b,strong{font-weight:600}
+.frag{opacity:0;transform:translateY(8px);transition:opacity .45s ease,transform .45s ease}
+.frag.show{opacity:1;transform:none}
+/* math */
+.math{font-family:'STIX Two Text','Cambria Math',Georgia,serif;font-size:34px;line-height:1.3;white-space:nowrap}
+.math i{font-style:italic}
+.math sub,.math sup{font-size:.62em}
+.math.sm{font-size:27px}
+.boxed{display:inline-block;border:2px solid var(--blue);border-radius:8px;padding:10px 26px;background:var(--panel)}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.86em;line-height:1.15}
+.fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 .3em 2px}
+.fr>span:last-child{padding:2px .3em 0}
+.cases{display:inline-flex;align-items:center;gap:10px}
+.cases .brace{font-size:96px;line-height:.9;font-weight:400;transform:scaleX(.7);margin:-10px -6px 0}
+.cases .rows{display:grid;grid-template-columns:auto auto;column-gap:26px;row-gap:4px;text-align:left}
+.cases .rows span:nth-child(even){font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:24px;color:var(--soft);align-self:center}
+.ineq{display:grid;grid-template-columns:auto auto auto;column-gap:22px;row-gap:8px;text-align:left;align-items:baseline}
+/* figures */
+figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:10px}
+figure img{display:block;max-width:100%;border-radius:10px;background:#fff}
+figcaption{font-size:18px;color:var(--soft)}
+.stack{position:relative;border-radius:10px;overflow:hidden;background:#000}
+.stack img{display:block;width:100%;height:100%;object-fit:contain;background:#000;border-radius:0}
+.stack img+img{position:absolute;inset:0}
+.stack img.frag{transform:none;transition:opacity .9s ease}
+/* tables */
+table.tt{border-collapse:collapse;font-family:'STIX Two Text',Georgia,serif;font-size:28px}
+.tt th,.tt td{padding:5px 20px;text-align:center}
+.tt thead th{border-bottom:2px solid var(--ink);font-weight:600}
+.tt th:nth-child(2),.tt td:nth-child(2){border-right:1.5px solid var(--line)}
+.tt tr.hl td{background:var(--amber-pale)}
+.tt td.ok{color:var(--blue)} .tt td.no{color:var(--bad)}
+.tt td.one{color:var(--amber);font-weight:600}
+/* plots */
+svg{display:block;overflow:visible}
+.ax{stroke:var(--soft);stroke-width:1.4}
+.tk{fill:var(--soft);font-size:16px;font-family:'STIX Two Text',Georgia,serif}
+.cv{fill:none;stroke:var(--blue);stroke-width:3.6;stroke-linejoin:round;stroke-linecap:round}
+.cv.thin{stroke-width:2;stroke:var(--soft);stroke-dasharray:6 6}
+.cv.amber{stroke:var(--amber)}
+.cv.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.5s ease .2s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.kink{fill:var(--amber);stroke:var(--stage);stroke-width:2}
+.st{fill:var(--soft);font-size:16px;font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.mt{fill:var(--ink);font-size:24px;font-family:'STIX Two Text',Georgia,serif;font-style:italic}
+/* networks */
+.net line{stroke:var(--line);stroke-width:1.5;transition:stroke .3s}
+.net .eg.on line{stroke:var(--amber);stroke-width:2.2}
+.net circle{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.6;transition:fill .3s,stroke .3s}
+.net .ng.on circle{fill:var(--amber);stroke:var(--amber)}
+.flow{stroke:var(--soft);stroke-width:2;fill:none;stroke-dasharray:7 9;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.node{fill:var(--blue-pale);stroke:var(--blue);stroke-width:3}
+.node.lit{fill:var(--amber);stroke:var(--amber)}
+.edge{stroke:var(--soft);stroke-width:2;fill:none}
+.edge.lit{stroke:var(--amber);stroke-width:3}
+/* gate widget */
+.gate{display:flex;align-items:center;justify-content:center;gap:44px;width:100%}
+.gate .region{fill:var(--blue-pale)}
+.gate .bline{stroke:var(--blue);stroke-width:3.5;stroke-linecap:round}
+.gate .frame{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.gate .pt{stroke-width:3;stroke:var(--soft);fill:var(--stage)}
+.gate .pt.t1{stroke:var(--amber);fill:var(--amber)}
+.gate .pt.bad{stroke:var(--bad);stroke-dasharray:4 3}
+.gate .pt.cur{stroke-width:6;stroke:var(--ink)}
+.gate .pl{font-size:15px;fill:var(--soft);font-family:'STIX Two Text',Georgia,serif}
+.gctl>button{align-self:flex-start}
+.gctl{display:flex;flex-direction:column;gap:12px;align-items:stretch;width:330px;text-align:left}
+.sl{display:grid;grid-template-columns:54px 1fr 56px;align-items:center;gap:10px;font-family:'STIX Two Text',Georgia,serif;font-size:26px}
+.sl.wide{grid-template-columns:150px 1fr 30px;white-space:nowrap;font-family:inherit;font-size:21px}
+.sl output{text-align:right;font-variant-numeric:tabular-nums;font-size:22px}
+input[type=range]{width:100%;accent-color:var(--blue);height:26px;margin:0;cursor:pointer}
+.status{font-size:21px;min-height:58px;color:var(--soft)}
+.status.win{color:var(--blue);font-weight:600}
+.live{font-size:22px;white-space:nowrap}
+button{font:inherit;font-size:19px;color:var(--ink);background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:7px 16px;cursor:pointer}
+button:hover{border-color:var(--blue)}
+button.act{background:var(--blue);border-color:var(--blue);color:var(--stage)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.log{font-family:'STIX Two Text',Georgia,serif;font-size:21px;white-space:nowrap;line-height:1.5;min-height:112px}
+.stat{display:flex;flex-direction:column;align-items:flex-start;gap:0;text-align:left}
+.stat .n{font-size:44px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+.stat .l{font-size:19px;color:var(--soft)}
+canvas{display:block;border-radius:10px;border:1.5px solid var(--line)}
+ul.pts,ol.pts{margin:0;padding-left:1.1em;text-align:left;display:flex;flex-direction:column;gap:22px;font-size:30px}
+.bar{height:16px;border-radius:8px;background:var(--line);width:100%;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--amber);border-radius:8px}
+/* history */
+.year{font-size:112px;font-weight:800;line-height:.95;letter-spacing:-.03em;color:var(--blue)}
+.tl{position:absolute;left:76px;right:76px;bottom:64px;height:46px}
+.tl:before{content:"";position:absolute;left:0;right:0;top:9px;height:2px;background:var(--line)}
+.tl span{position:absolute;top:0;transform:translateX(-50%);font-size:15px;color:var(--soft);padding-top:24px;font-variant-numeric:tabular-nums}
+.tl span:before{content:"";position:absolute;left:50%;top:4px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--stage);border:2px solid var(--soft)}
+.tl span.past:before{background:var(--soft)}
+.tl span.now{color:var(--amber);font-weight:600}
+.tl span.now:before{background:var(--amber);border-color:var(--amber);box-shadow:0 0 0 6px var(--amber-pale)}
+.hist .body{padding-bottom:70px}
+/* chrome */
+#bar{position:absolute;left:0;bottom:0;height:4px;background:var(--blue);transition:width .3s}
+#nav{position:absolute;right:26px;bottom:16px;display:flex;align-items:center;gap:10px;font-size:16px;color:var(--soft);font-variant-numeric:tabular-nums}
+#nav button{font-size:18px;padding:3px 12px;line-height:1.2}
+@media (prefers-reduced-motion: reduce){
+  .flow,.cv.draw{animation:none;stroke-dashoffset:0}
+  .frag,.slide{transition:none}
+}
+.gr{color:var(--amber)} .fw{color:var(--blue)}
+.op{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1;margin:0 .14em}
+.op .sg{font-size:1.5em;line-height:1.05}
+.op .lim{font-size:.5em;min-height:1.15em;line-height:1.15}
+.ub{display:inline-flex;flex-direction:column;align-items:center;vertical-align:top}
+.ubl{font-size:.62em;margin-top:1px;color:var(--soft);text-align:center}
+.tx{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:.74em}
+.bp{font-size:1.55em;font-weight:300;vertical-align:-.14em;line-height:1}
+.math .boxed{padding:10px 24px}
+.legend{display:grid;grid-template-columns:auto auto;column-gap:22px;row-gap:16px;align-items:center;text-align:left;font-size:20px}
+/* annotated network */
+.nv line{stroke:var(--line);stroke-width:1.6;transition:stroke .3s}
+.nv line.fw{stroke:var(--blue);stroke-width:2}
+.nv line.gr{stroke:var(--amber);stroke-width:3.2}
+.nv circle{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.6;transition:fill .3s,stroke .3s}
+.nv circle.gr{fill:var(--amber-pale);stroke:var(--amber)}
+.nv circle.dead{fill:var(--stage);stroke:var(--line)}
+.nv circle.off{fill:var(--stage);stroke:var(--line)}
+.nv circle.pick{cursor:pointer}
+.nv .nm{font:italic 20px 'STIX Two Text',Georgia,serif;fill:var(--ink);pointer-events:none}
+.nv .tg{font:17px 'STIX Two Text',Georgia,serif;fill:var(--ink);paint-order:stroke;stroke:var(--stage);stroke-width:5px;stroke-linejoin:round}
+.nv .tg .b{fill:var(--amber);font-weight:600}
+.nv .el{font:600 18px 'STIX Two Text',Georgia,serif;fill:var(--amber);paint-order:stroke;stroke:var(--stage);stroke-width:6px;stroke-linejoin:round}
+.nv .el.k{fill:var(--ink)}
+/* loop */
+.loop{display:flex;align-items:center;gap:14px}
+.lp{padding:14px 26px;border-radius:999px;border:2px solid var(--line);background:var(--panel);font-size:24px;font-weight:600;transition:background .35s,border-color .35s,color .35s}
+.lp.on{background:var(--amber);border-color:var(--amber);color:var(--stage)}
+.lpa{color:var(--soft);font-size:26px}
+/* chain + pipe */
+.chain{display:grid;grid-template-columns:110px 96px 110px 96px 110px 96px 110px 96px 110px;justify-items:center;align-items:center;row-gap:16px}
+.po{padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel);font-size:23px;min-width:64px;text-align:center}
+.chain .po{font-size:28px;min-width:96px;border-color:var(--blue);border-width:2px}
+.pa{color:var(--soft);font-size:24px}
+.pa.fwd{color:var(--blue);font-size:30px}
+.back{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--amber)}
+.back>span:first-child{font-size:32px;line-height:1}
+.back .math{font-size:23px}
+.pipe{display:grid;grid-template-columns:70px 30px 128px 30px 70px 30px 128px 30px 70px 30px 128px 30px 70px 30px 100px 30px 70px;justify-items:center;align-items:center;row-gap:12px}
+.pipe>div{white-space:nowrap}
+.pv{width:66px;height:66px;border-radius:50%;border:2.6px solid var(--blue);background:var(--blue-pale);display:flex;align-items:center;justify-content:center;font-size:24px}
+.pg{color:var(--amber);font-size:21px}
+.pg.big{font-size:32px;font-weight:600}
+.pn{font-size:18px;color:var(--soft)}
+.pd{color:var(--soft);font-size:24px}
+/* multilayer picture */
+.lb{position:absolute;transform:translateX(-50%);font-size:20px;transition:opacity .45s;white-space:nowrap}
+.lb.off{opacity:0}
+.lb.hd{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:17px;color:var(--soft)}
+/* dims */
+.dm{display:flex;flex-direction:column;gap:16px;margin-top:14px}
+.dr{display:flex;align-items:center;gap:12px}
+.dl{width:104px;text-align:left;font-size:20px;font-weight:600}
+.mx{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px}
+.mg{display:grid;gap:2px}
+.mg i{width:22px;height:22px;border-radius:3px;display:block}
+.mg.f i{background:var(--blue-pale);border:1.5px solid var(--blue)}
+.mg.g i{background:var(--amber-pale);border:1.5px solid var(--amber)}
+.mc{font-size:20px}
+.md{font-size:16px;color:var(--soft);font-variant-numeric:tabular-nums}
+.mo{font-size:26px;padding:0 2px;margin-bottom:46px}
+/* table */
+table.cmp{border-collapse:collapse;font-size:23px}
+.cmp th,.cmp td{padding:13px 30px;text-align:center}
+.cmp thead th{border-bottom:2px solid var(--ink);font-weight:600}
+.cmp td:first-child{text-align:left;font-weight:600;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:22px}
+.cmp tr.frag{transform:none}
+/* softmax bars */
+.sbars{display:flex;gap:26px;align-items:flex-end;height:230px}
+.sbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;width:74px}
+.sbar>i{display:block;width:100%;background:var(--blue);border-radius:6px 6px 0 0;transition:height .15s}
+.sbar>b{font-variant-numeric:tabular-nums;font-size:20px}
+.ubr{align-self:stretch;width:100%;height:11px;margin-top:4px;fill:none;stroke:var(--soft);stroke-width:1.6;stroke-linecap:round}
+.rows{display:grid;grid-template-columns:auto auto auto;column-gap:40px;row-gap:12px;align-items:center;text-align:left;font-size:23px}
+.rows .math{font-size:inherit}
+.math.dim,.rows .math.dim{font-size:19px;color:var(--soft)}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:24px;text-align:left;background:var(--panel);border:1.5px solid var(--line);border-left:6px solid var(--blue);border-radius:8px;padding:22px 30px;line-height:1.7;margin:0}
+a{color:var(--blue);text-underline-offset:4px}
+.cbox{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 6px;min-width:112px;border-radius:10px;border:2px solid var(--blue);background:var(--panel)}
+.cbox .math{font-size:21px}
+.cbox b{font-size:22px;color:var(--blue);font-variant-numeric:tabular-nums}
+.back b{font-variant-numeric:tabular-nums;font-size:20px}
+.dg{display:flex;gap:6px}
+.dgi{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.dgi.ok{color:var(--blue)} .dgi.no{color:var(--bad)}
+:root{--teal:#0B8577;--rose:#C2356B}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--teal:#4FD1C5;--rose:#FF8FB3}}
+:root[data-theme="dark"]{--teal:#4FD1C5;--rose:#FF8FB3}
+.c0{color:var(--blue)}.c1{color:var(--amber)}.c2{color:var(--teal)}.c3{color:var(--rose)}
+.tt th.c0,.tt th.c1,.tt th.c2,.tt th.c3,.cmp td.c0,.cmp td.c1,.cmp td.c2,.cmp td.c3{font-weight:700}
+.sq{white-space:nowrap}.sq>span{border-top:1.5px solid currentColor;padding:1px 2px 0;margin-left:-1px}
+.vec{display:inline-flex;flex-direction:column;align-items:center;padding:4px 14px;border-left:2.5px solid currentColor;border-right:2.5px solid currentColor;border-radius:8px;line-height:1.25}
+.hb{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:12px;font-size:20px;position:relative;width:100%}
+.hb i{display:block;height:26px;border-radius:5px}
+.hb b{position:absolute;left:176px;font-weight:400;font-size:19px}
+.cur{width:120px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;background:var(--blue-pale);border:2px solid var(--blue);border-radius:8px;font-size:20px}
+.lg{display:flex;flex-wrap:wrap;gap:8px 26px;align-items:center;justify-content:center;font-size:20px}
+.lg>span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.lg i.ch{display:inline-block;width:26px;height:5px;border-radius:3px}
+.lg em{font-style:normal;color:var(--soft);font-size:17px}
+.o2{position:relative;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+.o2 canvas{display:block;border:0;border-radius:0}
+.o2 svg{position:absolute;left:0;top:0}
+.info{font-size:21px;line-height:1.5;min-height:130px;text-align:left}
+.info b{font-variant-numeric:tabular-nums}
+.rt{border-collapse:collapse;font-size:21px;font-variant-numeric:tabular-nums}
+.rt td,.rt th{padding:6px 12px;text-align:right;white-space:nowrap}.rt td:first-child,.rt th:first-child{text-align:left;font-weight:600}
+.rt th{font-weight:400;color:var(--soft);font-size:17px;border-bottom:1.5px solid var(--line)}
+.sh{display:grid;grid-template-columns:auto repeat(4,64px);gap:12px 14px;align-items:center;font-size:24px}
+.sh b{display:flex;align-items:center;justify-content:center;height:56px;border-radius:10px;border:2.5px solid;background:var(--panel);font-size:26px;transition:transform .5s}
+.sh span{text-align:right;padding-right:10px;color:var(--soft);font-size:21px}
+.sl.wide{grid-template-columns:150px 1fr 58px}
+.hat{position:relative;display:inline-block;line-height:1}
+.hat::before{content:'^';position:absolute;left:50%;top:-.34em;transform:translateX(-42%) scaleX(1.25);font-style:normal;font-size:.82em;line-height:1}
+.sq>span{padding-top:.34em}
+.fr .hat{margin-top:.22em}
+</style>
+</head>
+<body>
+<div id="deck"><div id="stage">
+<!-- 1 -->
+<section class="slide">
+  <div class="body" style="gap:22px;align-items:flex-start;text-align:left">
+    <p class="soft">Foundations of Machine Learning</p>
+    <h1>Optimizing Neural Networks</h1>
+    <p class="soft big">From batch gradient descent to Adam</p>
+    <div data-v="opt2d" data-fn="valley" data-ms="sgd:0.018,adam:0.08" data-n="70" data-bare="1" data-w="940" style="margin-top:14px"></div>
+    <p class="soft small">Why the gradient update is only the beginning</p>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <h2>Previously: backpropagation</h2>
+  <div class="body" style="gap:34px">
+    <div class="math" data-m="g_t = \nabla_\theta L(\theta_t)"></div>
+    <div class="math frag" data-m="\boxed{\theta_{t+1} = \theta_t - \eta g_t}"></div>
+    <p class="imp big frag">But which examples should we use to compute the gradient?</p>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <h2>A one-parameter regression problem</h2>
+  <div class="body"><div class="row" style="gap:50px">
+    <div class="col" style="gap:26px">
+      <div class="math sm" data-m="\yhat = wx \quad\quad \ell_i(w) = \frac{1}{2}(wx_i - y_i)^2"></div>
+      <table class="tt" style="font-size:25px"><thead><tr><th>Example <i>i</i></th><th></th><th class="c0">1</th><th class="c1">2</th><th class="c2">3</th><th class="c3">4</th></tr></thead>
+        <tbody><tr><td><i>x<sub>i</sub></i></td><td></td><td>1</td><td>2</td><td>3</td><td>4</td></tr><tr><td><i>y<sub>i</sub></i></td><td></td><td>1</td><td>2.2</td><td>2.7</td><td>4.1</td></tr></tbody></table>
+      <p class="soft small">Only one parameter: <i>w</i>. No bias.</p>
+    </div>
+    <div class="col" style="flex:none" id="fitCol"><div data-v="fitLine"></div></div>
+  </div></div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <h2>Each example defines a loss curve</h2>
+  <div class="body" style="gap:12px">
+    <div class="math sm" data-m="\ell_i(w) = \frac{1}{2}(wx_i - y_i)^2"></div>
+    <div data-v="indLoss"></div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <h2>Where does each example want to go?</h2>
+  <div class="body" style="gap:10px">
+    <div class="math sm" data-m="\ell_i(w) \text{ is smallest at } w_i^* = \frac{y_i}{x_i}"></div>
+    <div data-v="indLoss" data-min="1" data-zoom="1"></div>
+    <p class="soft small">Different samples propose different weights.</p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <h2>The loss we actually want to minimize</h2>
+  <div class="body" style="gap:10px">
+    <div class="math sm" data-m="L(w) = \frac{1}{4} \sum_{i=1}^{4} \ell_i(w)"></div>
+    <div data-v="indLoss" data-full="1"></div>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <h2>A single gradient is easy</h2>
+  <div class="body" style="gap:30px">
+    <div class="math sm" data-m="\ell_i(w) = \frac{1}{2}(wx_i - y_i)^2"></div>
+    <div class="math frag" data-m="\frac{d\ell_i}{dw} = (wx_i - y_i) x_i"></div>
+    <div class="math frag" data-m="L'(w) = \frac{1}{4} \sum_{i=1}^{4} (wx_i - y_i) x_i"></div>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <h2>Start all methods at the same place</h2>
+  <div class="body" style="gap:34px">
+    <div class="math" data-m="w_0 = 0, \quad\quad \eta = 0.08"></div>
+    <div class="math boxed" data-m="w_{t+1} = w_t - \eta g_t"></div>
+    <p class="imp big frag">Only the choice of <span class="math" data-m="g_t"></span> will change.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <h2>Method 1: full-batch gradient descent</h2>
+  <div class="body" style="gap:26px">
+    <div class="math sm" data-m="g_0 = \frac{1}{4} \sum_{i=1}^{4} (w_0 x_i - y_i) x_i"></div>
+    <div class="math sm frag" data-m="g_0 = \frac{1}{4}(-1 - 4.4 - 8.1 - 16.4) = -7.475"></div>
+    <div class="math sm frag" data-m="w_1 = 0 - 0.08(-7.475) = \boxed{0.598}"></div>
+    <p class="soft small frag">One update after processing all four examples.</p>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <h2>Full batch: follow the slope of the average loss</h2>
+  <div class="body"><div data-v="stepper" data-method="batch"></div></div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <h2>Method 2: stochastic gradient descent</h2>
+  <div class="body" style="gap:30px">
+    <div class="math" data-m="g_t = (w_t x_i - y_i) x_i"></div>
+    <div class="math" data-m="w_{t+1} = w_t - \eta g_t"></div>
+    <p class="imp big frag">One sample → one immediate update.</p>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <h2>SGD: work through one epoch</h2>
+  <div class="body">
+    <table class="cmp" style="font-size:26px;font-variant-numeric:tabular-nums">
+      <thead><tr><th>Sample</th><th><i>w</i> before</th><th>Gradient</th><th><i>w</i> after</th></tr></thead>
+      <tbody>
+        <tr class="frag"><td class="c0">1</td><td>0</td><td>−1</td><td>0.0800</td></tr>
+        <tr class="frag"><td class="c1">2</td><td>0.0800</td><td>−4.08</td><td>0.4064</td></tr>
+        <tr class="frag"><td class="c2">3</td><td>0.4064</td><td>−4.4424</td><td>0.7618</td></tr>
+        <tr class="frag"><td class="c3">4</td><td>0.7618</td><td>−4.2113</td><td>1.0987</td></tr>
+      </tbody>
+    </table>
+    <p class="soft small">Values rounded; fixed order 1, 2, 3, 4.</p>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide">
+  <h2>SGD follows a different slope each time</h2>
+  <div class="body"><div data-v="stepper" data-method="sgd"></div></div>
+</section>
+
+<!-- 14 -->
+<section class="slide">
+  <h2>Method 3: mini-batch gradient descent</h2>
+  <div class="body" style="gap:30px">
+    <div class="math sm" data-m="B_1 = \lb 1, 2 \rb, \quad B_2 = \lb 3, 4 \rb"></div>
+    <div class="math" data-m="g_t = \frac{1}{|B_t|} \sum_{i \in B_t} (w_t x_i - y_i) x_i"></div>
+    <p class="soft small frag">Average the gradient over a small group, then update immediately.</p>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide">
+  <h2>Mini-batch: two updates in one epoch</h2>
+  <div class="body" style="gap:22px">
+    <div class="math sm" data-m="g_0 = \frac{1}{2}[(-1) + (-4.4)] = -2.7"></div>
+    <div class="math sm frag" data-m="w_1 = 0 - 0.08(-2.7) = \boxed{0.216}"></div>
+    <div class="math sm frag" data-m="g_1 = \frac{1}{2}[(3w_1 - 2.7)3 + (4w_1 - 4.1)4] = -9.55"></div>
+    <div class="math sm frag" data-m="w_2 = 0.216 - 0.08(-9.55) = \boxed{0.980}"></div>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide">
+  <h2>Mini-batches average the sample losses</h2>
+  <div class="body"><div data-v="stepper" data-method="mini"></div></div>
+</section>
+
+<!-- 17 -->
+<section class="slide">
+  <h2>Same loss, different steps: the first epoch</h2>
+  <div class="body"><div data-v="race"></div></div>
+</section>
+
+<!-- 18 -->
+<section class="slide">
+  <h2>Compare parameter trajectories</h2>
+  <div class="body" style="gap:10px"><div data-v="traj"></div></div>
+</section>
+
+<!-- 19 -->
+<section class="slide">
+  <h2>Batch vs stochastic vs mini-batch</h2>
+  <div class="body">
+    <table class="cmp">
+      <thead><tr><th></th><th class="c0">Full batch</th><th class="c1">SGD</th><th class="c2">Mini-batch</th></tr></thead>
+      <tbody>
+        <tr class="frag"><td>Examples per update</td><td><i>N</i></td><td>1</td><td><i>B</i></td></tr>
+        <tr class="frag"><td>Updates per epoch</td><td>1</td><td><i>N</i></td><td>⌈<i>N</i>/<i>B</i>⌉</td></tr>
+        <tr class="frag"><td>Sample noise</td><td>none</td><td>high</td><td>intermediate</td></tr>
+        <tr class="frag"><td>Per-update cost</td><td>high</td><td>low</td><td>intermediate</td></tr>
+        <tr class="frag"><td>Hardware efficiency</td><td>varies</td><td>often low</td><td>often good</td></tr>
+      </tbody>
+    </table>
+    <p class="imp frag">Mini-batch SGD is the default for most deep learning training.</p>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide">
+  <h2>A practical note: shuffle each epoch</h2>
+  <div class="body" style="gap:22px">
+    <div data-v="shuffle"></div>
+    <p class="soft small">Avoid learning systematic artifacts from a fixed sample ordering.</p>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide">
+  <h2>But SGD is not always easy to optimize</h2>
+  <div class="body">
+    <p class="imp big">Four challenges</p>
+    <ol class="pts">
+      <li class="frag">Choosing the learning rate</li>
+      <li class="frag">Ill-conditioning and saddle regions</li>
+      <li class="frag">Different gradient scales across coordinates</li>
+      <li class="frag">Noisy or misleading update directions</li>
+    </ol>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide">
+  <h2>Challenge 1: the learning rate</h2>
+  <div class="body"><div class="row" style="gap:44px">
+    <div class="col" style="flex:none"><div data-v="lr"></div></div>
+    <div class="col left" style="gap:18px" id="lrSide">
+      <div class="math sm" data-m="L(w) = \frac{1}{2}w^2, \quad w_0 = 2"></div>
+    </div>
+  </div></div>
+</section>
+
+<!-- 23 -->
+<section class="slide">
+  <h2>Why change the learning rate over time?</h2>
+  <div class="body" style="gap:34px">
+    <div class="math" data-m="w_{t+1} = w_t - \eta_t g_t"></div>
+    <div class="math frag" data-m="\eta_1 &gt; \eta_2 &gt; \cdots"></div>
+    <p class="soft small frag">Large steps early to move fast, small steps late to settle. Schedules help, but must still be chosen and tuned.</p>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide">
+  <h2>Challenge 2: a narrow valley</h2>
+  <div class="body" style="gap:12px">
+    <div class="math sm" data-m="L(w_1, w_2) = 50w_1^2 + w_2^2"></div>
+    <div data-v="opt2d" data-fn="valley" data-ms="sgd:0.018" data-n="80" data-slider="0.004,0.0215,0.0005" data-w="940"></div>
+    <p class="soft small">One learning rate, very different curvatures: it bounces across the steep direction and crawls along the shallow one.</p>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide">
+  <h2>Challenge 3: tiny gradients near a saddle</h2>
+  <div class="body"><div class="row" style="gap:40px">
+    <div data-v="opt2d" data-fn="saddle" data-ms="sgd:0.1" data-n="60" data-w="560" style="flex:none"></div>
+    <div class="col left" style="gap:22px">
+      <div class="math sm" data-m="L(w_1, w_2) = w_1^2 - w_2^2"></div>
+      <div class="math sm" data-m="\nabla L(0, 0) = 0"></div>
+      <p class="soft small">Gradient descent slides toward the saddle, stalls where the gradient is tiny, and only slowly escapes. Not every critical point is a minimum.</p>
+    </div>
+  </div></div>
+</section>
+
+<!-- 26 -->
+<section class="slide">
+  <h2>Challenge 4: rare features</h2>
+  <div class="body" style="gap:26px">
+    <div class="row" style="gap:60px">
+      <div class="math" style="display:flex;align-items:center;gap:12px"><span data-m="g_t ="></span><span class="vec"><span>10</span><span>0.01</span></span></div>
+      <div class="col left" style="flex:none;gap:14px;width:560px">
+        <p class="small">Step taken by each coordinate with one shared <span class="math" style="font-size:22px" data-m="\eta"></span></p>
+        <div class="hb"><span>coordinate 1</span><i style="width:100%;background:var(--blue)"></i></div>
+        <div class="hb"><span>coordinate 2</span><i style="width:2px;background:var(--amber)"></i><b class="soft">1000× smaller</b></div>
+      </div>
+    </div>
+    <p class="imp big frag">Should every coordinate have the same effective step size?</p>
+    <p class="soft small frag">Sparse features can receive gradients at very different frequencies.</p>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide">
+  <h2>Solution A: momentum</h2>
+  <div class="body" style="gap:30px">
+    <p class="imp big">Remember a moving average of gradients</p>
+    <div class="math frag" data-m="m_t = \beta m_{t-1} + (1 - \beta) g_t"></div>
+    <div class="math frag" data-m="\theta_{t+1} = \theta_t - \eta m_t"></div>
+  </div>
+</section>
+
+<!-- 28 -->
+<section class="slide">
+  <h2>Where momentum helps: zig-zag</h2>
+  <div class="body" style="gap:10px">
+    <div data-v="momBars"></div>
+    <p class="imp">Oscillations cancel; persistent directions remain.</p>
+    <p class="soft small">One convention for momentum; other implementations scale the velocity differently.</p>
+  </div>
+</section>
+
+<!-- 29 -->
+<section class="slide">
+  <h2>Momentum: numeric example</h2>
+  <div class="body" style="gap:30px">
+    <div class="math sm" data-m="\beta = 0.5, \quad m_0 = 0, \quad g_1 = 4, \quad g_2 = -2"></div>
+    <div class="math frag" data-m="m_1 = 0.5 \cdot 0 + 0.5 \cdot 4 = \g{2}"></div>
+    <div class="math frag" data-m="m_2 = 0.5 \cdot 2 + 0.5 \cdot (-2) = \g{0}"></div>
+    <p class="soft small frag">Compare the raw gradients: 4, then −2.</p>
+  </div>
+</section>
+
+<!-- 30 -->
+<section class="slide">
+  <h2>Momentum in the narrow valley</h2>
+  <div class="body" style="gap:12px">
+    <div data-v="opt2d" data-fn="valley" data-ms="sgd:0.018,momentum:0.018" data-n="80" data-slider="0.006,0.2,0.002" data-w="940"></div>
+    <p class="soft small">Raise the learning rate: plain gradient descent blows up past 0.02, while momentum stays stable and gets there sooner.</p>
+  </div>
+</section>
+
+<!-- 31 -->
+<section class="slide">
+  <h2>Solution B: AdaGrad</h2>
+  <div class="body" style="gap:30px">
+    <p class="imp big">Adapt each coordinate using its past squared gradients</p>
+    <div class="math frag" data-m="v_t = v_{t-1} + g_t \odot g_t"></div>
+    <div class="math frag" data-m="\theta_{t+1} = \theta_t - \eta \frac{g_t}{\sqrt{v_t} + \epsilon}"></div>
+  </div>
+</section>
+
+<!-- 32 -->
+<section class="slide">
+  <h2>Where AdaGrad helps: rare features</h2>
+  <div class="body"><div class="row" style="gap:44px">
+    <div class="col" style="flex:none"><div data-v="rare"></div><p class="soft small">Effective learning rate of each coordinate over time</p></div>
+    <div class="col left" style="gap:22px">
+      <p><b class="c0">Feature A</b> appears in almost every example.</p>
+      <p><b class="c1">Feature B</b> appears only rarely.</p>
+      <p class="imp frag">More gradient history ⇒ smaller effective step.</p>
+      <p class="soft small frag">The rare feature keeps a large step for the few times it shows up.</p>
+    </div>
+  </div></div>
+</section>
+
+<!-- 33 -->
+<section class="slide">
+  <h2>AdaGrad: what goes wrong?</h2>
+  <div class="body"><div class="row" style="gap:44px">
+    <div class="col" style="flex:none"><div data-v="efflr"></div><p class="soft small">Effective learning rate with a constant gradient</p></div>
+    <div class="col left" style="gap:24px">
+      <div class="math sm" data-m="v_t = \sum_{s=1}^{t} g_s^2"></div>
+      <p class="frag"><span class="math sm" data-m="v_t"></span> only ever grows.</p>
+      <p class="imp frag">Effective learning rates can shrink too far during long training.</p>
+    </div>
+  </div></div>
+</section>
+
+<!-- 34 -->
+<section class="slide">
+  <h2>Solution C: RMSProp</h2>
+  <div class="body" style="gap:30px">
+    <p class="imp big">Keep recent squared gradients, forget old ones</p>
+    <div class="math frag" data-m="v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2"></div>
+    <div class="math frag" data-m="\theta_{t+1} = \theta_t - \eta \frac{g_t}{\sqrt{v_t} + \epsilon}"></div>
+  </div>
+</section>
+
+<!-- 35 -->
+<section class="slide">
+  <h2>Where RMSProp helps: changing scales</h2>
+  <div class="body"><div class="row" style="gap:44px">
+    <div class="col" style="flex:none"><div data-v="scale"></div><p class="soft small">Size of each update, in units of <i>η</i></p></div>
+    <div class="col left" style="gap:22px">
+      <p>Earlier: gradient magnitude ≈ 10</p>
+      <p>Later: gradient magnitude ≈ 0.1</p>
+      <p class="imp frag">An old cumulative total should not dominate forever.</p>
+      <p class="soft small frag"><b class="c1">AdaGrad</b> never recovers. <b class="c2">RMSProp</b> forgets the old scale and adapts.</p>
+    </div>
+  </div></div>
+</section>
+
+<!-- 36 -->
+<section class="slide">
+  <h2>AdaGrad versus RMSProp: numbers</h2>
+  <div class="body" style="gap:30px">
+    <div class="math sm" data-m="g_1 = 4, \quad g_2 = 2, \quad v_0 = 0"></div>
+    <p class="frag"><b class="c1">AdaGrad:</b> <span class="math sm" data-m="v_1 = 16, \quad v_2 = 16 + 4 = 20"></span></p>
+    <p class="frag"><b class="c2">RMSProp</b> <span class="math sm" data-m="(\beta_2 = 0.5): \quad v_1 = 8, \quad v_2 = 4 + 2 = 6"></span></p>
+    <p class="soft small frag">AdaGrad’s total keeps growing; RMSProp’s average follows the recent gradients down.</p>
+  </div>
+</section>
+
+<!-- 37 -->
+<section class="slide">
+  <h2>Solution D: Adam</h2>
+  <div class="body" style="gap:28px">
+    <p class="imp big">Combine momentum and adaptive scaling</p>
+    <div class="math frag" data-m="m_t = \beta_1 m_{t-1} + (1 - \beta_1) g_t"></div>
+    <div class="math frag" data-m="v_t = \beta_2 v_{t-1} + (1 - \beta_2) g_t^2"></div>
+  </div>
+</section>
+
+<!-- 38 -->
+<section class="slide">
+  <h2>Adam corrects initialization bias</h2>
+  <div class="body"><div class="row" style="gap:44px">
+    <div class="col" style="flex:none"><div data-v="bias"></div><p class="soft small">Constant gradient of 1: the raw average starts near 0</p></div>
+    <div class="col left" style="gap:22px" id="biasSide">
+      <div class="math sm" data-m="\mhat_t = \frac{m_t}{1 - \beta_1^t}"></div>
+      <div class="math sm" data-m="\vhat_t = \frac{v_t}{1 - \beta_2^t}"></div>
+      <p class="soft small">Both running estimates start at zero.</p>
+    </div>
+  </div></div>
+</section>
+
+<!-- 39 -->
+<section class="slide">
+  <h2>Adam: final update</h2>
+  <div class="body" style="gap:34px">
+    <div class="math" data-m="\boxed{\theta_{t+1} = \theta_t - \eta \frac{\mhat_t}{\sqrt{\vhat_t} + \epsilon}}"></div>
+    <p class="frag">A <span class="imp">smoothed direction</span> with <span class="imp">coordinate-wise scaling</span>.</p>
+  </div>
+</section>
+
+<!-- 40 -->
+<section class="slide">
+  <h2>Where Adam helps</h2>
+  <div class="body">
+    <ul class="pts">
+      <li class="frag">Noisy mini-batch gradients</li>
+      <li class="frag">Uneven gradients across parameters</li>
+      <li class="frag">Large neural networks requiring robust initial optimization</li>
+    </ul>
+    <p class="soft small frag">A strong baseline, not a universal winner. Learning-rate tuning still matters.</p>
+  </div>
+</section>
+
+<!-- 41 -->
+<section class="slide">
+  <h2>All five on the narrow valley</h2>
+  <div class="body" style="gap:12px">
+    <div data-v="opt2d" data-fn="valley" data-ms="sgd:0.018,momentum:0.04,adagrad:0.35,rmsprop:0.06,adam:0.08" data-n="100" data-w="940"></div>
+    <p class="soft small">Each method uses a learning rate that suits it. One toy problem, not a ranking.</p>
+  </div>
+</section>
+
+<!-- 42 -->
+<section class="slide">
+  <h2>Optimizer comparison</h2>
+  <div class="body">
+    <table class="cmp">
+      <thead><tr><th>Method</th><th>Momentum</th><th>Adaptive</th><th>Typical motivation</th></tr></thead>
+      <tbody>
+        <tr class="frag"><td>SGD</td><td>No</td><td>No</td><td>Simple baseline</td></tr>
+        <tr class="frag"><td>Momentum</td><td class="imp">Yes</td><td>No</td><td>Reduce zig-zag</td></tr>
+        <tr class="frag"><td>AdaGrad</td><td>No</td><td class="imp">Yes</td><td>Sparse features</td></tr>
+        <tr class="frag"><td>RMSProp</td><td>No</td><td class="imp">Yes</td><td>Avoid AdaGrad decay</td></tr>
+        <tr class="frag"><td>Adam</td><td class="imp">Yes</td><td class="imp">Yes</td><td>Both benefits</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 43 -->
+<section class="slide">
+  <h2>Which optimizer should we use?</h2>
+  <div class="body">
+    <ul class="pts" style="font-size:28px">
+      <li class="frag">Start with Adam or AdamW for many deep-learning tasks.</li>
+      <li class="frag">Compare momentum SGD for image-classification tasks.</li>
+      <li class="frag">Consider AdaGrad for sparse-feature applications.</li>
+      <li class="frag">Tune the learning rate and evaluate validation performance.</li>
+    </ul>
+    <p class="soft small frag">No method always has the fastest convergence or the best generalization.</p>
+  </div>
+</section>
+
+<!-- 44 -->
+<section class="slide">
+  <h2>Learning-rate schedules</h2>
+  <div class="body" style="gap:14px">
+    <div class="math sm" data-m="\eta_t = \eta_0 s(t)"></div>
+    <div data-v="sched"></div>
+    <p class="soft small">Optimizer choice and learning-rate schedule are separate decisions.</p>
+  </div>
+</section>
+
+<!-- 44b -->
+<section class="slide">
+  <h2>In practice today: AdamW</h2>
+  <div class="body" style="gap:26px">
+    <p class="imp big">Adam, with weight decay applied separately</p>
+    <div class="math sm" data-m="\theta_{t+1} = \theta_t - \eta \big( \frac{\mhat_t}{\sqrt{\vhat_t} + \epsilon} + \g{\lambda \theta_t} \big)"></div>
+    <ul class="pts" style="font-size:26px;gap:16px">
+      <li class="frag">The <span class="fire">decay term</span> shrinks every weight directly; it is not rescaled by <span class="math sm" style="font-size:25px" data-m="\sqrt{\vhat_t}"></span>.</li>
+      <li class="frag">The usual choice for training today’s large language models.</li>
+      <li class="frag">Typical recipe: AdamW + warmup + cosine decay + gradient clipping.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 45 -->
+<section class="slide">
+  <h2>Additional strategy: shuffle the data</h2>
+  <div class="body" style="gap:34px">
+    <p class="big">One epoch = one pass over the dataset</p>
+    <p class="imp big frag">Randomly reorder the examples before the next epoch.</p>
+    <p class="soft small frag">Avoids systematic bias from a fixed ordering.</p>
+  </div>
+</section>
+
+<!-- 46 -->
+<section class="slide">
+  <h2>An exception: curriculum learning</h2>
+  <div class="body" style="gap:34px">
+    <p class="imp big">Sometimes the order of examples matters.</p>
+    <div class="row frag" style="gap:16px;align-items:flex-end">
+      <span class="cur" style="height:40px">easy</span><span class="cur" style="height:64px"></span><span class="cur" style="height:92px"></span><span class="cur" style="height:124px"></span><span class="cur" style="height:160px">hard</span>
+    </div>
+    <p class="soft small frag">Can help some tasks; not a universal improvement over shuffling.</p>
+  </div>
+</section>
+
+<!-- 47 -->
+<section class="slide">
+  <h2>Curriculum learning: what we have learned</h2>
+  <div class="body"><div class="row" style="gap:50px">
+    <div data-v="cur" style="flex:none"></div>
+    <div class="col left" style="gap:22px">
+      <p class="frag"><b>Who decides what is easy?</b><br><span class="small">A human rule (short sentences first), or the model’s own loss: self-paced learning.</span></p>
+      <p class="frag"><b>When does it help?</b><br><span class="small">Mostly when training time is short or the labels are noisy.</span></p>
+      <p class="frag"><b>When does it not?</b><br><span class="small">With a full training budget, random shuffling is usually just as good.</span></p>
+      <p class="frag"><b>Where is it essential?</b><br><span class="small">Reinforcement learning: agents are given harder tasks as they improve.</span></p>
+    </div>
+  </div></div>
+</section>
+
+<div id="bar"></div>
+<div id="nav"><button id="prev" aria-label="Previous slide">‹</button><span id="count"></span><button id="next" aria-label="Next slide">›</button></div>
+</div></div>
+<script>
+
+(function(){
+'use strict';
+const NS='http://www.w3.org/2000/svg';
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function S(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e}
+function H(tag,cls,parent,html){const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;if(parent)parent.appendChild(e);return e}
+function tween(ms,fn,done){if(RM){fn(1);done&&done();return()=>{}}let s=null,id;const f=t=>{if(s===null)s=t;const u=Math.min(1,(t-s)/ms);fn(u);if(u<1)id=requestAnimationFrame(f);else done&&done()};id=requestAnimationFrame(f);return()=>cancelAnimationFrame(id)}
+const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+const fmt=v=>(Math.abs(v)<5e-7?0:v).toFixed(1).replace('-','−');
+const relu=x=>x>0?x:0, sig=x=>1/(1+Math.exp(-x));
+let uid=0;
+
+function Plot(host,o){
+  const w=o.w,h=o.h,p=o.pad==null?30:o.pad;
+  const svg=S('svg',{viewBox:'0 0 '+w+' '+h,width:w,height:h,role:'img','aria-label':o.label||'Plot'},host);
+  const sx=x=>p+(x-o.x[0])/(o.x[1]-o.x[0])*(w-2*p), sy=y=>h-p-(y-o.y[0])/(o.y[1]-o.y[0])*(h-2*p);
+  const id='cp'+(uid++);const cp=S('clipPath',{id:id},svg);S('rect',{x:p-3,y:p-3,width:w-2*p+6,height:h-2*p+6},cp);
+  const y0=Math.max(o.y[0],Math.min(o.y[1],0)),x0=Math.max(o.x[0],Math.min(o.x[1],0));
+  S('line',{x1:sx(o.x[0]),x2:sx(o.x[1]),y1:sy(y0),y2:sy(y0),class:'ax'},svg);
+  S('line',{x1:sx(x0),x2:sx(x0),y1:sy(o.y[0]),y2:sy(o.y[1]),class:'ax'},svg);
+  (o.xt||[]).forEach(t=>{S('line',{x1:sx(t),x2:sx(t),y1:sy(y0)-4,y2:sy(y0)+4,class:'ax'},svg);S('text',{x:sx(t),y:sy(y0)+21,'text-anchor':'middle',class:'tk'},svg,String(t).replace('-','−'))});
+  (o.yt||[]).forEach(t=>{S('line',{x1:sx(x0)-4,x2:sx(x0)+4,y1:sy(t),y2:sy(t),class:'ax'},svg);S('text',{x:sx(x0)-9,y:sy(t)+5,'text-anchor':'end',class:'tk'},svg,String(t).replace('-','−'))});
+  const g=S('g',{'clip-path':'url(#'+id+')'},svg);
+  const d=(fn,n)=>{n=n||260;let s='';for(let i=0;i<=n;i++){const x=o.x[0]+(o.x[1]-o.x[0])*i/n;s+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(fn(x)).toFixed(1)}return s};
+  return{svg,g,sx,sy,d,curve(fn,cls){return S('path',{d:d(fn),class:'cv '+(cls||'')},g)}};
+}
+function redraw(path){path.setAttribute('pathLength','1');path.classList.remove('draw');void path.getBoundingClientRect();path.classList.add('draw')}
+function Slider(parent,label,min,max,step,val,fn,wide,f){
+  const l=H('label','sl'+(wide?' wide':''),parent);H('span','',l,label);
+  const i=H('input','',l);i.type='range';i.min=min;i.max=max;i.step=step;i.value=val;
+  const o=H('output','',l);const show=()=>{o.textContent=f?f(+i.value):fmt(+i.value)};show();
+  i.addEventListener('input',()=>{show();fn(+i.value)});
+  return{el:i,set(v){i.value=v;show()},get v(){return +i.value}};
+}
+function Net(host,layers,o){
+  o=o||{};const w=o.w||460,h=o.h||300,r=o.r||15,L=layers.length;
+  const svg=S('svg',{viewBox:'0 0 '+w+' '+h,width:w,height:h,class:'net',role:'img','aria-label':'Diagram of a layered neural network'},host);
+  const pos=layers.map((n,l)=>Array.from({length:n},(_,i)=>[r+12+l*(w-2*r-24)/(L-1),h/2+(i-(n-1)/2)*Math.min(o.gap||64,(h-2*r-8)/Math.max(n-1,1))]));
+  const eg=[],ng=[];
+  for(let l=0;l<L-1;l++){const g=S('g',{class:'eg'},svg);pos[l].forEach(a=>pos[l+1].forEach(b=>S('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1]},g)));eg.push(g)}
+  for(let l=0;l<L;l++){const g=S('g',{class:'ng'},svg);pos[l].forEach((a,i)=>{S('circle',{cx:a[0],cy:a[1],r:r},g);if(o.labels&&o.labels[l]&&o.labels[l][i])S('text',{x:a[0],y:a[1]+7,'text-anchor':'middle',class:'mt',style:'font-size:'+(r*.95)+'px'},g,o.labels[l][i])});ng.push(g)}
+  let iv;
+  return{svg,pos,start(back){this.stop();if(RM)return;const seq=[];for(let l=0;l<L;l++){seq.push(ng[l]);if(l<L-1)seq.push(eg[l])}if(back)seq.reverse();let k=0;
+    const tick=()=>{ng.concat(eg).forEach(g=>g.classList.remove('on'));if(k<seq.length)seq[k].classList.add('on');k=(k+1)%(seq.length+2)};tick();iv=setInterval(tick,o.ms||480)},
+    stop(){clearInterval(iv);ng.concat(eg).forEach(g=>g.classList.remove('on'))}};
+}
+
+/* ---------- mini math ---------- */
+const SYM={partial:'∂',L:'ℒ',eta:'<i>η</i>',delta:'<i>δ</i>',nabla:'∇',odot:'⊙',leftarrow:'←',gets:'← ',to:'→',cdot:'·',in:'∈',R:'ℝ',times:'×',top:'⊤',ell:'<i>ℓ</i>',ldots:'…',quad:'&emsp;',one:'<b>1</b>',yhat:'<i>ŷ</i>',ReLU:'ReLU',softmax:'softmax',log:'log ',max:'max',lb:'{',rb:'}',sin:'sin',cos:'cos',phi:'<i>φ</i>',Phat:'<i>P\u0302</i>',phat:'<i>p\u0302</i>',Yhat:'<i>Ŷ</i>'};
+function M(s){let i=0;
+  const fr=(a,b)=>'<span class="fr"><span>'+a+'</span><span>'+b+'</span></span>';
+  function atom(){const c=s[i];
+    if(c==='{'){i++;const r=seq('}');i++;return r}
+    if(c==='\\'){let j=i+1;while(j<s.length&&/[a-zA-Z]/.test(s[j]))j++;const n=s.slice(i+1,j);i=j;
+      if(n==='frac'){const a=atom(),b=atom();return fr(a,b)}
+      if(n==='d')return fr('∂ℒ','∂'+atom());
+      if(n==='dd'){const a=atom(),b=atom();return fr('∂'+a,'∂'+b)}
+      if(n==='sum'){let lo='',hi='';for(;;){if(s[i]==='_'){i++;lo=atom()}else if(s[i]==='^'){i++;hi=atom()}else break}return '<span class="op"><span class="lim">'+hi+'</span><span class="sg">∑</span><span class="lim">'+lo+'</span></span>'}
+      if(n==='text'){i++;const e=s.indexOf('}',i),t=s.slice(i,e);i=e+1;return '<span class="tx">'+t+'</span>'}
+      if(n==='sqrt')return '<span class="sq">√<span>'+atom()+'</span></span>';if(n==='boxed')return '<span class="boxed">'+atom()+'</span>';
+      if(n==='under'){const a=atom(),b=atom();return '<span class="ub"><span>'+a+'</span><svg class="ubr" viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="M1 1Q1 6 9 6L41 6Q50 6 50 11Q50 6 59 6L91 6Q99 6 99 1"/></svg><span class="ubl">'+b+'</span></span>'}
+      if(n==='g')return '<span class="gr">'+atom()+'</span>';
+      if(n==='f')return '<span class="fw">'+atom()+'</span>';
+      if(n==='big')return '<span class="bp">'+s[i++]+'</span>';
+      return SYM[n]!=null?SYM[n]:n}
+    i++;
+    if(/[a-zA-Z]/.test(c))return '<i>'+c+'</i>';
+    if(c==='-')return '−';if(c==="'")return '′';if(c==='<')return '&lt;';if(c==='>')return '&gt;';
+    return c}
+  function seq(end){let o='';while(i<s.length&&s[i]!==end){const c=s[i];
+    if(c==='_'){i++;o+='<sub>'+atom()+'</sub>'}else if(c==='^'){i++;o+='<sup>'+atom()+'</sup>'}else o+=atom()}return o}
+  return seq(null)}
+Object.assign(SYM,{theta:'<i>θ</i>',beta:'<i>β</i>',epsilon:'<i>ε</i>',mhat:'<i class="hat">m</i>',vhat:'<i class="hat">v</i>',lambda:'<i>λ</i>',zhat:'<i>ẑ</i>',mu:'<i>μ</i>',sigma:'<i>σ</i>',gamma:'<i>γ</i>',cdots:'⋯'});
+document.querySelectorAll('[data-m]').forEach(e=>{e.innerHTML=M(e.dataset.m)});
+const V={};
+const XS=[1,2,3,4],YS=[1,2.2,2.7,4.1],ETA=.08,WS=29.9/30;
+const li=(i,w)=>.5*(w*XS[i]-YS[i])*(w*XS[i]-YS[i]),gi=(i,w)=>(w*XS[i]-YS[i])*XS[i];
+const Lf=w=>(li(0,w)+li(1,w)+li(2,w)+li(3,w))/4,gB=(B,w)=>B.reduce((a,i)=>a+gi(i,w),0)/B.length,lB=(B,w)=>B.reduce((a,i)=>a+li(i,w),0)/B.length;
+const COL=['var(--blue)','var(--amber)','var(--teal)','var(--rose)'];
+const f2=v=>(Math.abs(v)<5e-3?0:v).toFixed(2).replace('-','−'),f3=v=>(Math.abs(v)<5e-4?0:v).toFixed(3).replace('-','−');
+function legend(host,items){const d=H('div','lg',host);items.forEach(it=>H('span','',d,'<i class="ch" style="background:'+it[0]+'"></i><span>'+it[1]+(it[2]?' <em>'+it[2]+'</em>':'')+'</span>'));return d}
+function arrow(g,x1,x2,y,col,o){o=o||{};const s=x2>=x1?1:-1,L=Math.abs(x2-x1),hd=Math.min(10,L);
+  S('line',{x1:x1,x2:x2-s*hd*.8,y1:y,y2:y,style:'stroke:'+col+';stroke-width:'+(o.w||4)+(o.dash?';stroke-dasharray:5 4':'')},g);
+  S('polygon',{points:x2+','+y+' '+(x2-s*hd)+','+(y-6)+' '+(x2-s*hd)+','+(y+6),style:'fill:'+col},g)}
+
+V.fitLine=el=>{
+  const p=Plot(el,{w:500,h:380,x:[0,4.6],y:[0,5.2],xt:[1,2,3,4],yt:[1,2,3,4,5],pad:28,label:'The four data points and the line y = w x'});
+  const res=S('g',{},p.g),ln=S('path',{class:'cv',style:'stroke:var(--ink);stroke-width:3'},p.g);
+  XS.forEach((x,i)=>S('circle',{cx:p.sx(x),cy:p.sy(YS[i]),r:9,style:'fill:'+COL[i]+';stroke:var(--stage);stroke-width:2'},p.svg));
+  const c=H('div','gctl',el);c.style.cssText='width:460px;margin-top:6px';const out=H('div','info',null);out.style.minHeight='0';
+  function draw(w){ln.setAttribute('d','M'+p.sx(0)+' '+p.sy(0)+'L'+p.sx(4.6)+' '+p.sy(4.6*w));res.innerHTML='';
+    XS.forEach((x,i)=>S('line',{x1:p.sx(x),x2:p.sx(x),y1:p.sy(YS[i]),y2:p.sy(w*x),style:'stroke:'+COL[i]+';stroke-width:2.5;stroke-dasharray:4 3'},res));
+    out.innerHTML='Average loss <i>L</i>(<i>w</i>) = <b>'+f3(Lf(w))+'</b>'}
+  const sl=Slider(c,'<i>w</i>',0,2,.01,.5,draw,false,v=>v.toFixed(2));c.appendChild(out);draw(.5);
+  return{enter(){sl.set(.5);draw(.5)}};
+};
+
+V.indLoss=el=>{
+  const d=el.dataset,zoom=!!d.zoom,full=!!d.full;
+  const p=Plot(el,{w:820,h:full?400:(zoom?360:400),x:zoom?[.7,1.3]:[0,2],y:zoom?[-.02,.3]:[-.1,2.6],xt:zoom?[.8,.9,1,1.1,1.2]:[.5,1,1.5,2],yt:zoom?[.1,.2,.3]:[1,2],pad:30,label:'Loss curves of the four examples against w'});
+  const cs=XS.map((x,i)=>S('path',{d:p.d(w=>li(i,w),300),class:'cv',style:'stroke:'+COL[i]+';stroke-width:'+(full?2:3.4)+(full?';opacity:.55':'')},p.g));
+  S('text',{x:p.sx(zoom?1.3:2),y:p.sy(0)-8,'text-anchor':'end',class:'tk',style:'font-style:italic'},p.svg,'w');
+  let big=null;
+  if(d.min)XS.forEach((x,i)=>{const w=YS[i]/x;S('circle',{cx:p.sx(w),cy:p.sy(0),r:8,style:'fill:'+COL[i]+';stroke:var(--stage);stroke-width:2'},p.svg);
+    S('text',{x:p.sx(w),y:p.sy(0)+(i===3?62:40),'text-anchor':'middle',class:'tk',style:'font-size:18px;fill:'+COL[i]},p.svg,'w'+'₁₂₃₄'[i]+'* = '+w)});
+  if(full){big=S('path',{d:p.d(Lf,300),class:'cv',style:'stroke:var(--ink);stroke-width:4.5'},p.g);
+    S('circle',{cx:p.sx(WS),cy:p.sy(Lf(WS)),r:8,class:'kink'},p.svg);S('text',{x:p.sx(WS),y:p.sy(0)+40,'text-anchor':'middle',class:'tk',style:'font-size:18px;fill:var(--amber)'},p.svg,'minimum of L at w ≈ 0.997')}
+  legend(el,XS.map((x,i)=>[COL[i],'example '+(i+1)]).concat(full?[['var(--ink)','average loss <i>L</i>(<i>w</i>)']]:[]));
+  el.style.cssText+=';display:flex;flex-direction:column;align-items:center;gap:'+(d.min?'34px':'8px');
+  return{enter(){cs.forEach(redraw);if(big)redraw(big)}};
+};
+
+function Lplot(host,ymin,w,h){
+  const p=Plot(host,{w:w||650,h:h||430,x:[-.12,1.45],y:[ymin,4.15],xt:[.5,1],yt:[1,2,3,4],pad:26,label:'Average loss against the weight w, with the steps taken'});
+  S('path',{d:p.d(Lf,200),class:'cv',style:'stroke:var(--ink);stroke-width:3'},p.g);
+  S('line',{x1:p.sx(WS),x2:p.sx(WS),y1:p.sy(ymin),y2:p.sy(3.9),class:'ax','stroke-dasharray':'4 5'},p.svg);
+  S('text',{x:p.sx(WS),y:p.sy(3.9)-6,'text-anchor':'middle',class:'st'},p.svg,'minimum');
+  S('text',{x:p.sx(1.45),y:p.sy(0)-8,'text-anchor':'end',class:'tk',style:'font-style:italic'},p.svg,'w');
+  S('text',{x:p.sx(0)+10,y:p.sy(4.15)+14,class:'st'},p.svg,'average loss L(w)');
+  return p}
+const METH={batch:{name:'Full batch',col:COL[0],per:1,B:k=>[0,1,2,3]},sgd:{name:'SGD',col:COL[1],per:4,B:k=>[k%4]},mini:{name:'Mini-batch',col:COL[2],per:2,B:k=>k%2?[2,3]:[0,1]}};
+
+V.stepper=el=>{
+  const me=METH[el.dataset.method];el.classList.add('row');el.style.gap='40px';
+  const pc=H('div','',el),p=Lplot(pc,-1.75),side=H('div','col left',el);side.style.cssText='flex:none;width:400px;gap:14px';
+  const used=S('path',{class:'cv',style:'stroke:'+me.col+';stroke-width:2.5;stroke-dasharray:7 6'},p.g),tr=S('g',{},p.g),ar=S('g',{},p.svg),dot=S('circle',{r:9,style:'fill:'+me.col+';stroke:var(--stage);stroke-width:2.5'},p.svg);
+  S('text',{x:p.sx(1.45),y:p.sy(-.75)+5,'text-anchor':'end',class:'st',style:'fill:'+me.col},p.svg,'step taken');S('text',{x:p.sx(1.45),y:p.sy(-1.3)+5,'text-anchor':'end',class:'st'},p.svg,'full-gradient step');
+  const st=H('div','row',side);st.style.cssText='justify-content:flex-start;gap:36px';
+  const sU=H('div','stat',st,'<span class="n">0</span><span class="l">updates</span>'),sE=H('div','stat',st,'<span class="n">0</span><span class="l">epochs</span>');
+  const info=H('div','info',side),bs=H('div','btns',side);let w,t,iv=null;
+  const place=()=>{dot.setAttribute('cx',p.sx(w));dot.setAttribute('cy',p.sy(Lf(w)))};
+  function reset(){w=0;t=0;tr.innerHTML='';ar.innerHTML='';used.setAttribute('d','');place();sU.firstChild.textContent=0;sE.firstChild.textContent=0;
+    info.innerHTML='Start at <i>w</i> = 0.<br><span class="soft">The dashed curve will show the loss whose slope is used.</span>'}
+  function step(){const B=me.B(t),g=gB(B,w),gF=gB([0,1,2,3],w),w2=w-ETA*g;
+    used.setAttribute('d',p.d(x=>lB(B,x),200));ar.innerHTML='';arrow(ar,p.sx(w),p.sx(w2),p.sy(-.75),me.col);arrow(ar,p.sx(w),p.sx(w-ETA*gF),p.sy(-1.3),'var(--soft)',{w:2.5,dash:1});
+    S('line',{x1:p.sx(w),y1:p.sy(Lf(w)),x2:p.sx(w2),y2:p.sy(Lf(w2)),style:'stroke:'+me.col+';stroke-width:2;opacity:.6'},tr);S('circle',{cx:p.sx(w),cy:p.sy(Lf(w)),r:5,style:'fill:'+me.col+';opacity:.6'},tr);
+    const what=B.length===4?'all four examples':(B.length===1?'<b style="color:'+COL[B[0]]+'">example '+(B[0]+1)+'</b> only':'examples '+B.map(i=>i+1).join(' and '));
+    info.innerHTML='Update '+(t+1)+' uses '+what+'.<br>Gradient used: <b style="color:'+me.col+'">'+f3(g)+'</b><br>Full gradient: <b>'+f3(gF)+'</b><br><i>w</i>: '+f3(w)+' → <b>'+f3(w2)+'</b>';
+    w=w2;t++;place();sU.firstChild.textContent=t;sE.firstChild.textContent=me.per===1?t:(t/me.per).toFixed(me.per===4?2:1).replace(/\.0+$/,'')}
+  const stopA=()=>{clearInterval(iv);iv=null};
+  const play=n=>{stopA();let k=0;step();if(++k>=n)return;iv=setInterval(()=>{step();if(++k>=n)stopA()},RM?1:1300)};
+  H('button','',bs,'Next update').onclick=()=>{stopA();step()};H('button','',bs,'Play one epoch').onclick=()=>play(me.per);H('button','',bs,'Start over').onclick=()=>{stopA();reset()};
+  reset();
+  return{enter(){stopA();reset();if(!RM)iv=setTimeout(()=>play(me.per),900)},leave(){stopA();clearTimeout(iv)}};
+};
+
+V.race=el=>{
+  el.classList.add('row');el.style.gap='36px';
+  const pc=H('div','',el),p=Lplot(pc,-2.2),side=H('div','col left',el);side.style.cssText='flex:none;width:420px;gap:16px';
+  const K=['batch','sgd','mini'],lane=[-.75,-1.25,-1.75],ar=S('g',{},p.svg);
+  const dots=K.map((k,i)=>{S('text',{x:p.sx(1.45),y:p.sy(lane[i])+5,'text-anchor':'end',class:'st',style:'fill:'+METH[k].col+';font-weight:600'},p.svg,METH[k].name);
+    return S('circle',{r:8,style:'fill:'+METH[k].col+';stroke:var(--stage);stroke-width:2.5'},p.svg)});
+  const prog=H('div','info',side);prog.style.minHeight='0';
+  const tb=H('table','rt',side);tb.innerHTML='<thead><tr><th>Method</th><th>updates</th><th><i>w</i></th><th>loss <i>L</i>(<i>w</i>)</th></tr></thead>';const body=H('tbody','',tb);
+  const rows=K.map(k=>H('tr','',body,'<td style="color:'+METH[k].col+'">'+METH[k].name+'</td><td></td><td></td><td></td>'));
+  const bs=H('div','btns',side);H('p','soft small',side,'Each arrow is one update. All three have seen the same data.');
+  let w,t,n,iv=null;
+  function show(){K.forEach((k,i)=>{dots[i].setAttribute('cx',p.sx(w[i]));dots[i].setAttribute('cy',p.sy(Lf(w[i])));const c=rows[i].children;c[1].textContent=t[i];c[2].textContent=f3(w[i]);c[3].textContent=f3(Lf(w[i]))});
+    const e=n%4||(n?4:0);prog.innerHTML='Epoch '+(Math.floor((n-1)/4)+1||1)+': examples seen '+[0,1,2,3].map(i=>'<b style="color:'+(i<e?COL[i]:'var(--line)')+'">●</b>').join(' ')}
+  function reset(){w=[0,0,0];t=[0,0,0];n=0;ar.innerHTML='';show()}
+  function tick(){n++;K.forEach((k,i)=>{const me=METH[k],every=4/me.per;if(n%every===0){const g=gB(me.B(t[i]),w[i]),w2=w[i]-ETA*g;arrow(ar,p.sx(w[i]),p.sx(w2),p.sy(lane[i]),me.col);w[i]=w2;t[i]++}});show()}
+  const stopA=()=>{clearInterval(iv);iv=null};
+  const epoch=()=>{stopA();let k=0;tick();k++;iv=setInterval(()=>{tick();if(++k>=4)stopA()},RM?1:1000)};
+  H('button','act',bs,'Run one epoch').onclick=epoch;H('button','',bs,'Start over').onclick=()=>{stopA();reset()};reset();
+  return{enter(){stopA();reset();if(!RM)iv=setTimeout(epoch,900)},leave(){stopA();clearTimeout(iv)}};
+};
+
+V.traj=el=>{
+  el.style.cssText='display:flex;flex-direction:column;align-items:center;gap:8px';
+  const bs=H('div','btns',el),b1=H('button','act',bs,'Count updates'),b2=H('button','',bs,'Count epochs (data processed)'),host=H('div','',el),K=['batch','sgd','mini'];
+  legend(el,K.map(k=>[METH[k].col,METH[k].name]));const note=H('p','soft small',el);
+  function draw(ep){host.innerHTML='';b1.classList.toggle('act',!ep);b2.classList.toggle('act',ep);
+    const xm=ep?5:20,p=Plot(host,{w:860,h:370,x:[0,xm],y:[0,1.25],xt:ep?[1,2,3,4,5]:[5,10,15,20],yt:[.5,1],pad:30,label:'Weight against '+(ep?'epochs':'updates')+' for the three methods'});
+    S('line',{x1:p.sx(0),x2:p.sx(xm),y1:p.sy(WS),y2:p.sy(WS),class:'ax','stroke-dasharray':'4 5'},p.svg);S('text',{x:p.sx(0)+14,y:p.sy(WS)-8,class:'st'},p.svg,'minimum of L');
+    S('text',{x:p.sx(xm),y:p.sy(0)-10,'text-anchor':'end',class:'st'},p.svg,ep?'epochs':'updates');S('text',{x:p.sx(0)+10,y:p.sy(1.25)+14,class:'tk',style:'font-style:italic'},p.svg,'w');
+    K.forEach(k=>{const me=METH[k];let w=0,d='M'+p.sx(0)+' '+p.sy(0);const N=ep?5*me.per:20,pts=[];
+      for(let t=0;t<N;t++){w-=ETA*gB(me.B(t),w);const x=ep?(t+1)/me.per:t+1;d+='L'+p.sx(x).toFixed(1)+' '+p.sy(w).toFixed(1);pts.push([x,w])}
+      redraw(S('path',{d:d,class:'cv',style:'stroke:'+me.col+';stroke-width:3'},p.g));pts.forEach(q=>S('circle',{cx:p.sx(q[0]),cy:p.sy(q[1]),r:4.5,style:'fill:'+me.col},p.g))});
+    note.textContent=ep?'Per pass over the data, SGD makes four updates for full batch’s one.':'Per update, full batch looks smooth. But each of its updates costs four examples.'}
+  b1.onclick=()=>draw(false);b2.onclick=()=>draw(true);draw(false);
+  return{enter(){draw(false)}};
+};
+
+V.shuffle=el=>{
+  const g=H('div','sh',el);let ep=0;
+  const add=o=>{ep++;H('span','',g,'Epoch '+ep);o.forEach(i=>{const b=H('b','',g,i+1);b.style.borderColor=COL[i];b.style.color=COL[i]})};
+  const rnd=()=>{const a=[0,1,2,3];for(let i=3;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+  const bt=H('button','',el,'Shuffle for the next epoch');bt.style.marginTop='20px';
+  const reset=()=>{g.innerHTML='';ep=0;add([0,1,2,3]);add([2,0,3,1])};bt.onclick=()=>{if(ep>=5)reset();else add(rnd())};reset();
+  el.style.cssText='display:flex;flex-direction:column;align-items:center';return{enter(){reset()}};
+};
+
+V.lr=el=>{
+  const p=Plot(el,{w:600,h:400,x:[-2.7,2.7],y:[-.2,3.6],xt:[-2,-1,1,2],yt:[1,2,3],pad:26,label:'Gradient descent steps on a parabola for the chosen learning rate'});
+  p.curve(w=>w*w/2).style.stroke='var(--ink)';const tr=S('g',{},p.g),side=document.getElementById('lrSide');
+  const lab=H('div','stat',side,'<span class="n" style="font-size:34px"></span><span class="l"></span>'),c=H('div','gctl',side);c.style.width='360px';
+  function draw(eta){tr.innerHTML='';let w=2,d='';const col=eta>2?'var(--bad)':(eta>1?'var(--amber)':'var(--blue)');
+    for(let t=0;t<=12;t++){const x=Math.max(-9,Math.min(9,w)),y=Math.min(x*x/2,9);d+=(t?'L':'M')+p.sx(x).toFixed(1)+' '+p.sy(y).toFixed(1);S('circle',{cx:p.sx(x),cy:p.sy(y),r:t?5:8,style:'fill:'+col},tr);w=(1-eta)*w}
+    tr.insertBefore(S('path',{d:d,style:'fill:none;stroke:'+col+';stroke-width:2;opacity:.7'}),tr.firstChild);
+    const r=eta>2?['Diverges','every step lands further away']:(eta>1?['Oscillates','overshoots the minimum each step']:(eta<.3?['Slow','small, safe steps']:['Fast','reaches the minimum quickly']));
+    lab.firstChild.textContent=r[0];lab.firstChild.style.color=col;lab.lastChild.textContent=r[1]+' (12 steps shown)'}
+  const sl=Slider(c,'Learning rate <i>η</i>',.05,2.2,.05,.1,draw,true,v=>v.toFixed(2));
+  const bs=H('div','btns',c);[.1,.8,1.8].forEach(v=>H('button','',bs,'η = '+v).onclick=()=>{sl.set(v);draw(v)});draw(.1);
+  return{enter(){sl.set(.1);draw(.1)}};
+};
+
+/* ---------- 2D optimizer playground ---------- */
+const FN={valley:{f:(a,b)=>a*a+50*b*b,g:(a,b)=>[2*a,100*b],dom:[-3.3,3.3,-.95,.95],start:[-2.9,.62],lv:v=>Math.sqrt(v)*1.7,min:1,xl:'w₂',yl:'w₁'},
+  saddle:{f:(a,b)=>a*a-b*b,g:(a,b)=>[2*a,-2*b],dom:[-2,2,-1.3,1.3],start:[1.7,.002],lv:v=>v*2.4,min:0,xl:'w₁',yl:'w₂'}};
+const OPT={sgd:{name:'Gradient descent',col:'var(--soft)'},momentum:{name:'Momentum',col:'var(--blue)'},adagrad:{name:'AdaGrad',col:'var(--amber)'},rmsprop:{name:'RMSProp',col:'var(--teal)'},adam:{name:'Adam',col:'var(--rose)'}};
+function runOpt(kind,F,eta,N){let w=F.start.slice(),m=[0,0],v=[0,0];const pts=[w.slice()],e=1e-8;
+  for(let t=1;t<=N;t++){const g=F.g(w[0],w[1]);
+    for(let i=0;i<2;i++){
+      if(kind==='sgd')w[i]-=eta*g[i];
+      else if(kind==='momentum'){m[i]=.9*m[i]+.1*g[i];w[i]-=eta*m[i]}
+      else if(kind==='adagrad'){v[i]+=g[i]*g[i];w[i]-=eta*g[i]/(Math.sqrt(v[i])+e)}
+      else if(kind==='rmsprop'){v[i]=.9*v[i]+.1*g[i]*g[i];w[i]-=eta*g[i]/(Math.sqrt(v[i])+e)}
+      else{m[i]=.9*m[i]+.1*g[i];v[i]=.999*v[i]+.001*g[i]*g[i];w[i]-=eta*(m[i]/(1-Math.pow(.9,t)))/(Math.sqrt(v[i]/(1-Math.pow(.999,t)))+e)}}
+    if(!isFinite(w[0])||Math.abs(w[0])>60||Math.abs(w[1])>60){pts.push([Math.max(-60,Math.min(60,w[0]||0)),Math.max(-60,Math.min(60,w[1]||0))]);break}
+    pts.push(w.slice())}
+  return pts}
+V.opt2d=el=>{
+  const d=el.dataset,F=FN[d.fn],N=+d.n||80,W=+d.w||760,D=F.dom,Hh=Math.round(W*(D[3]-D[2])/(D[1]-D[0])),bare=!!d.bare;
+  const ms=d.ms.split(',').map(s=>{const a=s.split(':');return{k:a[0],eta:+a[1]}});
+  el.style.cssText+=';display:flex;flex-direction:column;align-items:center;gap:10px';
+  const wrap=H('div','o2',el);wrap.style.width=W+'px';wrap.style.height=Hh+'px';
+  const cv=H('canvas','',wrap);cv.width=W>>1;cv.height=Hh>>1;cv.style.width=W+'px';cv.style.height=Hh+'px';
+  const svg=S('svg',{viewBox:'0 0 '+W+' '+Hh,width:W,height:Hh,role:'img','aria-label':'Contour map of the loss with the path each optimizer takes'},wrap);
+  const sx=a=>(a-D[0])/(D[1]-D[0])*W,sy=b=>Hh-(b-D[2])/(D[3]-D[2])*Hh;
+  S('text',{x:W-10,y:Hh-10,'text-anchor':'end',class:'tk',style:'font-style:italic;font-size:18px'},svg,F.xl);S('text',{x:10,y:22,class:'tk',style:'font-style:italic;font-size:18px'},svg,F.yl);
+  if(F.min)S('text',{x:sx(0),y:sy(0)+7,'text-anchor':'middle',class:'tk',style:'font-size:22px;fill:var(--ink)'},svg,'×');
+  S('circle',{cx:sx(F.start[0]),cy:sy(F.start[1]),r:6,style:'fill:var(--ink)'},svg);
+  const paths=ms.map(m=>({m:m,p:S('path',{style:'fill:none;stroke:'+OPT[m.k].col+';stroke-width:'+(m.k==='sgd'?2.2:3)+';stroke-linejoin:round'},svg),dot:S('circle',{r:6,style:'fill:'+OPT[m.k].col+';stroke:var(--stage);stroke-width:2'},svg)}));
+  function paint(){const w=cv.width,h=cv.height,ctx=cv.getContext('2d'),im=ctx.createImageData(w,h),A=cssRGB('--panel'),B=cssRGB('--blue-pale'),Ln=cssRGB('--line'),lv=new Float32Array(w*h);
+    let q=0;for(let y=0;y<h;y++)for(let x=0;x<w;x++)lv[q++]=F.lv(F.f(D[0]+(x+.5)/w*(D[1]-D[0]),D[3]-(y+.5)/h*(D[3]-D[2])));
+    for(q=0;q<w*h;q++){const x=q%w,l=Math.floor(lv[q]),edge=(x<w-1&&Math.floor(lv[q+1])!==l)||(q+w<w*h&&Math.floor(lv[q+w])!==l),u=Math.max(0,Math.min(1,1-Math.abs(lv[q])/9)),o=q*4;
+      for(let c=0;c<3;c++)im.data[o+c]=edge?Ln[c]:A[c]+(B[c]-A[c])*u;im.data[o+3]=255}
+    ctx.putImageData(im,0,0)}
+  let leg=null,sl=null,k=0,raf=null,runs=[];
+  if(!bare){leg=H('div','lg',el);
+    const rw=H('div','row',el);rw.style.gap='24px';
+    if(d.slider){const r=d.slider.split(',').map(Number),c=H('div','gctl',rw);c.style.width='480px';sl=Slider(c,'Learning rate <i>η</i>',r[0],r[1],r[2],ms[0].eta,v=>{ms.forEach(m=>m.eta=v);start()},true,v=>v.toFixed(3))}
+    H('button','',rw,'Play again').onclick=()=>start()}
+  function sim(){runs=ms.map(m=>runOpt(m.k,F,m.eta,N));
+    if(leg){leg.innerHTML='';ms.forEach((m,i)=>{const R=runs[i];let hit=-1;if(F.min)for(let t=0;t<R.length;t++)if(F.f(R[t][0],R[t][1])<.02){hit=t;break}
+      const bad=R.length<=N;H('span','',leg,'<i class="ch" style="background:'+OPT[m.k].col+'"></i><span>'+OPT[m.k].name+' <em>η = '+m.eta+(F.min?(bad?', diverges':(hit>=0?', there in '+hit+' steps':', not there after '+N)):'')+'</em></span>')})}}
+  function frame(){k=Math.min(N,k+1);paths.forEach((P,i)=>{const R=runs[i],n=Math.min(k,R.length-1);let s='';for(let t=0;t<=n;t++)s+=(t?'L':'M')+sx(R[t][0]).toFixed(1)+' '+sy(R[t][1]).toFixed(1);P.p.setAttribute('d',s);P.dot.setAttribute('cx',sx(R[n][0]));P.dot.setAttribute('cy',sy(R[n][1]))});
+    if(k<N)raf=setTimeout(frame,bare?70:55)}
+  function start(){clearTimeout(raf);sim();k=RM?N-1:0;frame()}
+  return{enter(){paint();start()},leave(){clearTimeout(raf)}};
+};
+const cssRGB=v=>{v=getComputedStyle(document.documentElement).getPropertyValue(v).trim();const n=parseInt(v.slice(1),16);return[n>>16&255,n>>8&255,n&255]};
+
+V.momBars=el=>{
+  el.style.cssText='display:flex;flex-direction:column;align-items:center;gap:6px';
+  const row=H('div','row',el);row.style.gap='40px';const T=12,seq=[t=>t%2?-4:4,t=>1],tit=['Across the steep valley: +4, −4, +4, −4 …','Along the valley: +1, +1, +1, +1 …'],yr=[[-4.8,4.8],[-.3,1.5]],yt=[[-4,4],[1]],parts=[];
+  seq.forEach((fn,i)=>{const c=H('div','col',row);c.style.cssText='flex:none;gap:2px';H('p','small',c,'<b>'+tit[i]+'</b>');
+    const p=Plot(c,{w:500,h:290,x:[0,T+1],y:yr[i],yt:yt[i],pad:24,label:'Gradients as bars and their moving average as a line'});
+    for(let t=1;t<=T;t++){const g=fn(t-1),y0=p.sy(0),y1=p.sy(g);S('rect',{x:p.sx(t)-11,width:22,y:Math.min(y0,y1),height:Math.abs(y1-y0),rx:3,style:'fill:var(--line)'},p.g)}
+    parts.push({p:p,fn:fn,ln:S('path',{class:'cv',style:'stroke-width:3.5'},p.g),dg:S('g',{},p.svg)})});
+  legend(el,[['var(--line)','raw gradient <i>g<sub>t</sub></i>'],['var(--blue)','momentum <i>m<sub>t</sub></i>']]);
+  const c=H('div','gctl',el);c.style.width='460px';
+  function draw(b){parts.forEach(P=>{let m=0,d='';P.dg.innerHTML='';for(let t=1;t<=T;t++){m=b*m+(1-b)*P.fn(t-1);d+=(t>1?'L':'M')+P.p.sx(t).toFixed(1)+' '+P.p.sy(m).toFixed(1);S('circle',{cx:P.p.sx(t),cy:P.p.sy(m),r:5,style:'fill:var(--blue)'},P.dg)}P.ln.setAttribute('d',d)})}
+  const sl=Slider(c,'Momentum <i>β</i>',0,.95,.05,.8,draw,true,v=>v.toFixed(2));draw(.8);
+  return{enter(){sl.set(.8);draw(.8)}};
+};
+
+function lines(el,o,series){ // series: [fn(t), colour, label]
+  const p=Plot(el,o);const ps=series.map(s=>{let d='';for(let t=o.t0||1;t<=o.x[1];t++)d+=(d?'L':'M')+p.sx(t).toFixed(1)+' '+p.sy(Math.min(s[0](t),o.y[1]*1.05)).toFixed(1);return S('path',{d:d,class:'cv',style:'stroke:'+s[1]+';stroke-width:3.5'},p.g)});
+  if(o.xl)S('text',{x:p.sx(o.x[1]),y:p.sy(0)-10,'text-anchor':'end',class:'st'},p.svg,o.xl);
+  legend(el,series.map(s=>[s[1],s[2]]));el.style.cssText+=';display:flex;flex-direction:column;align-items:center;gap:6px';
+  return{p:p,enter(){ps.forEach(redraw)}}}
+V.rare=el=>lines(el,{w:580,h:360,x:[0,48],y:[0,1.12],xt:[10,20,30,40],yt:[.5,1],pad:30,xl:'training step',label:'Effective learning rates of a common and a rare feature under AdaGrad'},
+  [[t=>1/Math.sqrt(t),COL[0],'common feature A'],[t=>1/Math.sqrt(Math.max(1,Math.floor(t/8))),COL[1],'rare feature B (a gradient every 8th step)']]);
+V.efflr=el=>lines(el,{w:580,h:360,x:[0,100],y:[0,1.12],xt:[25,50,75,100],yt:[.5,1],pad:30,xl:'training step',label:'AdaGrad’s effective learning rate shrinking toward zero'},
+  [[t=>1/Math.sqrt(t),COL[1],'AdaGrad: <i>η</i> / √<i>v<sub>t</sub></i>, shrinking like 1/√<i>t</i>']]);
+V.scale=el=>{const T0=20,b=.8,ada=[],rms=[];let va=0,vr=0;for(let t=1;t<=100;t++){const g=t<=T0?10:.1;va+=g*g;vr=b*vr+(1-b)*g*g;ada[t]=g/Math.sqrt(va);rms[t]=g/Math.sqrt(vr)}
+  const r=lines(el,{w:580,h:360,x:[0,100],y:[0,1.5],xt:[20,40,60,80,100],yt:[.5,1],pad:30,xl:'training step',label:'Update sizes of AdaGrad and RMSProp when the gradient scale drops'},[[t=>ada[t],COL[1],'AdaGrad'],[t=>rms[t],COL[2],'RMSProp (<i>β</i><sub>2</sub> = 0.8)']]);
+  S('line',{x1:r.p.sx(T0),x2:r.p.sx(T0),y1:r.p.sy(0),y2:r.p.sy(1.5),class:'ax','stroke-dasharray':'4 5'},r.p.svg);S('text',{x:r.p.sx(T0)+8,y:r.p.sy(1.5)+14,class:'st'},r.p.svg,'gradients shrink 100×');return r};
+
+V.bias=el=>{
+  const p=Plot(el,{w:580,h:360,x:[0,40],y:[0,1.25],xt:[10,20,30,40],yt:[.5,1],pad:30,label:'Raw and bias-corrected moving averages of a constant gradient'});
+  S('text',{x:p.sx(40),y:p.sy(0)-10,'text-anchor':'end',class:'st'},p.svg,'step t');
+  const a=S('path',{class:'cv',style:'stroke-width:3.5'},p.g),b=S('path',{class:'cv',style:'stroke:var(--rose);stroke-width:3.5'},p.g);
+  legend(el,[[COL[0],'raw <i>m<sub>t</sub></i>'],['var(--rose)','corrected <i class="hat">m</i><sub><i>t</i></sub>']]);el.style.cssText+=';display:flex;flex-direction:column;align-items:center;gap:6px';
+  const c=H('div','gctl',document.getElementById('biasSide'));c.style.width='340px';
+  function draw(be){let m=0,d1='',d2='';for(let t=1;t<=40;t++){m=be*m+(1-be);d1+=(t>1?'L':'M')+p.sx(t).toFixed(1)+' '+p.sy(m).toFixed(1);d2+=(t>1?'L':'M')+p.sx(t).toFixed(1)+' '+p.sy(m/(1-Math.pow(be,t))).toFixed(1)}a.setAttribute('d',d1);b.setAttribute('d',d2)}
+  const sl=Slider(c,'<i>β</i><sub>1</sub>',.5,.98,.01,.9,draw,false,v=>v.toFixed(2));draw(.9);
+  return{enter(){sl.set(.9);draw(.9)}};
+};
+
+V.sched=el=>{
+  const cos=x=>.5*(1+Math.cos(Math.PI*x/100)),stp=x=>x<30?1:(x<60?.5:(x<85?.2:.08)),wu=x=>x<10?x/10:.5*(1+Math.cos(Math.PI*(x-10)/90));
+  const p=Plot(el,{w:820,h:340,x:[0,100],y:[0,1.12],xt:[25,50,75,100],yt:[.5,1],pad:30,label:'Cosine, step and warmup learning-rate schedules'});
+  S('text',{x:p.sx(100),y:p.sy(0)-10,'text-anchor':'end',class:'st'},p.svg,'training progress (%)');S('text',{x:p.sx(0)+10,y:p.sy(1.12)+14,class:'st'},p.svg,'learning rate / η₀');
+  let d='M'+p.sx(0)+' '+p.sy(1);[[30,1,.5],[60,.5,.2],[85,.2,.08]].forEach(s=>{d+='L'+p.sx(s[0])+' '+p.sy(s[1])+'L'+p.sx(s[0])+' '+p.sy(s[2])});d+='L'+p.sx(100)+' '+p.sy(.08);
+  const cs=[p.curve(cos),S('path',{d:d,class:'cv amber'},p.g),p.curve(wu)];cs[2].style.stroke='var(--teal)';
+  legend(el,[[COL[0],'Cosine decay'],[COL[1],'Step decay'],[COL[2],'Warmup, then cosine']]);el.style.cssText+=';display:flex;flex-direction:column;align-items:center;gap:6px';
+  return{enter(){cs.forEach(redraw)}};
+};
+
+V.cur=el=>{
+  el.style.cssText+=';display:flex;flex-direction:column;gap:18px;width:470px';
+  const base=[52,18,88,34,70,10,96,44,26,80,60,14,38,92,66,22],rows=[['Shuffled','var(--soft)',base],['Curriculum: easy → hard','var(--blue)',base.slice().sort((a,b)=>a-b)],['Anti-curriculum: hard → easy','var(--amber)',base.slice().sort((a,b)=>b-a)]],bars=[];
+  rows.forEach(r=>{H('p','small',el,'<b style="color:'+r[1]+'">'+r[0]+'</b>').style.textAlign='left';const d=H('div','',el);d.style.cssText='display:flex;align-items:flex-end;gap:6px;height:100px;border-bottom:1.5px solid var(--line)';
+    bars.push(r[2].map(()=>{const b=H('i','',d);b.style.cssText='display:block;flex:1;border-radius:4px 4px 0 0;background:'+r[1]+';height:'+0+'px;transition:height .7s ease';return b}))});
+  H('p','soft small',el,'Bar height = how hard the example is; left to right = training order').style.textAlign='left';
+  const set=k=>bars.forEach((B,i)=>B.forEach((b,j)=>{b.style.height=(k?rows[i][2][j]:base[j])+'px'}));
+  let t;return{enter(){set(0);clearTimeout(t);t=setTimeout(()=>set(1),RM?0:900)},leave(){clearTimeout(t)}};
+};
+/* ---------- deck ---------- */
+const stage=document.getElementById('stage'),slides=[].slice.call(document.querySelectorAll('.slide'));
+const bar=document.getElementById('bar'),count=document.getElementById('count');
+slides.forEach(s=>{let n=0;s.querySelectorAll('.frag').forEach(f=>{if(f.dataset.f)f._i=+f.dataset.f;else f._i=++n;n=Math.max(n,f._i)});s._n=Math.max(n,+s.dataset.steps||0);s._v=null});
+let cur=-1,step=0;
+function inst(s){if(!s._v){s._v=[];s.querySelectorAll('[data-v]').forEach(e=>{try{s._v.push(V[e.dataset.v](e,s)||{})}catch(err){console.error(e.dataset.v,err)}})}return s._v}
+function go(i,st){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  if(i!==cur){if(cur>=0){slides[cur].classList.remove('on');inst(slides[cur]).forEach(v=>v.leave&&v.leave())}
+    cur=i;slides[cur].classList.add('on');inst(slides[cur]).forEach(v=>v.enter&&v.enter())}
+  step=Math.max(0,Math.min(slides[cur]._n,st));
+  slides[cur].querySelectorAll('.frag').forEach(f=>f.classList.toggle('show',f._i<=step));
+  inst(slides[cur]).forEach(v=>v.step&&v.step(step));
+  count.textContent=(cur+1)+' / '+slides.length;bar.style.width=((cur+1)/slides.length*100)+'%';
+  try{history.replaceState(null,'','#s-'+(cur+1))}catch(e){}
+}
+const next=()=>{if(step<slides[cur]._n)go(cur,step+1);else if(cur<slides.length-1)go(cur+1,0)};
+const prev=()=>{if(step>0)go(cur,step-1);else if(cur>0)go(cur-1,slides[cur-1]._n)};
+document.getElementById('next').onclick=next;document.getElementById('prev').onclick=prev;
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;const t=e.target,inp=t&&(t.tagName==='INPUT'||t.tagName==='BUTTON');
+  if(e.key==='ArrowRight'||e.key==='PageDown'){if(t&&t.tagName==='INPUT'&&e.key==='ArrowRight')return;e.preventDefault();next()}
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){if(t&&t.tagName==='INPUT'&&e.key==='ArrowLeft')return;e.preventDefault();prev()}
+  else if(e.key===' '&&!inp){e.preventDefault();next()}
+  else if(e.key==='Home'&&!inp)go(0,0);else if(e.key==='End'&&!inp)go(slides.length-1,0);
+});
+let tx=null,ty=0;
+stage.addEventListener('touchstart',e=>{const t=e.target;tx=(t.tagName==='INPUT'||t.tagName==='BUTTON')?null:e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+stage.addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)(dx<0?next:prev)();tx=null},{passive:true});
+function fit(){const d=document.getElementById('deck'),s=Math.min(d.clientWidth/1280,d.clientHeight/720);stage.style.transform='translate(-50%,-50%) scale('+s+')'}
+addEventListener('resize',fit);fit();
+function fromHash(){const m=/^#s-(\d+)$/.exec(location.hash);return m?+m[1]-1:0}
+addEventListener('hashchange',()=>{const i=fromHash();if(i!==cur)go(i,0)});
+go(fromHash(),0);
+})();
+</script>
+</body>
+</html>
