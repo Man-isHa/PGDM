@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>From Sequence Generation to Recurrent Neural Networks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --bg:#E6ECF2; --stage:#F7F9FC; --ink:#16263A; --soft:#5B6B7E; --line:#C5D0DC;
+  --blue:#2457C5; --blue-pale:#DCE6FA; --amber:#D07A00; --amber-pale:#FBE6BF;
+  --panel:#FFFFFF; --bad:#C2413A;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#070D16; --stage:#0F1A29; --ink:#E6EDF5; --soft:#94A4B7; --line:#2B3C52;
+    --blue:#7FA8FF; --blue-pale:#1A2B4C; --amber:#FFB23E; --amber-pale:#4A3511;
+    --panel:#17263A; --bad:#FF7B72;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#070D16; --stage:#0F1A29; --ink:#E6EDF5; --soft:#94A4B7; --line:#2B3C52;
+  --blue:#7FA8FF; --blue-pale:#1A2B4C; --amber:#FFB23E; --amber-pale:#4A3511;
+  --panel:#17263A; --bad:#FF7B72;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);overflow:hidden;font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif}
+#deck{position:relative;width:100%;height:100%;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;background:var(--stage);transform-origin:center;border-radius:6px;overflow:hidden;font-size:26px;line-height:1.35}
+.slide{position:absolute;inset:0;padding:52px 76px 70px;display:flex;flex-direction:column;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s .35s}
+.slide.on{opacity:1;visibility:visible;transition:opacity .35s ease}
+h1{font-size:76px;line-height:1.02;font-weight:800;letter-spacing:-.02em;margin:0}
+h2{font-size:40px;line-height:1.1;font-weight:800;letter-spacing:-.015em;margin:0 0 6px}
+p{margin:0}
+.body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:26px;min-height:0;text-align:center}
+.row{display:flex;align-items:center;justify-content:center;gap:56px;width:100%}
+.col{display:flex;flex-direction:column;align-items:center;gap:16px;flex:1;min-width:0}
+.left{align-items:flex-start;text-align:left}
+.soft{color:var(--soft)} .small{font-size:20px} .big{font-size:32px}
+.imp{color:var(--blue);font-weight:600}
+.fire{color:var(--amber);font-weight:600}
+b,strong{font-weight:600}
+.frag{opacity:0;transform:translateY(8px);transition:opacity .45s ease,transform .45s ease}
+.frag.show{opacity:1;transform:none}
+/* math */
+.math{font-family:'STIX Two Text','Cambria Math',Georgia,serif;font-size:34px;line-height:1.3;white-space:nowrap}
+.math i{font-style:italic}
+.math sub,.math sup{font-size:.62em}
+.math.sm{font-size:27px}
+.boxed{display:inline-block;border:2px solid var(--blue);border-radius:8px;padding:10px 26px;background:var(--panel)}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.86em;line-height:1.15}
+.fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 .3em 2px}
+.fr>span:last-child{padding:2px .3em 0}
+.cases{display:inline-flex;align-items:center;gap:10px}
+.cases .brace{font-size:96px;line-height:.9;font-weight:400;transform:scaleX(.7);margin:-10px -6px 0}
+.cases .rows{display:grid;grid-template-columns:auto auto;column-gap:26px;row-gap:4px;text-align:left}
+.cases .rows span:nth-child(even){font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:24px;color:var(--soft);align-self:center}
+.ineq{display:grid;grid-template-columns:auto auto auto;column-gap:22px;row-gap:8px;text-align:left;align-items:baseline}
+/* figures */
+figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:10px}
+figure img{display:block;max-width:100%;border-radius:10px;background:#fff}
+figcaption{font-size:18px;color:var(--soft)}
+.stack{position:relative;border-radius:10px;overflow:hidden;background:#000}
+.stack img{display:block;width:100%;height:100%;object-fit:contain;background:#000;border-radius:0}
+.stack img+img{position:absolute;inset:0}
+.stack img.frag{transform:none;transition:opacity .9s ease}
+/* tables */
+table.tt{border-collapse:collapse;font-family:'STIX Two Text',Georgia,serif;font-size:28px}
+.tt th,.tt td{padding:5px 20px;text-align:center}
+.tt thead th{border-bottom:2px solid var(--ink);font-weight:600}
+.tt th:nth-child(2),.tt td:nth-child(2){border-right:1.5px solid var(--line)}
+.tt tr.hl td{background:var(--amber-pale)}
+.tt td.ok{color:var(--blue)} .tt td.no{color:var(--bad)}
+.tt td.one{color:var(--amber);font-weight:600}
+/* plots */
+svg{display:block;overflow:visible}
+.ax{stroke:var(--soft);stroke-width:1.4}
+.tk{fill:var(--soft);font-size:16px;font-family:'STIX Two Text',Georgia,serif}
+.cv{fill:none;stroke:var(--blue);stroke-width:3.6;stroke-linejoin:round;stroke-linecap:round}
+.cv.thin{stroke-width:2;stroke:var(--soft);stroke-dasharray:6 6}
+.cv.amber{stroke:var(--amber)}
+.cv.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.5s ease .2s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.kink{fill:var(--amber);stroke:var(--stage);stroke-width:2}
+.st{fill:var(--soft);font-size:16px;font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.mt{fill:var(--ink);font-size:24px;font-family:'STIX Two Text',Georgia,serif;font-style:italic}
+/* networks */
+.net line{stroke:var(--line);stroke-width:1.5;transition:stroke .3s}
+.net .eg.on line{stroke:var(--amber);stroke-width:2.2}
+.net circle{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.6;transition:fill .3s,stroke .3s}
+.net .ng.on circle{fill:var(--amber);stroke:var(--amber)}
+.flow{stroke:var(--soft);stroke-width:2;fill:none;stroke-dasharray:7 9;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.node{fill:var(--blue-pale);stroke:var(--blue);stroke-width:3}
+.node.lit{fill:var(--amber);stroke:var(--amber)}
+.edge{stroke:var(--soft);stroke-width:2;fill:none}
+.edge.lit{stroke:var(--amber);stroke-width:3}
+/* gate widget */
+.gate{display:flex;align-items:center;justify-content:center;gap:44px;width:100%}
+.gate .region{fill:var(--blue-pale)}
+.gate .bline{stroke:var(--blue);stroke-width:3.5;stroke-linecap:round}
+.gate .frame{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.gate .pt{stroke-width:3;stroke:var(--soft);fill:var(--stage)}
+.gate .pt.t1{stroke:var(--amber);fill:var(--amber)}
+.gate .pt.bad{stroke:var(--bad);stroke-dasharray:4 3}
+.gate .pt.cur{stroke-width:6;stroke:var(--ink)}
+.gate .pl{font-size:15px;fill:var(--soft);font-family:'STIX Two Text',Georgia,serif}
+.gctl>button{align-self:flex-start}
+.gctl{display:flex;flex-direction:column;gap:12px;align-items:stretch;width:330px;text-align:left}
+.sl{display:grid;grid-template-columns:54px 1fr 56px;align-items:center;gap:10px;font-family:'STIX Two Text',Georgia,serif;font-size:26px}
+.sl.wide{grid-template-columns:150px 1fr 30px;white-space:nowrap;font-family:inherit;font-size:21px}
+.sl output{text-align:right;font-variant-numeric:tabular-nums;font-size:22px}
+input[type=range]{width:100%;accent-color:var(--blue);height:26px;margin:0;cursor:pointer}
+.status{font-size:21px;min-height:58px;color:var(--soft)}
+.status.win{color:var(--blue);font-weight:600}
+.live{font-size:22px;white-space:nowrap}
+button{font:inherit;font-size:19px;color:var(--ink);background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:7px 16px;cursor:pointer}
+button:hover{border-color:var(--blue)}
+button.act{background:var(--blue);border-color:var(--blue);color:var(--stage)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.log{font-family:'STIX Two Text',Georgia,serif;font-size:21px;white-space:nowrap;line-height:1.5;min-height:112px}
+.stat{display:flex;flex-direction:column;align-items:flex-start;gap:0;text-align:left}
+.stat .n{font-size:44px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+.stat .l{font-size:19px;color:var(--soft)}
+canvas{display:block;border-radius:10px;border:1.5px solid var(--line)}
+ul.pts,ol.pts{margin:0;padding-left:1.1em;text-align:left;display:flex;flex-direction:column;gap:22px;font-size:30px}
+.bar{height:16px;border-radius:8px;background:var(--line);width:100%;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--amber);border-radius:8px}
+/* history */
+.year{font-size:112px;font-weight:800;line-height:.95;letter-spacing:-.03em;color:var(--blue)}
+.tl{position:absolute;left:76px;right:76px;bottom:64px;height:46px}
+.tl:before{content:"";position:absolute;left:0;right:0;top:9px;height:2px;background:var(--line)}
+.tl span{position:absolute;top:0;transform:translateX(-50%);font-size:15px;color:var(--soft);padding-top:24px;font-variant-numeric:tabular-nums}
+.tl span:before{content:"";position:absolute;left:50%;top:4px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--stage);border:2px solid var(--soft)}
+.tl span.past:before{background:var(--soft)}
+.tl span.now{color:var(--amber);font-weight:600}
+.tl span.now:before{background:var(--amber);border-color:var(--amber);box-shadow:0 0 0 6px var(--amber-pale)}
+.hist .body{padding-bottom:70px}
+/* chrome */
+#bar{position:absolute;left:0;bottom:0;height:4px;background:var(--blue);transition:width .3s}
+#nav{position:absolute;right:26px;bottom:16px;display:flex;align-items:center;gap:10px;font-size:16px;color:var(--soft);font-variant-numeric:tabular-nums}
+#nav button{font-size:18px;padding:3px 12px;line-height:1.2}
+@media (prefers-reduced-motion: reduce){
+  .flow,.cv.draw{animation:none;stroke-dashoffset:0}
+  .frag,.slide{transition:none}
+}
+.gr{color:var(--amber)} .fw{color:var(--blue)}
+.op{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1;margin:0 .14em}
+.op .sg{font-size:1.5em;line-height:1.05}
+.op .lim{font-size:.5em;min-height:1.15em;line-height:1.15}
+.ub{display:inline-flex;flex-direction:column;align-items:center;vertical-align:top}
+.ubl{font-size:.62em;margin-top:1px;color:var(--soft);text-align:center}
+.tx{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:.74em}
+.bp{font-size:1.55em;font-weight:300;vertical-align:-.14em;line-height:1}
+.math .boxed{padding:10px 24px}
+.legend{display:grid;grid-template-columns:auto auto;column-gap:22px;row-gap:16px;align-items:center;text-align:left;font-size:20px}
+/* annotated network */
+.nv line{stroke:var(--line);stroke-width:1.6;transition:stroke .3s}
+.nv line.fw{stroke:var(--blue);stroke-width:2}
+.nv line.gr{stroke:var(--amber);stroke-width:3.2}
+.nv circle{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.6;transition:fill .3s,stroke .3s}
+.nv circle.gr{fill:var(--amber-pale);stroke:var(--amber)}
+.nv circle.dead{fill:var(--stage);stroke:var(--line)}
+.nv circle.off{fill:var(--stage);stroke:var(--line)}
+.nv circle.pick{cursor:pointer}
+.nv .nm{font:italic 20px 'STIX Two Text',Georgia,serif;fill:var(--ink);pointer-events:none}
+.nv .tg{font:17px 'STIX Two Text',Georgia,serif;fill:var(--ink);paint-order:stroke;stroke:var(--stage);stroke-width:5px;stroke-linejoin:round}
+.nv .tg .b{fill:var(--amber);font-weight:600}
+.nv .el{font:600 18px 'STIX Two Text',Georgia,serif;fill:var(--amber);paint-order:stroke;stroke:var(--stage);stroke-width:6px;stroke-linejoin:round}
+.nv .el.k{fill:var(--ink)}
+/* loop */
+.loop{display:flex;align-items:center;gap:14px}
+.lp{padding:14px 26px;border-radius:999px;border:2px solid var(--line);background:var(--panel);font-size:24px;font-weight:600;transition:background .35s,border-color .35s,color .35s}
+.lp.on{background:var(--amber);border-color:var(--amber);color:var(--stage)}
+.lpa{color:var(--soft);font-size:26px}
+/* chain + pipe */
+.chain{display:grid;grid-template-columns:110px 96px 110px 96px 110px 96px 110px 96px 110px;justify-items:center;align-items:center;row-gap:16px}
+.po{padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel);font-size:23px;min-width:64px;text-align:center}
+.chain .po{font-size:28px;min-width:96px;border-color:var(--blue);border-width:2px}
+.pa{color:var(--soft);font-size:24px}
+.pa.fwd{color:var(--blue);font-size:30px}
+.back{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--amber)}
+.back>span:first-child{font-size:32px;line-height:1}
+.back .math{font-size:23px}
+.pipe{display:grid;grid-template-columns:70px 30px 128px 30px 70px 30px 128px 30px 70px 30px 128px 30px 70px 30px 100px 30px 70px;justify-items:center;align-items:center;row-gap:12px}
+.pipe>div{white-space:nowrap}
+.pv{width:66px;height:66px;border-radius:50%;border:2.6px solid var(--blue);background:var(--blue-pale);display:flex;align-items:center;justify-content:center;font-size:24px}
+.pg{color:var(--amber);font-size:21px}
+.pg.big{font-size:32px;font-weight:600}
+.pn{font-size:18px;color:var(--soft)}
+.pd{color:var(--soft);font-size:24px}
+/* multilayer picture */
+.lb{position:absolute;transform:translateX(-50%);font-size:20px;transition:opacity .45s;white-space:nowrap}
+.lb.off{opacity:0}
+.lb.hd{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:17px;color:var(--soft)}
+/* dims */
+.dm{display:flex;flex-direction:column;gap:16px;margin-top:14px}
+.dr{display:flex;align-items:center;gap:12px}
+.dl{width:104px;text-align:left;font-size:20px;font-weight:600}
+.mx{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px}
+.mg{display:grid;gap:2px}
+.mg i{width:22px;height:22px;border-radius:3px;display:block}
+.mg.f i{background:var(--blue-pale);border:1.5px solid var(--blue)}
+.mg.g i{background:var(--amber-pale);border:1.5px solid var(--amber)}
+.mc{font-size:20px}
+.md{font-size:16px;color:var(--soft);font-variant-numeric:tabular-nums}
+.mo{font-size:26px;padding:0 2px;margin-bottom:46px}
+/* table */
+table.cmp{border-collapse:collapse;font-size:23px}
+.cmp th,.cmp td{padding:13px 30px;text-align:center}
+.cmp thead th{border-bottom:2px solid var(--ink);font-weight:600}
+.cmp td:first-child{text-align:left;font-weight:600;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:22px}
+.cmp tr.frag{transform:none}
+/* softmax bars */
+.sbars{display:flex;gap:26px;align-items:flex-end;height:230px}
+.sbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;width:74px}
+.sbar>i{display:block;width:100%;background:var(--blue);border-radius:6px 6px 0 0;transition:height .15s}
+.sbar>b{font-variant-numeric:tabular-nums;font-size:20px}
+.ubr{align-self:stretch;width:100%;height:11px;margin-top:4px;fill:none;stroke:var(--soft);stroke-width:1.6;stroke-linecap:round}
+.rows{display:grid;grid-template-columns:auto auto auto;column-gap:40px;row-gap:12px;align-items:center;text-align:left;font-size:23px}
+.rows .math{font-size:inherit}
+.math.dim,.rows .math.dim{font-size:19px;color:var(--soft)}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:24px;text-align:left;background:var(--panel);border:1.5px solid var(--line);border-left:6px solid var(--blue);border-radius:8px;padding:22px 30px;line-height:1.7;margin:0}
+a{color:var(--blue);text-underline-offset:4px}
+.cbox{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 6px;min-width:112px;border-radius:10px;border:2px solid var(--blue);background:var(--panel)}
+.cbox .math{font-size:21px}
+.cbox b{font-size:22px;color:var(--blue);font-variant-numeric:tabular-nums}
+.back b{font-variant-numeric:tabular-nums;font-size:20px}
+.dg{display:flex;gap:6px}
+.dgi{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.dgi.ok{color:var(--blue)} .dgi.no{color:var(--bad)}
+:root{--teal:#0B8577;--rose:#C2356B}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--teal:#4FD1C5;--rose:#FF8FB3}}
+:root[data-theme="dark"]{--teal:#4FD1C5;--rose:#FF8FB3}
+.c0{color:var(--blue)}.c1{color:var(--amber)}.c2{color:var(--teal)}.c3{color:var(--rose)}
+.tt th.c0,.tt th.c1,.tt th.c2,.tt th.c3,.cmp td.c0,.cmp td.c1,.cmp td.c2,.cmp td.c3{font-weight:700}
+.sq{white-space:nowrap}.sq>span{border-top:1.5px solid currentColor;padding:1px 2px 0;margin-left:-1px}
+.vec{display:inline-flex;flex-direction:column;align-items:center;padding:4px 14px;border-left:2.5px solid currentColor;border-right:2.5px solid currentColor;border-radius:8px;line-height:1.25}
+.hb{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:12px;font-size:20px;position:relative;width:100%}
+.hb i{display:block;height:26px;border-radius:5px}
+.hb b{position:absolute;left:176px;font-weight:400;font-size:19px}
+.cur{width:120px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;background:var(--blue-pale);border:2px solid var(--blue);border-radius:8px;font-size:20px}
+.lg{display:flex;flex-wrap:wrap;gap:8px 26px;align-items:center;justify-content:center;font-size:20px}
+.lg>span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.lg i.ch{display:inline-block;width:26px;height:5px;border-radius:3px}
+.lg em{font-style:normal;color:var(--soft);font-size:17px}
+.o2{position:relative;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+.o2 canvas{display:block;border:0;border-radius:0}
+.o2 svg{position:absolute;left:0;top:0}
+.info{font-size:21px;line-height:1.5;min-height:130px;text-align:left}
+.info b{font-variant-numeric:tabular-nums}
+.rt{border-collapse:collapse;font-size:21px;font-variant-numeric:tabular-nums}
+.rt td,.rt th{padding:6px 12px;text-align:right;white-space:nowrap}.rt td:first-child,.rt th:first-child{text-align:left;font-weight:600}
+.rt th{font-weight:400;color:var(--soft);font-size:17px;border-bottom:1.5px solid var(--line)}
+.sh{display:grid;grid-template-columns:auto repeat(4,64px);gap:12px 14px;align-items:center;font-size:24px}
+.sh b{display:flex;align-items:center;justify-content:center;height:56px;border-radius:10px;border:2.5px solid;background:var(--panel);font-size:26px;transition:transform .5s}
+.sh span{text-align:right;padding-right:10px;color:var(--soft);font-size:21px}
+.sl.wide{grid-template-columns:150px 1fr 58px}
+.hat{position:relative;display:inline-block;line-height:1}
+.hat::before{content:'^';position:absolute;left:50%;top:-.34em;transform:translateX(-42%) scaleX(1.25);font-style:normal;font-size:.82em;line-height:1}
+.sq>span{padding-top:.34em}
+.fr .hat{margin-top:.22em}
+.code .cm{color:var(--soft)}.code b{color:var(--blue);font-weight:600}.code .frag{transform:none}
+.cards{display:flex;gap:26px}
+.card{width:330px;padding:22px 24px;border:2px solid var(--line);border-top:6px solid var(--blue);border-radius:12px;background:var(--panel);text-align:left;display:flex;flex-direction:column;gap:12px}
+.card h3{margin:0;font-size:27px}.card p{font-size:21px;color:var(--soft)}.card b{font-size:21px;font-weight:600}
+ul.refs{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:14px;font-size:19px;line-height:1.35}
+.hat.tld::before{content:'~';top:-.68em}
+.big2{font-size:34px}
+.kv{display:grid;grid-template-columns:auto auto;column-gap:18px;row-gap:4px;font-size:21px;text-align:left;font-variant-numeric:tabular-nums}
+.kv span:nth-child(odd){color:var(--soft)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.mbar{width:150px;height:14px;background:var(--line);border-radius:7px;overflow:hidden}.mbar i{display:block;height:100%;border-radius:7px}
+.sq.tall{display:inline-flex;align-items:center}.sq.tall>.rad{font-size:2.2em;line-height:1;border-top:0;padding:0;margin:0 -.04em 0 0;transform:scaleX(.85)}.sq.tall>span:last-child{border-top:1.5px solid currentColor;padding:.12em .2em 0;margin-left:0;display:inline-block}
+
+/* ---- sequence deck additions ---- */
+.lab{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:22px;fill:var(--ink)}
+.lab.a{fill:var(--amber);font-weight:600}.lab.b{fill:var(--blue);font-weight:600}.lab.big{font-size:32px;font-weight:600}
+.mt.a{fill:var(--amber)}.mt.b{fill:var(--blue)}.mt.s{fill:var(--soft)}
+.st.a{fill:var(--amber)}.st.b{fill:var(--blue)}
+.bx{fill:var(--panel);stroke:var(--line);stroke-width:1.8}
+.bxb{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.4}
+.bxa{fill:var(--amber-pale);stroke:var(--amber);stroke-width:2.4}
+.bxd{fill:var(--panel);stroke:var(--amber);stroke-width:2.4;stroke-dasharray:7 5}
+.ar{stroke:var(--soft);stroke-width:2;fill:none}.ar.b{stroke:var(--blue)}.ar.a{stroke:var(--amber)}
+.bk{stroke-dasharray:8 7;animation:flow 1s linear infinite}
+.dot{fill:var(--blue)}.dot.a{fill:var(--amber)}
+.win{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2;stroke-dasharray:6 5}
+.band{fill:var(--amber-pale)}
+.fd{transition:opacity .45s ease}
+.prompt{border-left:5px solid var(--amber);padding:6px 0 6px 22px;text-align:left;font-size:28px;max-width:980px;align-self:center}
+.prompt small{display:block;font-size:17px;color:var(--soft);margin-bottom:4px}
+.toks{display:flex;gap:12px;font-size:42px;font-family:'STIX Two Text',Georgia,serif}
+.tok{padding:4px 18px;border:2px solid var(--line);border-radius:10px;background:var(--panel)}
+.tok.q{border:3px dashed var(--amber);color:var(--amber);font-weight:600}
+.pb{display:grid;grid-template-columns:70px 380px 56px;gap:8px 14px;align-items:center;font-size:22px}
+.pb>span{text-align:right}.pb>b{font-weight:400;color:var(--soft);font-size:19px;font-variant-numeric:tabular-nums;text-align:left}
+.pb>div{height:22px;background:var(--line);border-radius:5px;overflow:hidden}
+.pb i{display:block;height:100%;width:0;background:var(--amber);border-radius:5px;transition:width .7s ease}
+.seqbig{font-size:92px;font-weight:800;letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.qbox{display:inline-block;min-width:1.15em;border:5px dashed var(--amber);border-radius:14px;color:var(--amber);padding:0 .12em;line-height:1.1}
+.cards.six{flex-wrap:wrap;justify-content:center;max-width:1100px;gap:22px}
+.cards.six .card{width:340px;padding:18px 22px;gap:8px}.cards.six .card h3{font-size:25px}
+.sent{font-size:33px;line-height:1.7;text-align:left;max-width:560px;margin:0}
+.sent .win{background:var(--blue-pale);border:2.5px dashed var(--blue);border-radius:8px;padding:1px 8px;fill:none}
+.clue{color:var(--amber);font-weight:600}
+.tgt{color:var(--amber);font-weight:600;border-bottom:3px solid var(--amber)}
+.histab{display:grid;grid-template-columns:auto auto auto;gap:22px 34px;align-items:center;font-family:'STIX Two Text',Georgia,serif;font-size:44px;text-align:left}
+.histab>span:nth-child(3n+1){font-family:'Bricolage Grotesque',sans-serif;font-size:24px}
+.winh{background:var(--blue-pale);border:2.5px dashed var(--blue);border-radius:10px;padding:0 12px}
+.wb{text-align:left!important;white-space:nowrap}
+.wb span{display:inline-block;width:330px;vertical-align:middle}
+.wb span i{display:block;height:14px;background:var(--amber);border-radius:4px;min-width:2px}
+.wb em{font-style:normal;margin-left:6px}
+.steps{display:grid;grid-template-columns:auto auto;column-gap:30px;row-gap:16px;align-items:center;text-align:left}
+.steps>span{font-size:20px}
+.steps .frag{transform:none}
+.caps{position:relative;height:96px;width:1000px}
+.caps>p{position:absolute;inset:0;font-size:25px;opacity:0;transition:opacity .35s;display:flex;align-items:center;justify-content:center;gap:.35em;flex-wrap:wrap}
+.caps>p.on{opacity:1}
+.caps .math{font-size:27px}
+.pips{display:flex;gap:10px;justify-content:center}
+.pips i{width:12px;height:12px;border-radius:50%;background:var(--line);transition:background .3s}
+.pips i.on{background:var(--blue)}
+.tasks td:last-child{text-align:left;font-weight:400}
+@media (prefers-reduced-motion: reduce){.bk{animation:none}.pb i,.caps>p,.fd{transition:none}}
+
+</style>
+</head>
+<body>
+<div id="deck"><div id="stage">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" style="fill:var(--soft)"/></marker>
+<marker id="ahb" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" style="fill:var(--blue)"/></marker>
+<marker id="aha" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" style="fill:var(--amber)"/></marker>
+</defs></svg>
+
+<!-- 1 -->
+<section class="slide">
+  <div class="row" style="flex:1;gap:30px">
+    <div class="col left" style="flex:1.2;gap:22px">
+      <p class="soft">Neural Networks — Lecture Slides</p>
+      <h1 style="font-size:60px">From Sequence Generation to Recurrent Neural Networks</h1>
+      <p class="soft big">Examples → sliding-window MLPs → memory → RNNs</p>
+    </div>
+    <div class="col" style="flex:none"><div data-v="titleViz"></div></div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <h2>Many problems involve sequences</h2>
+  <div class="body">
+    <div class="cards six">
+      <div class="card"><h3>Language generation</h3><p>Write the next word, character, or sentence in the style of a text.</p></div>
+      <div class="card"><h3>Time-series forecasting</h3><p>Predict the next reading from historical prices, traffic, or weather.</p></div>
+      <div class="card"><h3>Speech and music</h3><p>Generate the next audio sample, note, or short phrase.</p></div>
+      <div class="card"><h3>Human activity</h3><p>Predict the next step from a sequence of movement sensors.</p></div>
+      <div class="card"><h3>Biological sequences</h3><p>Model the next symbol in a DNA or protein sequence.</p></div>
+      <div class="card"><h3>Video and robotics</h3><p>Predict a future frame or the next observation after an action.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <h2>Language generation: one token at a time</h2>
+  <div class="body" style="gap:24px">
+    <div class="toks"><span class="tok">To</span><span class="tok">be,</span><span class="tok">or</span><span class="tok">not</span><span class="tok">to</span><span class="tok q">?</span></div>
+    <div class="row" style="gap:50px">
+      <div class="pb frag" data-f="1" data-v="lang">
+        <span>be</span><div><i data-w="58"></i></div><b>0.58</b>
+        <span>die</span><div><i data-w="14"></i></div><b>0.14</b>
+        <span>sleep</span><div><i data-w="9"></i></div><b>0.09</b>
+        <span>go</span><div><i data-w="7"></i></div><b>0.07</b>
+        <span>…</span><div><i data-w="12"></i></div><b>0.12</b>
+      </div>
+      <div class="col left frag" data-f="2" style="flex:none;gap:10px;max-width:430px">
+        <p class="soft small">Given earlier words, estimate a distribution for the next word, then sample or select one.</p>
+        <div class="math" data-m="p_\theta(x_{t+1} \mid x_1, \ldots, x_t)"></div>
+      </div>
+    </div>
+    <div class="prompt frag" data-f="3"><small>Think / discuss</small>What earlier information matters for good text generation?</div>
+    <p class="soft small" style="font-size:16px">Text fragment from Shakespeare’s <i>Hamlet</i>; probabilities are illustrative.</p>
+  </div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <h2>Time-series forecasting: a market trend</h2>
+  <div class="body" style="gap:18px">
+    <div data-v="market"></div>
+    <div class="prompt frag"><small>Think / discuss</small>Would the last three prices be enough to infer trend, seasonality, or a regime change?</div>
+    <p class="soft small" style="font-size:16px">Synthetic illustration; forecasting actual markets is uncertain.</p>
+  </div>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <h2>Speech and music: a periodic signal</h2>
+  <div class="body" style="gap:18px">
+    <div data-v="sine"></div>
+    <div class="row" style="gap:40px">
+      <div class="math sm" data-m="x_t = \sin(0.28t)"></div>
+      <p class="soft small">predict <span class="math" style="font-size:24px" data-m="x_{t+1}, x_{t+2}, \ldots"></span></p>
+    </div>
+    <p class="small frag">If we predict only <b>one step</b>, we can feed the prediction back to generate many future steps.</p>
+  </div>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <h2>Human activity: movement sensors</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="activity"></div>
+    <p class="soft small">Three accelerometer axes. The pattern so far tells us what the next step is likely to look like.</p>
+  </div>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <h2>Biological sequences: the next symbol</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="dna"></div>
+    <p class="soft small">The output is a distribution over an alphabet: four bases for DNA, twenty amino acids for proteins.</p>
+  </div>
+</section>
+
+<!-- 8 -->
+<section class="slide">
+  <h2>Video and robotics: the next frame</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="video"></div>
+    <p class="soft small">Past frames, plus the action taken, are used to predict the next observation.</p>
+  </div>
+</section>
+
+<!-- 9 -->
+<section class="slide">
+  <h2>Start with an easier task: even numbers</h2>
+  <div class="body" style="gap:40px">
+    <div class="seqbig">2, 4, 6, 8, <span class="qbox">?</span></div>
+    <div class="prompt frag"><small>Think / discuss</small>Can an ordinary MLP solve this? What input and target would you provide?</div>
+    <p class="soft small frag">Predict the next value first. Later, repeat the process to generate a complete sequence.</p>
+  </div>
+</section>
+
+<!-- 10 -->
+<section class="slide">
+  <h2>From a sequence to examples for an MLP</h2>
+  <div class="body" style="gap:22px">
+    <div data-v="window"></div>
+    <div class="math frag" data-m="\hat{x}_{t+1} = f_\theta(x_{t-2}, x_{t-1}, x_t)"></div>
+    <p class="small frag">This is supervised learning with a sliding window. But <span class="fire">why exactly three?</span></p>
+  </div>
+</section>
+
+<!-- 11 -->
+<section class="slide">
+  <h2>An MLP solution: sliding windows</h2>
+  <div class="body" style="gap:18px">
+    <div data-v="mlp"></div>
+    <p class="soft small">Fixed-size input, standard loss, backpropagation — nothing new yet.</p>
+  </div>
+</section>
+
+<!-- 12 -->
+<section class="slide">
+  <h2>MLP forecasting vs. MLP sequence generation</h2>
+  <div class="body" style="gap:22px">
+    <div data-v="autoreg"></div>
+    <ul class="pts" style="font-size:25px;gap:12px">
+      <li class="frag">The window length is <span class="imp">fixed in advance</span>.</li>
+      <li class="frag">Prediction errors can accumulate as predictions are fed back.</li>
+      <li class="frag">Natural language and long-term trends can depend on much older context.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 13 -->
+<section class="slide">
+  <h2>What if the next value depends on more history?</h2>
+  <div class="body" style="gap:26px">
+    <table class="tt hist-t">
+      <thead><tr><th>Required context</th><th>MLP inputs</th><th>First-layer weights</th></tr></thead>
+      <tbody>
+        <tr><td>Last 3 observations</td><td>3</td><td class="wb"><span><i style="width:1px"></i></span><em>3<i>H</i></em></td></tr>
+        <tr><td>Last 20 observations</td><td>20</td><td class="wb"><span><i style="width:7px"></i></span><em>20<i>H</i></em></td></tr>
+        <tr><td>Last 1000 observations</td><td>1000</td><td class="wb"><span><i style="width:320px"></i></span><em>1000<i>H</i></em></td></tr>
+      </tbody>
+    </table>
+    <p class="soft" style="font-size:16px">For a one-dimensional input series and a first hidden layer of width <i>H</i>.</p>
+    <ul class="pts" style="font-size:24px;gap:10px">
+      <li class="frag">Longer windows require more input coordinates and parameters.</li>
+      <li class="frag">There may be no known upper bound on relevant history.</li>
+      <li class="frag">Fixed windows discard anything before the chosen cutoff.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 14 -->
+<section class="slide">
+  <h2>The hard part: remembering information from far back</h2>
+  <div class="body" style="gap:24px">
+    <div class="row" style="gap:50px;align-items:flex-start">
+      <div class="col left" style="gap:10px">
+        <p class="soft small">Text generation</p>
+        <p class="sent">The <span class="clue">scientist</span> opened the notebook. After many pages <span class="win">of notes, …</span> <span class="tgt">She</span></p>
+        <p class="soft" style="font-size:17px">The blue box is all a three-word window sees.</p>
+      </div>
+      <div class="col left frag" style="gap:4px;flex:none">
+        <p class="soft small">Forecasting</p>
+        <div data-v="twoSeries"></div>
+        <p class="soft" style="font-size:17px">Same last three readings, different long-term trends.</p>
+      </div>
+    </div>
+    <div class="prompt frag"><small>Think / discuss</small>Can a model summarize the history as it arrives, without expanding its input size?</div>
+  </div>
+</section>
+
+<!-- 15 -->
+<section class="slide">
+  <h2>A failure even with the same latest three inputs</h2>
+  <div class="body" style="gap:34px">
+    <div class="histab">
+      <span class="soft">History A</span><span><b class="fire">10</b>, 0, <span class="winh">1, 2, 3</span></span><span>→ <b>4</b></span>
+      <span class="soft">History B</span><span><b class="fire">20</b>, 0, <span class="winh">1, 2, 3</span></span><span>→ <b>0</b></span>
+    </div>
+    <p class="big frag">An MLP that sees only <span class="math" style="font-size:30px" data-m="(1, 2, 3)"></span> must produce the <span class="imp">same</span> prediction for both histories.</p>
+    <p class="soft small">Illustrative process: the early marker (10 or 20) determines the later target.</p>
+  </div>
+</section>
+
+<!-- 16 -->
+<section class="slide">
+  <h2>What should a sequential model do?</h2>
+  <div class="body" style="gap:36px">
+    <ol class="pts">
+      <li class="frag">Read inputs <span class="imp">one at a time</span>.</li>
+      <li class="frag">Maintain a <span class="imp">summary of the past</span>.</li>
+      <li class="frag">Update that summary whenever a new input arrives.</li>
+      <li class="frag">Use the summary to predict the next element.</li>
+    </ol>
+    <div class="prompt frag"><small>Think / discuss</small>Can we build a network whose state gets carried forward in time?</div>
+  </div>
+</section>
+
+<!-- 17 -->
+<section class="slide">
+  <h2>A recurrent network, seen from outside</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="blackbox"></div>
+    <p class="soft small">It reads one token per step and, after each one, guesses the next.</p>
+  </div>
+</section>
+
+<!-- 18 -->
+<section class="slide">
+  <h2>Opening the box: a hidden state</h2>
+  <div class="body" style="gap:16px">
+    <div data-v="loop"></div>
+    <div class="row frag" style="gap:60px">
+      <div class="math" data-m="h_t = F_\theta(h_{t-1}, x_t)"></div>
+      <div class="math" data-m="\hat{y}_t = G_\theta(h_t)"></div>
+    </div>
+    <p class="soft small frag">The state <span class="math" style="font-size:24px" data-m="h_t"></span> carries information derived from <span class="math" style="font-size:24px" data-m="x_1, \ldots, x_t"></span>.</p>
+  </div>
+</section>
+
+<!-- 19 -->
+<section class="slide">
+  <h2>Unroll the network through time</h2>
+  <div class="body" style="gap:16px">
+    <div data-v="unroll"></div>
+    <div class="math sm frag" data-m="h_1 = F(h_0, x_1),\quad h_2 = F(h_1, x_2),\quad \ldots"></div>
+    <p class="small frag">Every copy is the <span class="imp">same</span> box with the <span class="imp">same</span> parameters.</p>
+  </div>
+</section>
+
+<!-- 20 -->
+<section class="slide" data-steps="3">
+  <h2>Inside one step</h2>
+  <div class="body" style="gap:10px">
+    <div data-v="cell"></div>
+  </div>
+</section>
+
+<!-- 21 -->
+<section class="slide">
+  <h2>A vanilla recurrent neural network (RNN)</h2>
+  <div class="body" style="gap:22px">
+    <div class="col" style="gap:12px;flex:none">
+      <div class="math sm boxed" data-m="a_t = W_{xh} x_t + W_{hh} h_{t-1} + b_h"></div>
+      <div class="math sm boxed" data-m="h_t = \tanh(a_t)"></div>
+      <div class="math sm boxed" data-m="\hat{y}_t = W_{hy} h_t + b_y"></div>
+    </div>
+    <div class="col frag" style="gap:6px;flex:none">
+      <p class="small">Input dimension <i>d</i>, hidden-state dimension <i>H</i>, output dimension <i>o</i>:
+        <span class="math" style="font-size:24px" data-m="W_{xh} \in \R^{H \times d},\quad W_{hh} \in \R^{H \times H}"></span></p>
+      <p class="small">The <span class="imp">same parameters</span> are used at every time step.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 22 -->
+<section class="slide">
+  <h2>Why is this more scalable than a growing MLP window?</h2>
+  <div class="body" style="gap:30px">
+    <table class="cmp">
+      <thead><tr><th></th><th>Windowed MLP</th><th>RNN</th></tr></thead>
+      <tbody>
+        <tr><td>History handling</td><td>Last <i>k</i> values</td><td class="c0">Updated state <span class="math" style="font-size:23px" data-m="h_t"></span></td></tr>
+        <tr><td>Parameters vs. length</td><td>Grows with <i>k</i></td><td class="c0">Shared across time</td></tr>
+        <tr><td>Variable-length input</td><td>Requires a design choice</td><td class="c0">Natural</td></tr>
+        <tr><td>Perfect memory?</td><td>No</td><td>No</td></tr>
+      </tbody>
+    </table>
+    <p class="small frag" style="max-width:960px"><span class="fire">Caveat:</span> an RNN has a fixed-dimensional state. It can <i>in principle</i> depend on earlier inputs, but may forget them and is not guaranteed to retain arbitrarily long histories.</p>
+  </div>
+</section>
+
+<!-- 24 -->
+<section class="slide">
+  <h2>What does the hidden state remember?</h2>
+  <div class="body">
+    <div class="row" style="gap:56px">
+      <div class="col left" style="gap:14px;flex:none">
+        <p class="soft small">Scalar linear RNN <span class="math" style="font-size:24px" data-m="h_t = w h_{t-1} + u x_t,\ h_0 = 0"></span></p>
+        <div class="math sm" data-m="h_1 = u x_1"></div>
+        <div class="math sm" data-m="h_2 = w u x_1 + u x_2"></div>
+        <div class="math sm" data-m="h_3 = w^2 u x_1 + w u x_2 + u x_3"></div>
+        <p class="small" style="max-width:470px;margin-top:6px">The past is combined with weights <span class="math" style="font-size:24px" data-m="1, w, w^2, \ldots"></span> The model <span class="imp">learns</span> <i>w</i> and <i>u</i> rather than fixing a window length.</p>
+      </div>
+      <div class="col frag" style="flex:none"><div data-v="decay"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 25 -->
+<section class="slide">
+  <h2>Training task: predict the next element</h2>
+  <div class="body" style="gap:22px">
+    <p class="soft small">Given a sequence <span class="math" style="font-size:24px" data-m="x_1, x_2, \ldots, x_T"></span></p>
+    <div class="math sm" data-m="\under{x_1, x_2, \ldots, x_{T-1}}{inputs}\quad\quad\under{x_2, x_3, \ldots, x_T}{targets}"></div>
+    <ul class="pts" style="font-size:24px;gap:10px">
+      <li class="frag">At step <i>t</i>, form <span class="math" style="font-size:24px" data-m="h_t"></span> from <span class="math" style="font-size:24px" data-m="x_t"></span> and <span class="math" style="font-size:24px" data-m="h_{t-1}"></span>.</li>
+      <li class="frag">Predict <span class="math" style="font-size:24px" data-m="x_{t+1}"></span> using <span class="math" style="font-size:24px" data-m="\hat{y}_t = G(h_t)"></span>.</li>
+      <li class="frag">Minimize the sum (or average) of prediction losses:</li>
+    </ul>
+    <div class="math boxed frag" data-f="3" data-m="\L(\theta) = \sum_{t=1}^{T-1} \ell(\hat{y}_t, x_{t+1})"></div>
+    <p class="soft small frag">Numeric series: squared loss. Token sequences: cross-entropy loss.</p>
+  </div>
+</section>
+
+<!-- 26 -->
+<section class="slide">
+  <h2>Training vs. generating a sequence</h2>
+  <div class="body" style="gap:16px">
+    <div data-v="tf"></div>
+    <p class="soft small frag">For tokens, choose or sample the next token from <span class="math" style="font-size:24px" data-m="p_\theta(\cdot \mid h_t)"></span>.</p>
+  </div>
+</section>
+
+<!-- 27 -->
+<section class="slide">
+  <h2>What does one RNN parameter update involve?</h2>
+  <div class="body" style="gap:20px">
+    <div data-v="bptt"></div>
+    <ul class="pts" style="font-size:24px;gap:10px">
+      <li><span class="imp">Forward:</span> compute <span class="math" style="font-size:24px" data-m="h_1, h_2, h_3"></span> and all losses.</li>
+      <li class="frag"><span class="fire">Backward:</span> propagate derivatives backward through the unrolled steps.</li>
+      <li class="frag"><b>Update:</b> aggregate contributions to the <i>shared</i> parameters.</li>
+    </ul>
+  </div>
+</section>
+
+
+<div id="bar"></div>
+<div id="nav"><button id="prev" aria-label="Previous slide">‹</button><span id="count"></span><button id="next" aria-label="Next slide">›</button></div>
+</div></div>
+<script>
+(function(){
+'use strict';
+
+
+
+const NS='http://www.w3.org/2000/svg';
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function S(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e}
+function H(tag,cls,parent,html){const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;if(parent)parent.appendChild(e);return e}
+function tween(ms,fn,done){if(RM){fn(1);done&&done();return()=>{}}let s=null,id;const f=t=>{if(s===null)s=t;const u=Math.min(1,(t-s)/ms);fn(u);if(u<1)id=requestAnimationFrame(f);else done&&done()};id=requestAnimationFrame(f);return()=>cancelAnimationFrame(id)}
+const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+const fmt=v=>(Math.abs(v)<5e-7?0:v).toFixed(1).replace('-','−');
+const relu=x=>x>0?x:0, sig=x=>1/(1+Math.exp(-x));
+let uid=0;
+
+function Plot(host,o){
+  const w=o.w,h=o.h,p=o.pad==null?30:o.pad;
+  const svg=S('svg',{viewBox:'0 0 '+w+' '+h,width:w,height:h,role:'img','aria-label':o.label||'Plot'},host);
+  const sx=x=>p+(x-o.x[0])/(o.x[1]-o.x[0])*(w-2*p), sy=y=>h-p-(y-o.y[0])/(o.y[1]-o.y[0])*(h-2*p);
+  const id='cp'+(uid++);const cp=S('clipPath',{id:id},svg);S('rect',{x:p-3,y:p-3,width:w-2*p+6,height:h-2*p+6},cp);
+  const y0=Math.max(o.y[0],Math.min(o.y[1],0)),x0=Math.max(o.x[0],Math.min(o.x[1],0));
+  S('line',{x1:sx(o.x[0]),x2:sx(o.x[1]),y1:sy(y0),y2:sy(y0),class:'ax'},svg);
+  S('line',{x1:sx(x0),x2:sx(x0),y1:sy(o.y[0]),y2:sy(o.y[1]),class:'ax'},svg);
+  (o.xt||[]).forEach(t=>{S('line',{x1:sx(t),x2:sx(t),y1:sy(y0)-4,y2:sy(y0)+4,class:'ax'},svg);S('text',{x:sx(t),y:sy(y0)+21,'text-anchor':'middle',class:'tk'},svg,String(t).replace('-','−'))});
+  (o.yt||[]).forEach(t=>{S('line',{x1:sx(x0)-4,x2:sx(x0)+4,y1:sy(t),y2:sy(t),class:'ax'},svg);S('text',{x:sx(x0)-9,y:sy(t)+5,'text-anchor':'end',class:'tk'},svg,String(t).replace('-','−'))});
+  const g=S('g',{'clip-path':'url(#'+id+')'},svg);
+  const d=(fn,n)=>{n=n||260;let s='';for(let i=0;i<=n;i++){const x=o.x[0]+(o.x[1]-o.x[0])*i/n;s+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(fn(x)).toFixed(1)}return s};
+  return{svg,g,sx,sy,d,curve(fn,cls){return S('path',{d:d(fn),class:'cv '+(cls||'')},g)}};
+}
+function redraw(path){path.setAttribute('pathLength','1');path.classList.remove('draw');void path.getBoundingClientRect();path.classList.add('draw')}
+function Slider(parent,label,min,max,step,val,fn,wide,f){
+  const l=H('label','sl'+(wide?' wide':''),parent);H('span','',l,label);
+  const i=H('input','',l);i.type='range';i.min=min;i.max=max;i.step=step;i.value=val;
+  const o=H('output','',l);const show=()=>{o.textContent=f?f(+i.value):fmt(+i.value)};show();
+  i.addEventListener('input',()=>{show();fn(+i.value)});
+  return{el:i,set(v){i.value=v;show()},get v(){return +i.value}};
+}
+/* ---------- mini math ---------- */
+const SYM={partial:'∂',L:'ℒ',eta:'<i>η</i>',delta:'<i>δ</i>',nabla:'∇',odot:'⊙',leftarrow:'←',gets:'← ',to:'→',cdot:'·',in:'∈',R:'ℝ',times:'×',top:'⊤',ell:'<i>ℓ</i>',ldots:'…',quad:'&emsp;',one:'<b>1</b>',yhat:'<i>ŷ</i>',ReLU:'ReLU',softmax:'softmax',log:'log ',max:'max',lb:'{',rb:'}',sin:'sin',cos:'cos',phi:'<i>φ</i>',Phat:'<i>P\u0302</i>',phat:'<i>p\u0302</i>',Yhat:'<i>Ŷ</i>'};
+function M(s){let i=0;
+  const fr=(a,b)=>'<span class="fr"><span>'+a+'</span><span>'+b+'</span></span>';
+  function atom(){const c=s[i];
+    if(c==='{'){i++;const r=seq('}');i++;return r}
+    if(c==='\\'){let j=i+1;while(j<s.length&&/[a-zA-Z]/.test(s[j]))j++;const n=s.slice(i+1,j);i=j;
+      if(n==='frac'){const a=atom(),b=atom();return fr(a,b)}
+      if(n==='d')return fr('∂ℒ','∂'+atom());
+      if(n==='dd'){const a=atom(),b=atom();return fr('∂'+a,'∂'+b)}
+      if(n==='sum'||n==='prod'){const SG=n==='sum'?'∑':'∏';let lo='',hi='';for(;;){if(s[i]==='_'){i++;lo=atom()}else if(s[i]==='^'){i++;hi=atom()}else break}return '<span class="op"><span class="lim">'+hi+'</span><span class="sg">'+SG+'</span><span class="lim">'+lo+'</span></span>'}
+      if(n==='text'){i++;const e=s.indexOf('}',i),t=s.slice(i,e);i=e+1;return '<span class="tx">'+t+'</span>'}
+      if(n==='sqrt'){const c=atom();return c.indexOf('class="fr"')>=0?'<span class="sq tall"><span class="rad">√</span><span>'+c+'</span></span>':'<span class="sq">√<span>'+c+'</span></span>'}if(n==='hat')return '<i class="hat">'+atom()+'</i>';if(n==='tilde')return '<i class="hat tld">'+atom()+'</i>';if(n==='boxed')return '<span class="boxed">'+atom()+'</span>';
+      if(n==='under'){const a=atom(),b=atom();return '<span class="ub"><span>'+a+'</span><svg class="ubr" viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="M1 1Q1 6 9 6L41 6Q50 6 50 11Q50 6 59 6L91 6Q99 6 99 1"/></svg><span class="ubl">'+b+'</span></span>'}
+      if(n==='g')return '<span class="gr">'+atom()+'</span>';
+      if(n==='f')return '<span class="fw">'+atom()+'</span>';
+      if(n==='big')return '<span class="bp">'+s[i++]+'</span>';
+      return SYM[n]!=null?SYM[n]:n}
+    i++;
+    if(/[a-zA-Z]/.test(c))return '<i>'+c+'</i>';
+    if(c==='-')return '−';if(c==="'")return '′';if(c==='<')return '&lt;';if(c==='>')return '&gt;';
+    return c}
+  function seq(end){let o='';while(i<s.length&&s[i]!==end){const c=s[i];
+    if(c==='_'){i++;o+='<sub>'+atom()+'</sub>'}else if(c==='^'){i++;o+='<sup>'+atom()+'</sup>'}else o+=atom()}return o}
+  return seq(null)}
+Object.assign(SYM,{theta:'<i>θ</i>',beta:'<i>β</i>',epsilon:'<i>ε</i>',sigma:'<i>σ</i>',lambda:'<i>λ</i>',gamma:'<i>γ</i>',phi:'<i>φ</i>',approx:'≈',le:'≤',ge:'≥',ll:'≪',gg:'≫',sim:'∼',N:'𝒩',U:'<i>U</i>',E:'𝔼',pm:'±',infty:'∞',mapsto:'↦',mid:'|',lb:'{',rb:'}',Rightarrow:'⇒',cdots:'⋯',tanh:'tanh'});
+document.querySelectorAll('[data-m]').forEach(e=>{e.innerHTML=M(e.dataset.m)});
+const RNG=seed=>{let s=seed|0;const r=()=>{s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};r.n=()=>Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(6.2831853*r());return r};
+const SUPD='⁰¹²³⁴⁵⁶⁷⁸⁹',sup=k=>(k<0?'⁻':'')+String(Math.abs(k)).split('').map(c=>SUPD[+c]).join(''),pw=k=>'10'+sup(k);
+const f2=v=>(Math.abs(v)<5e-3?0:v).toFixed(2).replace('-','−'),f3=v=>(Math.abs(v)<5e-4?0:v).toFixed(3).replace('-','−');
+
+/* ---------- sequence deck visuals ---------- */
+const V={};
+const svgEl=(host,w,h,label)=>S('svg',{viewBox:'0 0 '+w+' '+h,width:w,height:h,role:'img','aria-label':label},host);
+const AR=(p,x1,y1,x2,y2,c)=>S('line',{x1:x1,y1:y1,x2:x2,y2:y2,class:'ar '+(c||''),'marker-end':'url(#ah'+(c||'')+')'},p);
+const PA=(p,d,c,extra)=>S('path',Object.assign({d:d,class:'ar '+(c||''),'marker-end':'url(#ah'+(c||'')+')'},extra||{}),p);
+const BX=(p,x,y,w,h,c)=>S('rect',{x:x,y:y,width:w,height:h,rx:10,class:c||'bx'},p);
+const TX=(p,x,y,str,cls,anchor)=>S('text',{x:x,y:y,'text-anchor':anchor||'middle','dominant-baseline':'central',class:cls||'lab'},p,str);
+function SUB(p,x,y,base,sub,cls,anchor){const t=S('text',{x:x,y:y,'text-anchor':anchor||'middle','dominant-baseline':'central',class:cls||'mt'},p);
+  S('tspan',{},t,base);if(sub)S('tspan',{dy:8,style:'font-size:.66em;font-style:normal'},t,sub);return t}
+function timers(){const ids=[];return{every(f,ms){ids.push(setInterval(f,ms))},after(f,ms){ids.push(setTimeout(f,ms))},clear(){ids.forEach(i=>{clearInterval(i);clearTimeout(i)});ids.length=0}}}
+const lin=(a,b,c,d)=>v=>c+(v-a)/(b-a)*(d-c);
+const pathOf=(pts)=>pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join('');
+const SUBD='₀₁₂₃₄₅₆₇₈₉',sb=k=>String(k).split('').map(c=>SUBD[+c]).join('');
+
+/* title: small unrolled chain with a travelling highlight */
+V.titleViz=el=>{
+  const svg=svgEl(el,470,310,'Small unrolled recurrent network reading words');
+  const xs=[90,235,380],tok=['To','be,','or'],out=['be','or','not'],cells=[];
+  AR(svg,10,150,43,150,'b');
+  xs.forEach((x,i)=>{
+    cells.push(BX(svg,x-45,122,90,56,'bxb'));SUB(svg,x,148,'h',String(i+1));
+    TX(svg,x,270,tok[i]);AR(svg,x,248,x,180);
+    TX(svg,x,36,out[i],'lab a');AR(svg,x,120,x,60,'a');
+    if(i<2)AR(svg,x+45,150,xs[i+1]-47,150,'b');
+  });
+  const T=timers();let k=0;
+  const tick=()=>{cells.forEach((c,i)=>c.setAttribute('class',i===k?'bxa':'bxb'));k=(k+1)%3};
+  return{enter(){tick();if(!RM)T.every(tick,1000)},leave(){T.clear()}};
+};
+
+/* language bars */
+V.lang=el=>({step(s){el.querySelectorAll('i').forEach(b=>{b.style.width=s>=1?b.dataset.w*100/60+'%':'0'})}});
+
+/* market */
+V.market=el=>{
+  const W=1000,Hh=330,svg=svgEl(el,W,Hh,'Synthetic price series with a forecast region');
+  const r=RNG(11),obs=[];
+  for(let t=0;t<100;t++){const base=t<68?20+.36*t:20+.36*68-.16*(t-68);obs.push(base+3.4*Math.sin(2*Math.PI*t/15)+r.n()*1.1)}
+  const fut=[];for(let t=99;t<=140;t++){const m=20+.36*68-.16*(t-68)+3.4*Math.sin(2*Math.PI*t/15);fut.push([t,m,1+.13*(t-99)])}
+  let lo=1e9,hi=-1e9;obs.forEach(v=>{lo=Math.min(lo,v);hi=Math.max(hi,v)});fut.forEach(f=>{lo=Math.min(lo,f[1]-f[2]);hi=Math.max(hi,f[1]+f[2])});
+  const sx=lin(0,140,30,W-30),sy=lin(lo-2,hi+2,Hh-40,20);
+  S('line',{x1:30,x2:W-30,y1:Hh-30,y2:Hh-30,class:'ax'},svg);TX(svg,W-30,Hh-12,'time','st','end');
+  S('rect',{x:sx(96.5),y:20,width:sx(99.5)-sx(96.5),height:Hh-55,rx:6,class:'win'},svg);
+  TX(svg,sx(98),Hh-48,'last three','st b');
+  const band=fut.map(f=>[sx(f[0]),sy(f[1]+f[2])]).concat(fut.slice().reverse().map(f=>[sx(f[0]),sy(f[1]-f[2])]));
+  S('path',{d:pathOf(band)+'Z',class:'band'},svg);
+  S('path',{d:pathOf(obs.map((v,t)=>[sx(t),sy(v)])),class:'cv'},svg);
+  S('path',{d:pathOf(fut.map(f=>[sx(f[0]),sy(f[1])])),class:'cv amber',style:'stroke-dasharray:9 7'},svg);
+  S('line',{x1:sx(99.5),x2:sx(99.5),y1:14,y2:Hh-30,class:'ax',style:'stroke-dasharray:4 5'},svg);
+  TX(svg,sx(20),30,'observed','st b','start');TX(svg,sx(110),30,'forecast?','st a','start');
+};
+
+/* periodic signal, generated by feedback */
+V.sine=el=>{
+  const W=1000,Hh=270,svg=svgEl(el,W,Hh,'Sine wave: observed points then generated points');
+  const now=22,N=58,sx=t=>30+t*16.6,sy=v=>130-100*v;
+  S('line',{x1:20,x2:W-20,y1:130,y2:130,class:'ax',style:'opacity:.5'},svg);
+  S('path',{d:pathOf(Array.from({length:now+1},(_,t)=>[sx(t),sy(Math.sin(.28*t))])),class:'cv',style:'stroke-width:2;opacity:.45'},svg);
+  for(let t=0;t<=now;t++)S('circle',{cx:sx(t),cy:sy(Math.sin(.28*t)),r:5.5,class:'dot'},svg);
+  S('line',{x1:sx(now+.5),x2:sx(now+.5),y1:10,y2:Hh-10,class:'ax',style:'stroke-dasharray:4 5'},svg);
+  TX(svg,sx(1),Hh-12,'observed','st b','start');TX(svg,sx(now+1.2),Hh-12,'generated: each prediction is fed back as the next input','st a','start');
+  const gen=[];for(let t=now+1;t<N;t++)gen.push(S('circle',{cx:sx(t),cy:sy(Math.sin(.28*t)),r:5.5,class:'dot a fd',style:'opacity:0'},svg));
+  const T=timers();
+  return{enter(){gen.forEach(g=>g.style.opacity=RM?1:0);if(RM)return;let i=0;T.after(()=>T.every(()=>{if(i<gen.length)gen[i++].style.opacity=1},110),400)},leave(){T.clear()}};
+};
+
+/* human activity sensors */
+V.activity=el=>{
+  const W=1000,Hh=330,svg=svgEl(el,W,Hh,'Three accelerometer channels: walking, then running, then an unknown next segment');
+  const r=RNG(5),sx=t=>60+t*3.0,ends=[140,230,300];
+  ['x','y','z'].forEach((c,k)=>{const y0=60+k*90,pts=[];
+    SUB(svg,30,y0,c,'','mt s');
+    for(let t=0;t<=230;t++){const run=t>=140,a=run?30:17,f=run?.36:.17;pts.push([sx(t),y0-a*Math.sin(f*t+k*1.3)*(k===1?.7:1)+r.n()*2.2])}
+    S('path',{d:pathOf(pts),class:'cv',style:'stroke-width:2.2'},svg)});
+  S('line',{x1:sx(140),x2:sx(140),y1:15,y2:280,class:'ax',style:'stroke-dasharray:4 5;opacity:.6'},svg);
+  S('rect',{x:sx(232),y:15,width:sx(300)-sx(232),height:265,rx:10,class:'bxd'},svg);
+  TX(svg,(sx(232)+sx(300))/2,148,'?','lab big a');
+  TX(svg,sx(70),306,'walking','st');TX(svg,sx(185),306,'running','st');TX(svg,(sx(232)+sx(300))/2,306,'next?','st a');
+};
+
+/* DNA */
+V.dna=el=>{
+  const seq='ATGGCCATTGTAATGGGCCGCTGA',W=1040,Hh=270,svg=svgEl(el,W,Hh,'DNA sequence with the next base unknown');
+  const bw=36,gap=5,x0=(W-(seq.length+1)*(bw+gap))/2;
+  seq.split('').forEach((c,i)=>{BX(svg,x0+i*(bw+gap),30,bw,50,'bx');TX(svg,x0+i*(bw+gap)+bw/2,56,c)});
+  const qx=x0+seq.length*(bw+gap);BX(svg,qx,30,bw,50,'bxd');TX(svg,qx+bw/2,56,'?','lab a');
+  const P=[['A',.2],['C',.1],['G',.55],['T',.15]],bx0=qx+bw/2-4*44+22;
+  P.forEach((p,i)=>{const x=bx0+i*44,h=p[1]*220;S('rect',{x:x-14,y:235-h,width:28,height:h,rx:4,style:'fill:var(--amber)'},svg);TX(svg,x,254,p[0],'st');});
+  S('path',{d:'M'+(qx+bw/2)+' 84 L'+(qx+bw/2)+' 110',class:'ar a'},svg);
+  TX(svg,bx0-36,190,'p(next base)','st a','end');
+};
+
+/* video frames */
+V.video=el=>{
+  const W=1040,Hh=270,svg=svgEl(el,W,Hh,'Five video frames of a ball in flight; the last is predicted');
+  const fw=170,fh=125,gap=32,x0=(W-(5*fw+4*gap))/2,y0=60,ball=[[30,95],[62,52],[94,34],[126,40],[156,70]];
+  for(let i=0;i<5;i++){const x=x0+i*(fw+gap),last=i===4;
+    BX(svg,x,y0,fw,fh,last?'bxd':'bx');S('line',{x1:x+10,x2:x+fw-10,y1:y0+fh-14,y2:y0+fh-14,class:'ax',style:'opacity:.5'},svg);
+    for(let j=0;j<i;j++)S('circle',{cx:x+ball[j][0],cy:y0+ball[j][1],r:4,style:'fill:var(--soft);opacity:.35'},svg);
+    S('circle',{cx:x+ball[i][0],cy:y0+ball[i][1],r:12,style:last?'fill:var(--amber-pale);stroke:var(--amber);stroke-width:2.4;stroke-dasharray:5 4':'fill:var(--blue)'},svg);
+    TX(svg,x+fw/2,y0+fh+26,['t − 3','t − 2','t − 1','t','t + 1?'][i],last?'st a':'st');
+  }
+  const xa=x0+3*(fw+gap)+fw/2,xb=x0+4*(fw+gap)+fw/2;
+  PA(svg,'M'+xa+' '+(y0-8)+' Q'+((xa+xb)/2)+' '+(y0-52)+' '+xb+' '+(y0-8),'a');TX(svg,(xa+xb)/2,y0-46,'action','st a');
+};
+
+/* sliding window */
+V.window=el=>{
+  const seq=[2,4,6,8,10,12],svg=svgEl(el,700,130,'Sliding window over the sequence 2, 4, 6, 8, 10, 12');
+  el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.gap='18px';
+  const bw=80,gap=24,x0=(700-(6*bw+5*gap))/2;
+  const win=S('rect',{y:14,height:86,rx:12,width:3*bw+2*gap+16,class:'win fd',style:'transition:x .5s ease'},svg);
+  const boxes=seq.map((v,i)=>{const b=BX(svg,x0+i*(bw+gap),24,bw,66,'bx');TX(svg,x0+i*(bw+gap)+bw/2,58,String(v),'lab big');return b});
+  const tb=H('table','tt',el);tb.innerHTML='<thead><tr><th>Input: three values</th><th></th><th>Target: next value</th></tr></thead>';
+  const body=H('tbody','',tb),rows=[[2,4,6,8],[4,6,8,10],[6,8,10,12]].map(r=>H('tr','',body,'<td>('+r.slice(0,3).join(', ')+')</td><td>→</td><td>'+r[3]+'</td>'));
+  const T=timers();let k=0;
+  const show=()=>{win.setAttribute('x',x0+k*(bw+gap)-8);boxes.forEach((b,i)=>b.setAttribute('class',i===k+3?'bxa':(i>=k&&i<k+3?'bxb':'bx')));rows.forEach((r,i)=>r.classList.toggle('hl',i===k));k=(k+1)%3};
+  return{enter(){k=0;show();if(!RM)T.every(show,1500)},leave(){T.clear()}};
+};
+
+/* MLP on a window */
+V.mlp=el=>{
+  const svg=svgEl(el,760,350,'MLP with three inputs, one hidden layer, one output');
+  const I=[[180,95],[180,175],[180,255]],Hd=[55,115,175,235,295].map(y=>[400,y]),O=[620,175];
+  I.forEach(a=>Hd.forEach(b=>S('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],style:'stroke:var(--line);stroke-width:1.6'},svg)));
+  Hd.forEach(b=>S('line',{x1:b[0],y1:b[1],x2:O[0],y2:O[1],style:'stroke:var(--line);stroke-width:1.6'},svg));
+  I.forEach((a,i)=>{S('circle',{cx:a[0],cy:a[1],r:24,class:'node',style:'fill:var(--panel)'},svg);SUB(svg,a[0]-40,a[1],'x',['t−2','t−1','t'][i],'mt','end')});
+  Hd.forEach(b=>S('circle',{cx:b[0],cy:b[1],r:17,class:'node'},svg));
+  S('circle',{cx:O[0],cy:O[1],r:26,class:'node',style:'fill:var(--amber-pale);stroke:var(--amber)'},svg);
+  SUB(svg,O[0]+44,O[1],'x̂','t+1','mt a','start');
+  SUB(svg,400,334,'MLP  f','θ','mt');
+};
+
+/* forecasting vs autoregressive generation */
+V.autoreg=el=>{
+  const svg=svgEl(el,1000,250,'One-step forecast versus feeding predictions back');
+  const bw=70,gap=16,x0=250;
+  TX(svg,0,60,'One-step forecasting','lab','start');
+  [2,4,6].forEach((v,i)=>{BX(svg,x0+i*(bw+gap),32,bw,56,'bxb');TX(svg,x0+i*(bw+gap)+bw/2,60,String(v),'lab big')});
+  const fx=x0+3*(bw+gap)+40;AR(svg,x0+3*(bw+gap)-gap+4,60,fx-4,60,'a');TX(svg,fx-38,40,'f','mt s');
+  BX(svg,fx,32,bw,56,'bxd');TX(svg,fx+bw/2,60,'8','lab big a');
+  TX(svg,0,180,'Autoregressive generation','lab','start');
+  const vals=[2,4,6,8,10,12,14],els=vals.map((v,i)=>{const g=S('g',{class:'fd'},svg);const r=BX(g,x0+i*(bw+gap),152,bw,56,i<3?'bxb':'bxa');TX(g,x0+i*(bw+gap)+bw/2,180,String(v),i<3?'lab big':'lab big a');return{g:g,r:r}});
+  const win=S('rect',{y:142,height:76,rx:12,width:3*bw+2*gap+14,class:'win fd',style:'fill:none;transition:x .5s ease'},svg);
+  svg.insertBefore(win,els[0].g);
+  const T=timers();let k=0;
+  const show=()=>{win.setAttribute('x',x0+k*(bw+gap)-7);els.forEach((e,i)=>{e.g.style.opacity=i<3+k?1:(i===3+k?1:0);e.r.setAttribute('class',i<3?'bxb':(i===3+k?'bxd':'bxa'))});k=(k+1)%4};
+  return{enter(){k=0;show();if(!RM)T.every(show,1300)},leave(){T.clear()}};
+};
+
+/* two series that share their last three readings */
+V.twoSeries=el=>{
+  const svg=svgEl(el,500,250,'Two series with different trends but identical last three readings');
+  const r=RNG(3),last=[40,41,42],A=[],B=[];
+  for(let t=0;t<18;t++){A.push(8+1.75*t+r.n()*1.2);B.push(76-2*t+r.n()*1.2)}
+  const sx=t=>30+t*22,sy=lin(0,85,235,10);
+  S('rect',{x:sx(17.5),y:12,width:sx(20.5)-sx(17.5),height:222,rx:6,class:'win'},svg);
+  S('line',{x1:20,x2:490,y1:236,y2:236,class:'ax'},svg);
+  S('path',{d:pathOf(A.concat(last).map((v,t)=>[sx(t),sy(v)])),class:'cv'},svg);
+  S('path',{d:pathOf(B.concat(last).map((v,t)=>[sx(t),sy(v)])),class:'cv amber'},svg);
+  TX(svg,sx(0)-14,sy(A[0]),'A','lab b','end');TX(svg,sx(0)-14,sy(B[0]),'B','lab a','end');
+};
+
+/* black box */
+V.blackbox=el=>{
+  const svg=svgEl(el,1000,340,'An RNN box reads tokens one at a time and outputs guesses');
+  BX(svg,400,120,200,100,'bxb');TX(svg,500,170,'RNN','lab big');
+  AR(svg,500,272,500,224);AR(svg,500,118,500,74,'a');
+  const inp=TX(svg,500,302,'','lab big'),out=TX(svg,500,46,'','lab big a');inp.classList.add('fd');out.classList.add('fd');
+  TX(svg,40,135,'read so far','st','start');const seen=TX(svg,40,175,'','lab','start');
+  TX(svg,680,135,'guesses so far','st','start');const gs=TX(svg,680,175,'','lab a','start');
+  const tok=['To','be,','or','not','to'],pr=['be','or','not','to','be'];
+  const T=timers();let i=0;
+  const step=()=>{if(i>=tok.length){i=0;seen.textContent='';gs.textContent=''}
+    inp.style.opacity=0;out.style.opacity=0;const j=i;
+    T.after(()=>{inp.textContent=tok[j];inp.style.opacity=1;seen.textContent=tok.slice(0,j+1).join(' ')},250);
+    T.after(()=>{out.textContent=pr[j];out.style.opacity=1;gs.textContent=pr.slice(0,j+1).join(' ')},800);
+    i++};
+  return{enter(){T.clear();i=0;seen.textContent='';gs.textContent='';
+    if(RM){tok.forEach(()=>{});inp.textContent=tok[4];out.textContent=pr[4];inp.style.opacity=1;out.style.opacity=1;seen.textContent=tok.join(' ');gs.textContent=pr.join(' ');return}
+    step();T.every(step,1700)},leave(){T.clear()}};
+};
+
+/* hidden-state loop */
+V.loop=el=>{
+  const svg=svgEl(el,900,330,'RNN box whose state loops back into itself');
+  BX(svg,330,130,200,96,'bxb');TX(svg,430,160,'update','st');SUB(svg,430,192,'F','θ','mt');
+  const id='lp'+(uid++);
+  const p=PA(svg,'M480 128 C480 30 380 30 380 126','b',{id:id,style:'stroke-width:3'});
+  TX(svg,430,22,'hidden state','st b');
+  SUB(svg,640,178,'ŷ','t','mt a','start');AR(svg,532,178,628,178,'a');
+  SUB(svg,430,306,'x','t','mt');AR(svg,430,286,430,230);
+  if(!RM){const c=S('circle',{r:7,class:'dot'},svg);const m=S('animateMotion',{dur:'1.8s',repeatCount:'indefinite'},c);S('mpath',{href:'#'+id},m)}
+};
+
+/* unroll */
+V.unroll=el=>{
+  const svg=svgEl(el,1060,320,'RNN unrolled across four time steps');
+  BX(svg,20,135,74,56,'bx');SUB(svg,57,161,'h','0');
+  const xs=[220,440,660,880],tok=['To','be,','or','not'],pr=['be','or','not','to'],gs=[];
+  xs.forEach((cx,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);
+    AR(g,i?xs[i-1]+62:96,163,cx-64,163,'b');
+    BX(g,cx-60,135,120,56,'bxb');SUB(g,cx,161,'h',String(i+1));
+    TX(g,cx,285,tok[i]);AR(g,cx,262,cx,195);
+    TX(g,cx,42,pr[i],'lab a');AR(g,cx,133,cx,66,'a')});
+  const T=timers();
+  return{enter(){gs.forEach(g=>g.style.opacity=RM?1:.08);if(!RM)gs.forEach((g,i)=>T.after(()=>g.style.opacity=1,300+i*550))},leave(){T.clear()}};
+};
+
+/* inside one step */
+V.cell=el=>{
+  el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.gap='14px';
+  const svg=svgEl(el,1090,330,'Computation inside one RNN step');
+  const g=[0,1,2,3].map(()=>S('g',{class:'fd'},svg));
+  BX(g[0],20,70,130,56,'bx');SUB(g[0],85,96,'h','t−1');
+  BX(g[0],20,220,130,56,'bx');SUB(g[0],85,246,'x','t');
+  AR(g[1],152,98,226,98);AR(g[1],152,248,226,248);
+  BX(g[1],230,70,150,56,'bxb');SUB(g[1],305,96,'× W','hh');
+  BX(g[1],230,220,150,56,'bxb');SUB(g[1],305,246,'× W','xh');
+  S('circle',{cx:480,cy:173,r:28,class:'bxb'},g[1]);TX(g[1],480,171,'+','lab big');
+  AR(g[1],380,104,456,158);AR(g[1],380,242,456,190);
+  SUB(g[1],480,36,'b','h');AR(g[1],480,54,480,141);
+  AR(g[2],510,173,586,173);SUB(g[2],548,148,'a','t');
+  BX(g[2],590,145,120,56,'bxb');TX(g[2],650,171,'tanh','mt');
+  AR(g[2],712,173,766,173,'b');
+  BX(g[2],770,145,110,56,'bxb');SUB(g[2],825,171,'h','t','mt b');
+  AR(g[3],825,143,825,98);
+  BX(g[3],740,40,170,56,'bxb');{const t=S('text',{x:825,y:66,'text-anchor':'middle','dominant-baseline':'central',class:'mt'},g[3]);S('tspan',{},t,'× W');S('tspan',{dy:8,style:'font-size:.66em;font-style:normal'},t,'hy');S('tspan',{dy:-8},t,' + b');S('tspan',{dy:8,style:'font-size:.66em;font-style:normal'},t,'y')}
+  AR(g[3],912,68,968,68,'a');BX(g[3],972,40,100,56,'bxa');SUB(g[3],1022,66,'ŷ','t','mt a');
+  AR(g[3],882,173,1060,173,'b');TX(g[3],975,205,'to step t + 1','st b');
+  const mm=s=>'<span class="math">'+M(s)+'</span>';
+  const capsEl=H('div','caps',el),C=[
+    'Two things arrive: the current input '+mm('x_t')+' and the previous state '+mm('h_{t-1}')+'.',
+    'Each is multiplied by its own weight matrix, then summed with a bias: '+mm('a_t = W_{xh} x_t + W_{hh} h_{t-1} + b_h'),
+    mm('\\tanh')+' squashes every entry into (−1, 1); the result is the new state '+mm('h_t')+'.',
+    'A linear readout predicts the next element, '+mm('\\hat{y}_t = W_{hy} h_t + b_y')+', and '+mm('h_t')+' moves on to the next step.'
+  ].map(c=>H('p','',capsEl,c));
+  const pips=H('div','pips',el),pp=C.map(()=>H('i','',pips));
+  return{step(s){g.forEach((x,i)=>x.style.opacity=i<=s?1:.1);C.forEach((c,i)=>c.classList.toggle('on',i===s));pp.forEach((p,i)=>p.classList.toggle('on',i<=s))}};
+};
+
+/* memory decay with slider */
+V.decay=el=>{
+  el.style.display='flex';el.style.flexDirection='column';el.style.gap='10px';el.style.alignItems='center';
+  const svg=svgEl(el,520,260,'Weight given to each past input at step ten');
+  TX(svg,260,14,'weight on each input at step t = 10','st');
+  const bars=[],labs=[];
+  for(let k=1;k<=10;k++){const x=30+(k-1)*48;bars.push(S('rect',{x:x,width:34,rx:4,y:220,height:0},svg));SUB(svg,x+17,240,'x',String(k),'mt s')}
+  const ro=H('p','soft small',el);ro.style.minHeight='32px';
+  const draw=w=>{const v=[];for(let k=1;k<=10;k++)v.push(Math.pow(w,10-k));const mx=Math.max.apply(null,v)||1;
+    bars.forEach((b,i)=>{const h=Math.max(1,v[i]/mx*180);b.setAttribute('y',220-h);b.setAttribute('height',h);b.style.fill=w>1?'var(--amber)':'var(--blue)'});
+    const o=Math.pow(w,9);ro.innerHTML='weight on <i>x</i><sub>1</sub>: <i>w</i><sup>9</sup> = <b>'+(o<1e-3&&o>0?o.toExponential(1):o.toFixed(3))+'</b> &nbsp;'+(w<1?'(old inputs decay)':w>1?'(old inputs grow)':'(nothing fades)')};
+  const sl=Slider(el,'w',0,1.2,.01,.5,draw,false,v=>v.toFixed(2));sl.el.parentNode.style.width='420px';
+  draw(.5);return{enter(){sl.set(.5);draw(.5)}};
+};
+
+/* teacher forcing vs autoregressive */
+V.tf=el=>{
+  const svg=svgEl(el,1100,340,'Teacher forcing versus autoregressive generation');
+  const panel=(ox,gen)=>{
+    TX(svg,ox+250,16,gen?'Generation: autoregressive':'Training: teacher forcing','lab'+(gen?' a':' b'));
+    const xs=[0,1,2].map(i=>ox+110+i*160);
+    AR(svg,ox+20,175,xs[0]-47,175,'b');
+    xs.forEach((cx,i)=>{BX(svg,cx-45,147,90,56,'bxb');SUB(svg,cx,173,'h',String(i+1));
+      if(i<2)AR(svg,cx+45,175,xs[i+1]-47,175,'b');
+      const isPred=gen&&i>0;SUB(svg,cx,300,isPred?'x̂':'x',String(i+1),isPred?'mt a':'mt');AR(svg,cx,280,cx,207,isPred?'a':'');
+      SUB(svg,cx,72,'x̂',String(i+2),'mt a');AR(svg,cx,145,cx,94,'a');
+      if(gen&&i<2)PA(svg,'M'+(cx+22)+' 66 C'+(cx+80)+' 66 '+(cx+80)+' 300 '+(xs[i+1]-26)+' 300','a',{style:'stroke-dasharray:6 5'});
+      if(!gen)TX(svg,cx,44,'vs. x'+sb(i+2),'st');
+    });
+    TX(svg,ox+270,334,gen?'feed the generated element back':'feed the true previous element; compute the loss','st');
+  };
+  panel(0,false);panel(560,true);
+};
+
+/* forward / backward through time */
+V.bptt=el=>{
+  const svg=svgEl(el,900,300,'Forward pass through three steps and gradients flowing back');
+  const xs=[230,460,690];BX(svg,40,126,70,56,'bx');SUB(svg,75,152,'h','0');
+  const bk=S('g',{class:'fd'},svg);
+  xs.forEach((cx,i)=>{BX(svg,cx-55,126,110,56,'bxb');SUB(svg,cx,152,'h',String(i+1));
+    AR(svg,i?xs[i-1]+57:112,142,cx-59,142,'b');
+    SUB(svg,cx,268,'x',String(i+1),'mt');AR(svg,cx,248,cx,186);
+    BX(svg,cx-32,18,64,46,'bxa');SUB(svg,cx,40,'ℓ',String(i+1),'mt a');AR(svg,cx-12,124,cx-12,68,'a');
+    S('line',{x1:cx+12,y1:68,x2:cx+12,y2:122,class:'ar a bk','marker-end':'url(#aha)'},bk);
+    if(i)S('line',{x1:cx-59,y1:170,x2:xs[i-1]+59,y2:170,class:'ar a bk','marker-end':'url(#aha)'},bk)});
+  TX(svg,820,142,'forward','st b','start');TX(svg,820,170,'backward','st a','start');
+  return{step(s){bk.style.opacity=s>=1?1:.08}};
+};
+
+/* vanishing / exploding products */
+V.vanish=el=>{
+  el.style.display='flex';el.style.flexDirection='column';el.style.gap='8px';el.style.alignItems='center';
+  const svg=svgEl(el,600,280,'Size of a product of repeated factors versus number of steps');
+  const c=135,bars=[];
+  S('line',{x1:50,x2:590,y1:c,y2:c,class:'ax'},svg);
+  TX(svg,42,c,'1','st','end');TX(svg,42,30,'10⁴','st','end');TX(svg,42,240,'10⁻⁴','st','end');
+  for(let k=1;k<=24;k++)bars.push(S('rect',{x:56+(k-1)*22.5,width:16,rx:3},svg));
+  TX(svg,320,268,'steps back, t − s','st');
+  const ro=H('p','soft small',el);ro.style.minHeight='32px';
+  const draw=rho=>{bars.forEach((b,i)=>{let l=(i+1)*Math.log10(rho);l=Math.max(-4,Math.min(4,l));const h=Math.abs(l)/4*105;
+      b.setAttribute('y',l>=0?c-h:c);b.setAttribute('height',Math.max(1,h));b.style.fill=l>=0?'var(--amber)':'var(--blue)'});
+    const v=Math.pow(rho,24),e=Math.floor(Math.log10(v)),m=v/Math.pow(10,e);
+    ro.innerHTML='after 24 steps: <i>ρ</i><sup>24</sup> ≈ <b>'+(Math.abs(e)<3?v.toFixed(2):m.toFixed(1)+' × '+pw(e))+'</b>'};
+  const sl=Slider(el,'ρ',.5,1.5,.01,.8,draw,false,v=>v.toFixed(2));sl.el.parentNode.style.width='440px';
+  const lab=H('p','soft',el,'ρ: typical size of one factor ∂h<sub>k</sub>/∂h<sub>k−1</sub>');lab.style.fontSize='16px';
+  draw(.8);return{enter(){sl.set(.8);draw(.8)}};
+};
+
+const stage=document.getElementById('stage'),slides=[].slice.call(document.querySelectorAll('.slide'));
+
+const bar=document.getElementById('bar'),count=document.getElementById('count');
+slides.forEach(s=>{let n=0;s.querySelectorAll('.frag').forEach(f=>{if(f.dataset.f)f._i=+f.dataset.f;else f._i=++n;n=Math.max(n,f._i)});s._n=Math.max(n,+s.dataset.steps||0);s._v=null});
+let cur=-1,step=0;
+function inst(s){if(!s._v){s._v=[];s.querySelectorAll('[data-v]').forEach(e=>{try{s._v.push(V[e.dataset.v](e,s)||{})}catch(err){console.error(e.dataset.v,err)}})}return s._v}
+function go(i,st){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  if(i!==cur){if(cur>=0){slides[cur].classList.remove('on');inst(slides[cur]).forEach(v=>v.leave&&v.leave())}
+    cur=i;slides[cur].classList.add('on');inst(slides[cur]).forEach(v=>v.enter&&v.enter())}
+  step=Math.max(0,Math.min(slides[cur]._n,st));
+  slides[cur].querySelectorAll('.frag').forEach(f=>f.classList.toggle('show',f._i<=step));
+  inst(slides[cur]).forEach(v=>v.step&&v.step(step));
+  count.textContent=(cur+1)+' / '+slides.length;bar.style.width=((cur+1)/slides.length*100)+'%';
+  try{history.replaceState(null,'','#s-'+(cur+1))}catch(e){}
+}
+const next=()=>{if(step<slides[cur]._n)go(cur,step+1);else if(cur<slides.length-1)go(cur+1,0)};
+const prev=()=>{if(step>0)go(cur,step-1);else if(cur>0)go(cur-1,slides[cur-1]._n)};
+document.getElementById('next').onclick=next;document.getElementById('prev').onclick=prev;
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;const t=e.target,inp=t&&(t.tagName==='INPUT'||t.tagName==='BUTTON');
+  if(e.key==='ArrowRight'||e.key==='PageDown'){if(t&&t.tagName==='INPUT'&&e.key==='ArrowRight')return;e.preventDefault();next()}
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){if(t&&t.tagName==='INPUT'&&e.key==='ArrowLeft')return;e.preventDefault();prev()}
+  else if(e.key===' '&&!inp){e.preventDefault();next()}
+  else if(e.key==='Home'&&!inp)go(0,0);else if(e.key==='End'&&!inp)go(slides.length-1,0);
+});
+let tx=null,ty=0;
+stage.addEventListener('touchstart',e=>{const t=e.target;tx=(t.tagName==='INPUT'||t.tagName==='BUTTON')?null:e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+stage.addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)(dx<0?next:prev)();tx=null},{passive:true});
+function fit(){const d=document.getElementById('deck'),s=Math.min(d.clientWidth/1280,d.clientHeight/720);stage.style.transform='translate(-50%,-50%) scale('+s+')'}
+addEventListener('resize',fit);fit();
+function fromHash(){const m=/^#s-(\d+)$/.exec(location.hash);return m?+m[1]-1:0}
+addEventListener('hashchange',()=>{const i=fromHash();if(i!==cur)go(i,0)});
+go(fromHash(),0);
+})();
+</script>
+</body>
+</html>
