@@ -331,6 +331,33 @@ ul.refs{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:14px;
 .pips i.on{background:var(--blue)}
 .tasks td:last-child{text-align:left;font-weight:400}
 @media (prefers-reduced-motion: reduce){.bk{animation:none}.pb i,.caps>p,.fd{transition:none}}
+.code.pyc{font-size:17px;line-height:1.45;padding:18px 26px;white-space:pre;max-width:780px}
+.code .s{color:var(--amber)}
+.bp-caps{position:relative;height:92px;width:1060px}
+.bp-caps>p{position:absolute;inset:0;font-size:24px;opacity:0;transition:opacity .35s;display:flex;align-items:center;justify-content:center;gap:.35em;flex-wrap:wrap;text-align:center}
+.bp-caps>p.on{opacity:1}
+.bp-caps .math{font-size:25px}
+.trio{display:flex;gap:34px;justify-content:center;font-size:20px;font-variant-numeric:tabular-nums}
+.trio b{font-weight:600}
+.mx{display:inline-grid;column-gap:16px;row-gap:1px;padding:3px 9px;border-left:2px solid currentColor;border-right:2px solid currentColor;border-radius:8px;vertical-align:middle;font-family:'STIX Two Text',Georgia,serif;font-size:24px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.2}
+.mx.sm{font-size:20px;column-gap:12px;padding:2px 7px}
+.mx.a{color:var(--amber)}.mx.b{color:var(--blue)}
+.exl{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:nowrap;font-size:22px;white-space:nowrap}
+.exl .math{font-size:24px}
+.ex-caps{position:relative;height:118px;width:1100px}
+.ex-caps>p{position:absolute;inset:0;margin:0;opacity:0;transition:opacity .35s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.ex-caps>p.on{opacity:1}
+.gcols{display:flex;gap:30px;justify-content:center}
+.gcol{display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;background:var(--panel);transition:opacity .4s}
+.gcol h4{margin:0;font-size:21px;color:var(--soft);font-weight:600}
+.arows{display:flex;flex-direction:column;gap:18px;align-items:center}
+.arows p .math{font-size:22px}
+.rnnk .card{padding:12px 20px;gap:4px}.rnnk .card h3{font-size:22px}.rnnk .card p{font-size:18px}.rnnk svg{height:64px;width:auto}
+.blk{display:inline-flex;border-left:2px solid var(--ink);border-right:2px solid var(--ink);border-radius:8px;padding:3px;gap:3px;vertical-align:middle}
+.blk.v{flex-direction:column}
+.bm{display:flex;flex-direction:column;align-items:center;justify-content:center;height:82px;background:var(--blue-pale);border:1.5px solid var(--blue);border-radius:4px;font-family:'STIX Two Text',Georgia,serif;font-size:21px}
+.bm small{font-family:'Bricolage Grotesque',sans-serif;font-size:13px;color:var(--soft);font-style:normal}
+.bv{display:flex;align-items:center;justify-content:center;width:62px;background:var(--amber-pale);border:1.5px solid var(--amber);border-radius:4px;font-family:'STIX Two Text',Georgia,serif;font-size:19px}
 
 </style>
 </head>
@@ -682,6 +709,397 @@ ul.refs{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:14px;
 </section>
 
 
+<!-- ex setup -->
+<section class="slide">
+  <h2>BPTT by hand: a tiny RNN</h2>
+  <div class="body" style="gap:26px">
+    <div class="row" style="gap:46px;align-items:flex-start">
+      <div class="col" style="flex:none;gap:6px"><div class="math sm" data-m="W_{xh}"></div><span class="mx" style="grid-template-columns:auto"><span>1</span><span>−0.5</span></span><p class="soft" style="font-size:16px">2 × 1</p></div>
+      <div class="col" style="flex:none;gap:6px"><div class="math sm" data-m="W_{hh}"></div><span class="mx" style="grid-template-columns:auto auto"><span>0.5</span><span>−0.3</span><span>0.2</span><span>0.4</span></span><p class="soft" style="font-size:16px">2 × 2</p></div>
+      <div class="col" style="flex:none;gap:6px"><div class="math sm" data-m="W_{hy}"></div><span class="mx" style="grid-template-columns:auto auto"><span>1</span><span>−1</span></span><p class="soft" style="font-size:16px">1 × 2</p></div>
+      <div class="col left" style="flex:none;gap:10px;margin-left:20px">
+        <p class="small">Input <i>d</i> = 1, hidden <i>H</i> = 2, output <i>o</i> = 1</p>
+        <p class="small">Biases 0, <span class="math" style="font-size:24px" data-m="h_0 = 0"></span>, activation tanh</p>
+      </div>
+    </div>
+    <div class="col frag" style="flex:none;gap:10px">
+      <p class="small">Sequence <span class="math" style="font-size:26px" data-m="x = (1,\ 0.5,\ -1)"></span>; each target is the next element: <span class="math" style="font-size:26px" data-m="y = (0.5,\ -1,\ 0)"></span></p>
+      <div class="row" style="gap:40px">
+        <div class="math sm" data-m="a_t = W_{xh} x_t + W_{hh} h_{t-1}"></div>
+        <div class="math sm" data-m="h_t = \tanh(a_t)"></div>
+        <div class="math sm" data-m="\hat{y}_t = W_{hy} h_t"></div>
+        <div class="math sm" data-m="\ell_t = \frac{1}{2}(\hat{y}_t - y_t)^2"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ex forward -->
+<section class="slide" data-steps="3">
+  <h2>Forward pass: compute the hidden nodes</h2>
+  <div class="body" style="gap:4px"><div data-v="exFwd"></div></div>
+</section>
+
+<!-- tanh derivative -->
+<section class="slide">
+  <h2>The derivative of tanh</h2>
+  <div class="body">
+    <div class="row" style="gap:50px">
+      <div class="col" style="flex:none"><div data-v="tanhPlot"></div></div>
+      <div class="col left" style="flex:none;gap:18px;max-width:440px">
+        <div class="math boxed" data-m="\tanh'(a) = 1 - \tanh^2(a) = 1 - h^2"></div>
+        <ul class="pts" style="font-size:22px;gap:10px">
+          <li class="frag">Largest (= 1) at <i>a</i> = 0, near 0 when |<i>a</i>| is large: a <span class="fire">saturated</span> unit passes almost no gradient.</li>
+          <li class="frag">Cheap: it only needs <i>h</i>, which the forward pass already stored.</li>
+          <li class="frag">In our example: <span class="math" style="font-size:22px" data-m="h_1"></span> = (0.762, −0.462) gives <span class="math" style="font-size:22px" data-m="1 - h_1^2"></span> = (0.42, 0.786).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- delta meaning -->
+<section class="slide">
+  <h2>What does δ really mean?</h2>
+  <div class="body" style="gap:14px">
+    <div class="row" style="gap:30px">
+      <div class="math sm" data-m="\delta_{t,j} = \frac{\partial \L}{\partial a_{t,j}}"></div>
+      <p class="small" style="max-width:640px;text-align:left">How much the <b>total</b> loss changes when the pre-activation of hidden unit <i>j</i> at time <i>t</i> is nudged.</p>
+    </div>
+    <div data-v="deltaRoutes"></div>
+    <div class="math sm frag" data-m="\delta_t = (\under{W_{hy}^\top e_t}{via the output now} + \under{W_{hh}^\top \delta_{t+1}}{via all later steps}) \odot \under{(1 - h_t^2)}{through tanh}"></div>
+    <p class="small frag" style="max-width:1040px">Check: <span class="math" style="font-size:22px" data-m="\delta_{1,1} = 0.341"></span>. Nudge <span class="math" style="font-size:22px" data-m="a_{1,1}"></span> by 0.01 and the total loss goes from 2.836 to 2.839: a change of 0.0034 ≈ 0.341 × 0.01.</p>
+    <p class="soft small frag">Why we want it: every weight feeding <span class="math" style="font-size:22px" data-m="a_t"></span> gets gradient = δ × its input, e.g. <span class="math" style="font-size:22px" data-m="\delta_t h_{t-1}^\top"></span> for <span class="math" style="font-size:22px" data-m="W_{hh}"></span>.</p>
+  </div>
+</section>
+
+<!-- ex backward -->
+<section class="slide" data-steps="2">
+  <h2>Backward pass: the deltas, from the last step back</h2>
+  <div class="body" style="gap:4px"><div data-v="exBwd"></div></div>
+</section>
+
+<!-- ex grads -->
+<section class="slide" data-steps="3">
+  <h2>A gradient matrix at every time step</h2>
+  <div class="body" style="gap:18px">
+    <div data-v="exGrads"></div>
+    <p class="big frag" data-f="3" style="max-width:1000px"><span class="math" style="font-size:32px" data-m="W_{hh}"></span> and <span class="math" style="font-size:32px" data-m="W_{xh}"></span> are <span class="imp">shared</span> by all three steps, yet we got <span class="fire">three sets of gradients</span>.</p>
+  </div>
+</section>
+
+<!-- ex average -->
+<section class="slide" data-steps="2">
+  <h2>One update: average the three gradients</h2>
+  <div class="body" style="gap:10px"><div data-v="exAvg"></div></div>
+</section>
+
+<!-- general -->
+<section class="slide">
+  <h2>BPTT for a general RNN</h2>
+  <div class="body" style="gap:20px">
+    <p class="soft small">Backward, from <span class="math" style="font-size:24px" data-m="t = T"></span> down to 1, with <span class="math" style="font-size:24px" data-m="e_t = \frac{\partial \ell_t}{\partial \hat{y}_t},\ \delta_{T+1} = 0"></span>:</p>
+    <div class="math boxed" data-m="\delta_t = (W_{hy}^\top e_t + W_{hh}^\top \delta_{t+1}) \odot (1 - h_t^2)"></div>
+    <div class="row frag" style="gap:40px">
+      <div class="math sm" data-m="\nabla W_{hh} = \frac{1}{T} \sum_{t=1}^{T} \delta_t h_{t-1}^\top"></div>
+      <div class="math sm" data-m="\nabla W_{xh} = \frac{1}{T} \sum_{t=1}^{T} \delta_t x_t^\top"></div>
+      <div class="math sm" data-m="\nabla b_h = \frac{1}{T} \sum_{t=1}^{T} \delta_t"></div>
+    </div>
+    <div class="row frag" style="gap:40px">
+      <div class="math sm" data-m="\nabla W_{hy} = \frac{1}{T} \sum_{t=1}^{T} e_t h_t^\top"></div>
+      <div class="math sm" data-m="\nabla b_y = \frac{1}{T} \sum_{t=1}^{T} e_t"></div>
+    </div>
+    <p class="small frag">Then one step for every parameter: <span class="math" style="font-size:26px" data-m="W \gets W - \eta \nabla W"></span>. In a mini-batch, also average over the sequences.</p>
+  </div>
+</section>
+
+<!-- pipeline 1 -->
+<section class="slide" data-steps="3">
+  <h2>Preparing the data 1: text to ids and vectors</h2>
+  <div class="body" style="gap:10px">
+    <div data-v="encode"></div>
+    <p class="small frag" data-f="1">Vocabulary: <b>&lt;pad&gt;</b> → 0, <b>not</b> → 1, <b>be</b> → 2, <b>or</b> → 3, <b>to</b> → 4</p>
+  </div>
+</section>
+
+<!-- chunk -->
+<section class="slide" data-steps="3">
+  <h2>Preparing the data 2: cut into sequences, pad, shift</h2>
+  <div class="body" style="gap:10px">
+    <div data-v="chunk"></div>
+    <p class="soft small frag" data-f="3" style="max-width:1040px">Each row is one training sequence with <i>T</i> = 5 inputs. Padding (id 0) fills the last one; padded targets are ignored by the loss. With separate sentences, pad each one to the longest sentence (the max length).</p>
+  </div>
+</section>
+
+<!-- epochs -->
+<section class="slide">
+  <h2>Training: every sequence, many epochs</h2>
+  <div class="body" style="gap:10px">
+    <div data-v="epochs"></div>
+    <p class="soft small">Each sequence: forward pass, loss, BPTT, one update of the shared weights. One pass over all sequences is an <b>epoch</b>; reshuffle and repeat until the loss stops falling.</p>
+  </div>
+</section>
+
+<!-- pytorch data -->
+<section class="slide">
+  <h2>In PyTorch: preparing the data</h2>
+  <div class="body">
+    <div class="row" style="gap:28px;align-items:center">
+<pre class="code pyc"><b>import</b> torch, torch.nn <b>as</b> nn, torch.nn.functional <b>as</b> F
+<b>from</b> torch.utils.data <b>import</b> TensorDataset, DataLoader
+
+words = open(<span class="s">"hamlet.txt"</span>).read().split()
+vocab = [<span class="s">"&lt;pad&gt;"</span>] + sorted(set(words))   <span class="cm"># id 0 = padding</span>
+stoi  = {w: i <b>for</b> i, w <b>in</b> enumerate(vocab)}
+ids   = torch.tensor([stoi[w] <b>for</b> w <b>in</b> words])
+
+T = 20                                  <span class="cm"># inputs per sequence</span>
+seqs = list(ids.split(T + 1))           <span class="cm"># chunks of T+1 ids</span>
+seqs[-1] = F.pad(seqs[-1], (0, T + 1 - len(seqs[-1])))
+data = torch.stack(seqs)                <span class="cm"># (N, T+1)</span>
+X, Y = data[:, :-1], data[:, 1:]        <span class="cm"># inputs, targets</span>
+loader = DataLoader(TensorDataset(X, Y), batch_size=32,
+                    shuffle=True)</pre>
+      <div class="col left" style="flex:none;width:250px;gap:16px">
+        <p class="small frag">Words → ids, with 0 reserved for padding.</p>
+        <p class="small frag">Cut into chunks of <i>T</i> + 1 and pad the last chunk with zeros.</p>
+        <p class="small frag">Shift by one: inputs <i>X</i>, next-token targets <i>Y</i>; shuffled mini-batches.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- pytorch model -->
+<section class="slide">
+  <h2>In PyTorch: the model</h2>
+  <div class="body">
+    <div class="row" style="gap:36px;align-items:center">
+<pre class="code pyc" style="font-size:19px"><b>class</b> RNNLM(nn.Module):
+    <b>def</b> __init__(self, V, d=32, H=128):
+        super().__init__()
+        self.embed = nn.Embedding(V, d, padding_idx=0)
+        self.rnn   = nn.RNN(d, H, batch_first=True)  <span class="cm"># tanh</span>
+        self.head  = nn.Linear(H, V)
+
+    <b>def</b> forward(self, x, h0=None):
+        e = self.embed(x)            <span class="cm"># (B, T) → (B, T, d)</span>
+        out, hT = self.rnn(e, h0)    <span class="cm"># every h_t: (B, T, H)</span>
+        <b>return</b> self.head(out), hT    <span class="cm"># logits: (B, T, V)</span></pre>
+      <div class="col left" style="flex:none;width:290px;gap:18px">
+        <p class="small frag"><b>nn.Embedding</b>: id → vector <i>x<sub>t</sub></i>.</p>
+        <p class="small frag"><b>nn.RNN</b>: the recurrence for <i>h<sub>t</sub></i> with <i>W<sub>xh</sub></i>, <i>W<sub>hh</sub></i>, <i>b<sub>h</sub></i>, shared over time.</p>
+        <p class="small frag"><b>nn.Linear</b>: the readout <i>W<sub>hy</sub></i>, <i>b<sub>y</sub></i> → a score per vocabulary word.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- pytorch loop -->
+<section class="slide">
+  <h2>In PyTorch: training over epochs</h2>
+  <div class="body">
+    <div class="row" style="gap:28px;align-items:center">
+<pre class="code pyc">model   = RNNLM(len(vocab))
+opt     = torch.optim.Adam(model.parameters(), lr=1e-3)
+loss_fn = nn.CrossEntropyLoss(ignore_index=0)  <span class="cm"># skip padding</span>
+
+<b>for</b> epoch <b>in</b> range(20):                  <span class="cm"># many passes</span>
+    <b>for</b> xb, yb <b>in</b> loader:                <span class="cm"># (B, T) ids</span>
+        logits, _ = model(xb)            <span class="cm"># forward</span>
+        loss = loss_fn(logits.reshape(-1, len(vocab)),
+                       yb.reshape(-1))   <span class="cm"># mean loss</span>
+        opt.zero_grad()
+        loss.backward()                  <span class="cm"># BPTT</span>
+        nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        opt.step()                       <span class="cm"># one update</span>
+    print(epoch, loss.item())</pre>
+      <div class="col left" style="flex:none;width:260px;gap:16px">
+        <p class="small frag"><b>CrossEntropyLoss</b> averages over batch × time, so the gradient is the average from the BPTT slides.</p>
+        <p class="small frag"><b>loss.backward()</b> runs BPTT through the unrolled graph.</p>
+        <p class="small frag"><b>clip_grad_norm_</b> caps the gradient size against exploding gradients.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- gen 1 -->
+<section class="slide">
+  <h2>Generating text: predictions are fed back</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="genFeed"></div>
+    <p class="soft small">Start from a prompt, then repeat: compute <span class="math" style="font-size:24px" data-m="p_\theta(\cdot \mid h_t)"></span>, pick a token, feed it back as the next input.</p>
+  </div>
+</section>
+
+<!-- gen 2 -->
+<section class="slide">
+  <h2>One wrong token can derail the whole text</h2>
+  <div class="body" style="gap:18px">
+    <div data-v="derail"></div>
+    <ul class="pts" style="font-size:23px;gap:10px;max-width:1040px">
+      <li class="frag">In training (teacher forcing) the model always saw the <span class="imp">true</span> history. Now it conditions on its <span class="fire">own</span> output, mistakes included: a situation it never saw.</li>
+      <li class="frag">Errors compound: if each token is right with probability 0.95, the chance of no mistake is 0.60 after 10 tokens, 0.36 after 20, and 0.08 after 50.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- gen 3 -->
+<section class="slide">
+  <h2>Small errors grow in numeric sequences too</h2>
+  <div class="body" style="gap:12px">
+    <div data-v="drift"></div>
+    <p class="soft small frag">Ways to reduce it: sample carefully (temperature, beam search), train on some of the model’s own predictions (scheduled sampling), and use models with better memory.</p>
+  </div>
+</section>
+
+<!-- vanish 1 -->
+<section class="slide">
+  <h2>Long sequences: the clue can be far back</h2>
+  <div class="body" style="gap:16px">
+    <div data-v="longdep"></div>
+    <p class="small frag" style="max-width:980px">To choose <b class="fire">are</b>, the model must carry <b class="fire">keys</b> through 10 updates of <span class="math" style="font-size:24px" data-m="h_t"></span>, and the gradient that teaches this must flow 10 steps back.</p>
+    <p class="soft small frag">Real sequences are longer still: a paragraph has hundreds of tokens, a sensor stream thousands of steps.</p>
+  </div>
+</section>
+
+<!-- vanish 2 -->
+<section class="slide">
+  <h2>Why the gradient fades over long sequences</h2>
+  <div class="body" style="gap:14px">
+    <div class="row" style="gap:44px">
+      <div class="math sm" data-m="\frac{\partial \ell_T}{\partial h_s} = \frac{\partial \ell_T}{\partial h_T} \prod_{k=s+1}^{T} \frac{\partial h_k}{\partial h_{k-1}}"></div>
+      <div class="math sm" data-m="\frac{\partial h_k}{\partial h_{k-1}} = \text{diag}(1 - h_k^2) W_{hh}"></div>
+    </div>
+    <div data-v="fadeSent"></div>
+    <p class="soft" style="font-size:18px">Shading = size of the gradient from the loss at <b class="fire">?</b> reaching each word, if each factor scales it by <i>ρ</i>. Since tanh′ ≤ 1, a <i>W<sub>hh</sub></i> that shrinks vectors gives <i>ρ</i> &lt; 1.</p>
+  </div>
+</section>
+
+<!-- lstm 1 -->
+<section class="slide">
+  <h2>The fix: give the gradient a shortcut</h2>
+  <div class="body" style="gap:16px">
+    <div data-v="resid"></div>
+    <ul class="pts" style="font-size:23px;gap:10px;max-width:1040px">
+      <li class="frag">A product of terms like <span class="math" style="font-size:24px" data-m="I + \frac{\partial F}{\partial c}"></span> does not shrink to zero the way a product of small Jacobians does.</li>
+      <li class="frag">The same trick as residual connections across layers, applied across <span class="imp">time</span>. The LSTM builds its memory around such an additive path.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- lstm 2 -->
+<section class="slide">
+  <h2>LSTM: a cell state that is updated by addition</h2>
+  <div class="body" style="gap:16px">
+    <div class="row" style="gap:50px">
+      <div class="math" data-m="c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t"></div>
+      <div class="math sm frag" data-f="1" data-m="\frac{\partial c_t}{\partial c_{t-1}} = \text{diag}(f_t)"></div>
+    </div>
+    <div class="frag" data-f="1" data-v="highway"></div>
+    <p class="soft small frag" data-f="2" style="max-width:1000px">A pure residual path could never forget. The LSTM learns <b>gates</b> between 0 and 1 that decide what to keep (<i>f<sub>t</sub></i>), what to write (<i>i<sub>t</sub></i>) and what to reveal.</p>
+  </div>
+</section>
+
+<!-- lstm why residual -->
+<section class="slide">
+  <h2>Both add terms, so why is only the LSTM residual?</h2>
+  <div class="body" style="gap:22px">
+    <div class="row" style="gap:40px;align-items:stretch">
+      <div class="card" style="width:520px;gap:12px;text-align:center">
+        <h3>Vanilla RNN</h3>
+        <div class="math sm" data-m="h_t = \tanh(W_{hh} h_{t-1} + W_{xh} x_t)"></div>
+        <div class="math sm frag" data-f="1" data-m="\frac{\partial h_t}{\partial h_{t-1}} = \text{diag}(1 - h_t^2) W_{hh}"></div>
+        <p class="frag" data-f="1" style="font-size:20px">The old state is <b>multiplied by a full learned matrix</b> and <b>squashed by tanh</b> at every step. This is the identity only if <span class="math" style="font-size:21px" data-m="W_{hh} = I"></span> and tanh′ = 1.</p>
+      </div>
+      <div class="card" style="width:520px;gap:12px;text-align:center">
+        <h3>LSTM cell</h3>
+        <div class="math sm" data-m="c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t"></div>
+        <div class="math sm frag" data-f="1" data-m="\frac{\partial c_t}{\partial c_{t-1}} = \text{diag}(f_t)"></div>
+        <p class="frag" data-f="1" style="font-size:20px">The old state is <b>not</b> multiplied by a matrix and <b>not</b> squashed, only scaled entry by entry by a gate. With <span class="math" style="font-size:21px" data-m="f_t \approx 1"></span> this is the identity.</p>
+      </div>
+    </div>
+    <div class="math sm frag" data-f="2" data-m="c_t = c_{t-1} + \under{i_t \odot \tilde{c}_t - (1 - f_t) \odot c_{t-1}}{the change Δₜ}"></div>
+    <p class="soft small frag" data-f="3" style="max-width:1040px">The original LSTM (1997) had no forget gate: <span class="math" style="font-size:22px" data-m="c_t = c_{t-1} + i_t \odot \tilde{c}_t"></span>, an exact residual update. The forget gate was added later so the cell can also erase. The gates depend on <span class="math" style="font-size:22px" data-m="h_{t-1}"></span> too, which adds indirect gradient paths; the direct path above is what keeps gradients alive.</p>
+  </div>
+</section>
+
+<!-- lstm 3 -->
+<section class="slide" data-steps="3">
+  <h2>Inside an LSTM cell</h2>
+  <div class="body" style="gap:6px"><div data-v="lstmCell"></div></div>
+</section>
+
+<!-- lstm 4 -->
+<section class="slide">
+  <h2>The LSTM equations</h2>
+  <div class="body" style="gap:22px">
+    <div class="row" style="gap:50px">
+      <div class="col left" style="flex:none;gap:8px">
+        <div class="math sm" data-m="f_t = \sigma(W_{fh} h_{t-1} + W_{fx} x_t + b_f)"></div>
+        <div class="math sm" data-m="i_t = \sigma(W_{ih} h_{t-1} + W_{ix} x_t + b_i)"></div>
+        <div class="math sm" data-m="\tilde{c}_t = \tanh(W_{ch} h_{t-1} + W_{cx} x_t + b_c)"></div>
+        <div class="math sm" data-m="o_t = \sigma(W_{oh} h_{t-1} + W_{ox} x_t + b_o)"></div>
+        <div class="math sm boxed" data-m="c_t = f_t \odot c_{t-1} + i_t \odot \tilde{c}_t"></div>
+        <div class="math sm boxed" data-m="h_t = o_t \odot \tanh(c_t)"></div>
+      </div>
+      <table class="cmp frag" style="font-size:20px">
+        <thead><tr><th>Part</th><th>Role</th></tr></thead>
+        <tbody>
+          <tr><td>forget <i>f<sub>t</sub></i></td><td>how much of the old memory to keep</td></tr>
+          <tr><td>input <i>i<sub>t</sub></i></td><td>how much new content to write</td></tr>
+          <tr><td>candidate <i>c̃<sub>t</sub></i></td><td>the new content itself</td></tr>
+          <tr><td>output <i>o<sub>t</sub></i></td><td>how much memory to show as <i>h<sub>t</sub></i></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small frag">Every gate is a <b>vector</b> in ℝ<sup><i>H</i></sup>, one value per memory unit, and ⊙ multiplies entry by entry. About 4× the parameters of a vanilla RNN.</p>
+    <div class="row frag" style="gap:14px;font-size:22px">
+      <span class="soft">Often written compactly:</span>
+      <span class="math" style="font-size:24px" data-m="W_f [h_{t-1}; x_t] ="></span>
+      <span class="blk"><span class="bm" style="width:96px"><span><i>W</i><sub>fh</sub></span><small>H × H</small></span><span class="bm" style="width:64px"><span><i>W</i><sub>fx</sub></span><small>H × d</small></span></span>
+      <span class="blk v"><span class="bv" style="height:46px"><span><i>h</i><sub>t−1</sub></span></span><span class="bv" style="height:30px"><span><i>x</i><sub>t</sub></span></span></span>
+      <span class="math" style="font-size:24px" data-m="= W_{fh} h_{t-1} + W_{fx} x_t"></span>
+      <span class="soft" style="font-size:18px">blocks side by side × one stacked column</span>
+    </div>
+  </div>
+</section>
+
+<!-- lstm 5 -->
+<section class="slide">
+  <h2>LSTM forward pass: carrying “keys” to the verb</h2>
+  <div class="body" style="gap:10px">
+    <div data-v="lstmMem"></div>
+    <p class="soft small">Illustrative values for one memory unit that stores “the subject is plural”. The forward pass is the same loop as before, now updating both <span class="math" style="font-size:22px" data-m="c_t"></span> and <span class="math" style="font-size:22px" data-m="h_t"></span>.</p>
+  </div>
+</section>
+
+<!-- lstm 6 -->
+<section class="slide">
+  <h2>Training an LSTM: still BPTT</h2>
+  <div class="body" style="gap:22px">
+    <ul class="pts" style="font-size:24px;gap:12px;max-width:1000px">
+      <li>Unroll, forward pass, loss at every step, backward through time, average the gradients, update: <span class="imp">exactly as for the RNN</span>.</li>
+      <li class="frag">Along the cell path the gradient is only scaled by <span class="math" style="font-size:24px" data-m="f_t"></span> at each step, with no <span class="math" style="font-size:24px" data-m="W_{hh}"></span> or tanh′ in between, so it survives many more steps.</li>
+      <li class="frag">Gradients can still explode, so gradient clipping stays in the loop.</li>
+    </ul>
+<pre class="code pyc frag" style="font-size:19px">self.rnn = nn.LSTM(d, H, batch_first=True)  <span class="cm"># was nn.RNN</span>
+out, (hT, cT) = self.rnn(e)                  <span class="cm"># state is now (h, c)</span></pre>
+  </div>
+</section>
+
+<!-- other rnns -->
+<section class="slide">
+  <h2>Other recurrent networks, in brief</h2>
+  <div class="body">
+    <div class="cards six rnnk" style="max-width:1120px">
+      <div class="card" style="width:500px"><div data-v="glyph" data-k="gru"></div><h3>GRU</h3><p>Two gates (update, reset) and no separate cell state. Fewer parameters, often as good as an LSTM.</p></div>
+      <div class="card" style="width:500px"><div data-v="glyph" data-k="bi"></div><h3>Bidirectional RNN</h3><p>One RNN reads forward, one backward; their states are combined. For tagging and classification, not generation.</p></div>
+      <div class="card" style="width:500px"><div data-v="glyph" data-k="deep"></div><h3>Stacked (deep) RNN</h3><p>Several recurrent layers: each layer’s <i>h<sub>t</sub></i> is the next layer’s input.</p></div>
+      <div class="card" style="width:500px"><div data-v="glyph" data-k="encdec"></div><h3>Encoder–decoder</h3><p>One RNN reads the input into a state, another generates the output. Translation, summarization.</p></div>
+    </div>
+  </div>
+</section>
+
 <div id="bar"></div>
 <div id="nav"><button id="prev" aria-label="Previous slide">‹</button><span id="count"></span><button id="next" aria-label="Next slide">›</button></div>
 </div></div>
@@ -763,6 +1181,9 @@ const BX=(p,x,y,w,h,c)=>S('rect',{x:x,y:y,width:w,height:h,rx:10,class:c||'bx'},
 const TX=(p,x,y,str,cls,anchor)=>S('text',{x:x,y:y,'text-anchor':anchor||'middle','dominant-baseline':'central',class:cls||'lab'},p,str);
 function SUB(p,x,y,base,sub,cls,anchor){const t=S('text',{x:x,y:y,'text-anchor':anchor||'middle','dominant-baseline':'central',class:cls||'mt'},p);
   S('tspan',{},t,base);if(sub)S('tspan',{dy:8,style:'font-size:.66em;font-style:normal'},t,sub);return t}
+function HAT(p,x0,y,sub,cls){const t=S('text',{x:x0,y:y,'text-anchor':'middle','dominant-baseline':'central',class:cls||'mt'},p,'x');
+  if(sub)S('text',{x:x0+7,y:y+8,'text-anchor':'start','dominant-baseline':'central',class:cls||'mt',style:'font-size:16px;font-style:normal'},p,sub);
+  S('path',{d:'M'+(x0-4)+' '+(y-6)+'L'+(x0+1.5)+' '+(y-11)+'L'+(x0+7)+' '+(y-6),style:'fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;stroke:'+(/\ba\b/.test(cls||'')?'var(--amber)':'var(--ink)')},p);return t}
 function timers(){const ids=[];return{every(f,ms){ids.push(setInterval(f,ms))},after(f,ms){ids.push(setTimeout(f,ms))},clear(){ids.forEach(i=>{clearInterval(i);clearTimeout(i)});ids.length=0}}}
 const lin=(a,b,c,d)=>v=>c+(v-a)/(b-a)*(d-c);
 const pathOf=(pts)=>pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join('');
@@ -883,7 +1304,7 @@ V.mlp=el=>{
   I.forEach((a,i)=>{S('circle',{cx:a[0],cy:a[1],r:24,class:'node',style:'fill:var(--panel)'},svg);SUB(svg,a[0]-40,a[1],'x',['t−2','t−1','t'][i],'mt','end')});
   Hd.forEach(b=>S('circle',{cx:b[0],cy:b[1],r:17,class:'node'},svg));
   S('circle',{cx:O[0],cy:O[1],r:26,class:'node',style:'fill:var(--amber-pale);stroke:var(--amber)'},svg);
-  SUB(svg,O[0]+44,O[1],'x̂','t+1','mt a','start');
+  HAT(svg,O[0]+50,O[1],'t+1','mt a');
   SUB(svg,400,334,'MLP  f','θ','mt');
 };
 
@@ -1019,8 +1440,8 @@ V.tf=el=>{
     AR(svg,ox+20,175,xs[0]-47,175,'b');
     xs.forEach((cx,i)=>{BX(svg,cx-45,147,90,56,'bxb');SUB(svg,cx,173,'h',String(i+1));
       if(i<2)AR(svg,cx+45,175,xs[i+1]-47,175,'b');
-      const isPred=gen&&i>0;SUB(svg,cx,300,isPred?'x̂':'x',String(i+1),isPred?'mt a':'mt');AR(svg,cx,280,cx,207,isPred?'a':'');
-      SUB(svg,cx,72,'x̂',String(i+2),'mt a');AR(svg,cx,145,cx,94,'a');
+      const isPred=gen&&i>0;if(isPred)HAT(svg,cx-5,300,String(i+1),'mt a');else SUB(svg,cx,300,'x',String(i+1),'mt');AR(svg,cx,280,cx,207,isPred?'a':'');
+      HAT(svg,cx-5,72,String(i+2),'mt a');AR(svg,cx,145,cx,94,'a');
       if(gen&&i<2)PA(svg,'M'+(cx+22)+' 66 C'+(cx+80)+' 66 '+(cx+80)+' 300 '+(xs[i+1]-26)+' 300','a',{style:'stroke-dasharray:6 5'});
       if(!gen)TX(svg,cx,44,'vs. x'+sb(i+2),'st');
     });
@@ -1061,6 +1482,442 @@ V.vanish=el=>{
   const sl=Slider(el,'ρ',.5,1.5,.01,.8,draw,false,v=>v.toFixed(2));sl.el.parentNode.style.width='440px';
   const lab=H('p','soft',el,'ρ: typical size of one factor ∂h<sub>k</sub>/∂h<sub>k−1</sub>');lab.style.fontSize='16px';
   draw(.8);return{enter(){sl.set(.8);draw(.8)}};
+};
+
+/* caption stack helper */
+function capStack(el,list,cls){const box=H('div',cls||'bp-caps',el);const ps=list.map(c=>H('p','',box,c));const pips=H('div','pips',el),pp=list.map(()=>H('i','',pips));
+  return s=>{ps.forEach((p,i)=>p.classList.toggle('on',i===s));pp.forEach((p,i)=>p.classList.toggle('on',i<=s))}}
+const MM=s=>'<span class="math">'+M(s)+'</span>';
+const vcol=el=>{el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.gap='10px'};
+
+/* BPTT stepper */
+V.bpttStep=el=>{
+  vcol(el);
+  const svg=svgEl(el,1090,330,'Unrolled RNN: forward pass, losses, then gradients flowing backward');
+  const xs=[200,410,620,830],cy=168;
+  BX(svg,40,140,74,56,'bx');SUB(svg,77,166,'h','0');
+  const F=S('g',{},svg),L=[],D=[],G=[],DL=[];
+  xs.forEach((cx,i)=>{
+    AR(F,i?xs[i-1]+57:116,158,cx-59,158,'b');
+    BX(F,cx-55,140,110,56,'bxb');SUB(F,cx,166,'h',String(i+1));
+    SUB(F,cx,302,'x',String(i+1));AR(F,cx,282,cx,200);
+    const l=S('g',{class:'fd'},svg);L.push(l);
+    AR(l,cx-14,138,cx-14,72,'a');BX(l,cx-34,22,68,46,'bxa');SUB(l,cx,44,'ℓ',String(i+1),'mt a');
+    const d=S('g',{class:'fd'},svg);D.push(d);
+    S('line',{x1:cx+14,y1:72,x2:cx+14,y2:136,class:'ar a bk','marker-end':'url(#aha)'},d);
+    if(i<3)S('line',{x1:xs[i+1]-57,y1:182,x2:cx+59,y2:182,class:'ar a bk','marker-end':'url(#aha)'},d);
+    DL.push(SUB(d,cx+44,228,'δ',String(i+1),'mt a','start'));
+    const g=S('g',{class:'fd'},svg);G.push(g);
+    BX(g,cx-98,234,66,40,'bxa');SUB(g,cx-65,252,'g',String(i+1),'mt a');
+  });
+  const cap=capStack(el,[
+    '<b>Forward:</b>&nbsp;run left to right, storing every '+MM('h_t')+'.',
+    'Compute a loss at every step: '+MM('\\L = \\sum_t \\ell_t')+'.',
+    'Start at the end. Only '+MM('\\ell_4')+' reaches '+MM('h_4')+': '+MM('\\delta_4 = (W_{hy}^\\top e_4) \\odot (1 - h_4^2)'),
+    MM('\\delta_3')+' adds its own error to what flows back from step 4: '+MM('\\delta_3 = (W_{hy}^\\top e_3 + W_{hh}^\\top \\delta_4) \\odot (1 - h_3^2)'),
+    'Repeat: '+MM('\\delta_2')+' collects '+MM('\\ell_2')+' plus everything from steps 3 and 4.',
+    MM('\\delta_1')+' depends on <b>every</b> later loss: the longest chain of products.',
+    'Each copy of '+MM('W_{hh}')+' gets its own gradient '+MM('g_t = \\delta_t h_{t-1}^\\top')+'. Different values, same matrix.'
+  ]);
+  return{step(s){L.forEach(l=>l.style.opacity=s>=1?1:.08);
+    D.forEach((d,i)=>{const on=s>=2+(3-i);d.style.opacity=on?1:.06;DL[i].style.fontWeight=(s===2+(3-i))?'700':'400'});
+    G.forEach(g=>g.style.opacity=s>=6?1:.06);cap(s)}};
+};
+
+/* per-step gradients and their average */
+V.gradAvg=el=>{
+  const svg=svgEl(el,470,230,'Bar chart of per-step gradients, their sum and their average');
+  const z=118,k=88/1.1,vals=[-.531,-.094,1.031],sum=.406,avg=.135;
+  S('line',{x1:10,x2:460,y1:z,y2:z,class:'ax'},svg);
+  const bar=(g,x,v,fill,lab)=>{const h=Math.abs(v)*k;S('rect',{x:x,y:v>=0?z-h:z,width:46,height:Math.max(2,h),rx:4,style:'fill:'+fill},g);
+    TX(g,x+23,v>=0?z-h-14:z+h+14,(v<0?'−':'')+Math.abs(v).toFixed(3),'st');TX(g,x+23,218,lab,'lab')};
+  const gG=S('g',{class:'fd'},svg),gS=S('g',{class:'fd'},svg),gA=S('g',{class:'fd'},svg);
+  vals.forEach((v,i)=>bar(gG,30+i*70,v,'var(--blue)','g'+sb(i+1)));
+  S('line',{x1:240,x2:240,y1:10,y2:200,class:'ax',style:'stroke-dasharray:4 5;opacity:.5'},gS);
+  bar(gS,270,sum,'var(--soft)','sum');bar(gA,370,avg,'var(--amber)','average');
+  return{step(s){gG.style.opacity=s>=1?1:.08;gS.style.opacity=s>=2?1:.06;gA.style.opacity=s>=3?1:.06}};
+};
+
+/* text -> ids -> one-hot -> embedding */
+V.encode=el=>{
+  const svg=svgEl(el,1100,430,'Tokens mapped to ids, one-hot vectors and embeddings');
+  const tok=['to','be','or','not','to','be'],idx={not:1,be:2,or:3,to:4},xs=tok.map((_,i)=>330+i*128);
+  const r=RNG(4),E=[0,1,2,3,4].map(()=>[0,1,2,3].map(()=>Math.max(-1,Math.min(1,r.n()*.6))));
+  const rows=[S('g',{},svg),S('g',{class:'fd'},svg),S('g',{class:'fd'},svg),S('g',{class:'fd'},svg)];
+  [['text → tokens',50],['token ids',120],['one-hot (5 dims)',210],['embedding  E[id]',350]].forEach((l,i)=>TX(rows[i],20,l[1],l[0],'lab','start'));
+  tok.forEach((t,i)=>{const x=xs[i],id=idx[t];
+    BX(rows[0],x-46,26,92,48,'bx');TX(rows[0],x,50,t,'lab');
+    TX(rows[1],x,120,String(id),'lab big');
+    for(let j=0;j<5;j++)S('rect',{x:x-11,y:158+j*21,width:22,height:18,rx:3,style:j===id?'fill:var(--blue);stroke:var(--blue)':'fill:var(--panel);stroke:var(--line);stroke-width:1.5'},rows[2]);
+    for(let j=0;j<4;j++){const v=E[id][j];S('rect',{x:x-11,y:308+j*22,width:22,height:19,rx:3,style:'fill:'+(v>=0?'var(--blue)':'var(--amber)')+';fill-opacity:'+(.15+.85*Math.abs(v)).toFixed(2)+';stroke:var(--line);stroke-width:1'},rows[3])}
+  });
+  TX(rows[3],330,414,'a learned lookup table: one embedding row per id','st','start');
+  return{step(s){rows.forEach((g,i)=>{if(i)g.style.opacity=s>=i?1:.06})}};
+};
+
+/* one training iteration */
+V.pipeline=el=>{
+  vcol(el);
+  const svg=svgEl(el,1100,320,'Training loop: forward through embedding, RNN, softmax and loss, then backward and update');
+  const fl=['token batch','embedding','RNN, T steps','linear + softmax','loss ℒ'],fb=[],bb=[];
+  fl.forEach((t,i)=>{const x=20+i*221;if(i)AR(svg,x-44,92,x-3,92,'b');fb.push(BX(svg,x,62,175,60,'bx'));TX(svg,x+87,92,t,'lab')});
+  const bl=[['BPTT: ∂ℒ/∂θ',879],['average gradients',633],['update θ',387]];
+  bl.forEach((b,i)=>{bb.push(BX(svg,b[1],212,200,60,'bx'));TX(svg,b[1]+100,242,b[0],'lab')});
+  AR(svg,991,124,991,208,'a');AR(svg,877,242,835,242,'a');AR(svg,631,242,589,242,'a');
+  PA(svg,'M385 242 L107 242 L107 126','',{});TX(svg,240,262,'next batch, new weights','st','middle');
+  TX(svg,550,40,'forward','st b');TX(svg,550,296,'backward','st a');
+  const cap=capStack(el,[
+    'Sample a batch of sequences; each target is the input shifted by one token.',
+    'Map every token id to a vector (one-hot or a learned embedding).',
+    'Run the recurrence left to right: '+MM('h_t = \\tanh(W_{xh} x_t + W_{hh} h_{t-1} + b_h)'),
+    'Turn each '+MM('h_t')+' into scores over the vocabulary; softmax gives '+MM('p_\\theta(x_{t+1} \\mid x_1, \\ldots, x_t)'),
+    'Cross-entropy at every position, averaged: '+MM('\\L = \\frac{1}{T} \\sum_t \\ell_t'),
+    'Backpropagate through time: each step’s copy of the weights gets a gradient; they are averaged.',
+    'Update every parameter once with the averaged gradient, then take the next batch.'
+  ]);
+  return{step(s){fb.forEach((b,i)=>b.setAttribute('class',i===s?'bxb':'bx'));
+    bb.forEach((b,i)=>b.setAttribute('class',(s===5&&i<2)||(s===6&&i===2)?'bxa':'bx'));cap(s)}};
+};
+
+/* long-range dependency sentence */
+const SENT=['The','keys','to','the','cabinet','that','my','grandmother','bought','years','ago'];
+function sentence(svg,y,opts){const ws=SENT.map(t=>24+t.length*11.5),gap=8,tot=ws.reduce((a,b)=>a+b,0)+gap*SENT.length+70;
+  let x=opts&&opts.x0!=null?opts.x0:(1100-tot)/2;const out=[];
+  SENT.forEach((t,i)=>{const r=BX(svg,x,y,ws[i],48,opts&&opts.cls?opts.cls(i):'bx');TX(svg,x+ws[i]/2,y+24,t,i===1?'lab a':'lab');out.push({r:r,cx:x+ws[i]/2});x+=ws[i]+gap});
+  const q=BX(svg,x,y,70,48,'bxd');TX(svg,x+35,y+24,'?','lab big a');out.push({r:q,cx:x+35});return out}
+V.longdep=el=>{
+  const svg=svgEl(el,1100,250,'Sentence where the verb depends on a word ten steps back');
+  const P=sentence(svg,130,{cls:i=>i===1?'bxa':'bx'});
+  const a=P[1].cx,b=P[11].cx;
+  PA(svg,'M'+a+' 126 Q'+((a+b)/2)+' 0 '+b+' 124','a',{style:'stroke-dasharray:7 6;stroke-width:2.4'});
+  TX(svg,(a+b)/2,36,'10 steps back','st a');
+  TX(svg,b,206,'are or is?','lab a');TX(svg,P[4].cx,206,'nearby noun (singular)','st');
+};
+V.fadeSent=el=>{
+  vcol(el);
+  const svg=svgEl(el,1100,110,'Sentence shaded by the gradient that reaches each word');
+  const P=sentence(svg,30);
+  const shade=P.slice(0,11).map(p=>{const s=S('rect',{x:+p.r.getAttribute('x'),y:30,width:+p.r.getAttribute('width'),height:48,rx:10,style:'fill:var(--amber);pointer-events:none'},svg);svg.insertBefore(s,p.r.nextSibling);return s});
+  const trio=H('div','trio',el);
+  const draw=rho=>{shade.forEach((s,i)=>s.style.fillOpacity=(.85*Math.pow(rho,11-i)).toFixed(3));
+    const f=n=>{const v=Math.pow(rho,n);if(v>=.01&&v<1e3)return v.toFixed(v<1?3:1);const e=Math.floor(Math.log10(v));return (v/Math.pow(10,e)).toFixed(1)+' × '+pw(e)};
+    trio.innerHTML=[10,50,100].map(n=>'<span class="soft">'+n+' steps back: <b style="color:var(--ink)">'+f(n)+'</b></span>').join('')};
+  const sl=Slider(el,'ρ',.3,1.2,.01,.7,draw,false,v=>v.toFixed(2));sl.el.parentNode.style.width='460px';
+  draw(.7);return{enter(){sl.set(.7);draw(.7)}};
+};
+
+/* ---------- worked BPTT example ---------- */
+const fx=n=>{let r=Math.round(n*1000)/1000;if(r===0)r=0;return String(r).replace('-','−')};
+const mxc=(v,c)=>'<span class="mx sm '+(c||'')+'" style="grid-template-columns:auto"><span>'+fx(v[0])+'</span><span>'+fx(v[1])+'</span></span>';
+const mxr=(v,c)=>'<span class="mx sm '+(c||'')+'" style="grid-template-columns:auto auto"><span>'+fx(v[0])+'</span><span>'+fx(v[1])+'</span></span>';
+const mxm=(m,c)=>'<span class="mx sm '+(c||'')+'" style="grid-template-columns:auto auto">'+[m[0][0],m[0][1],m[1][0],m[1][1]].map(v=>'<span>'+fx(v)+'</span>').join('')+'</span>';
+const EX=(()=>{const Whh=[[.5,-.3],[.2,.4]],Wxh=[1,-.5],Why=[1,-1],x=[0,1,.5,-1],y=[0,.5,-1,0];
+  const h=[[0,0]],a=[0],wx=[0],wh=[0],yh=[0],e=[0],l=[0];
+  for(let t=1;t<=3;t++){wx[t]=[Wxh[0]*x[t],Wxh[1]*x[t]];const p=h[t-1];wh[t]=[Whh[0][0]*p[0]+Whh[0][1]*p[1],Whh[1][0]*p[0]+Whh[1][1]*p[1]];
+    a[t]=[wx[t][0]+wh[t][0],wx[t][1]+wh[t][1]];h[t]=a[t].map(Math.tanh);yh[t]=Why[0]*h[t][0]+Why[1]*h[t][1];e[t]=yh[t]-y[t];l[t]=.5*e[t]*e[t]}
+  const d=[],loc=[],fut=[],der=[];d[4]=[0,0];
+  for(let t=3;t>=1;t--){loc[t]=[Why[0]*e[t],Why[1]*e[t]];const q=d[t+1];fut[t]=[Whh[0][0]*q[0]+Whh[1][0]*q[1],Whh[0][1]*q[0]+Whh[1][1]*q[1]];
+    der[t]=h[t].map(v=>1-v*v);d[t]=[(loc[t][0]+fut[t][0])*der[t][0],(loc[t][1]+fut[t][1])*der[t][1]]}
+  const ghh=[],gxh=[];for(let t=1;t<=3;t++){ghh[t]=[[d[t][0]*h[t-1][0],d[t][0]*h[t-1][1]],[d[t][1]*h[t-1][0],d[t][1]*h[t-1][1]]];gxh[t]=[d[t][0]*x[t],d[t][1]*x[t]]}
+  const avgH=[[0,0],[0,0]],avgX=[0,0];for(let t=1;t<=3;t++){for(let i=0;i<2;i++){avgX[i]+=gxh[t][i]/3;for(let j=0;j<2;j++)avgH[i][j]+=ghh[t][i][j]/3}}
+  const newH=Whh.map((r,i)=>r.map((v,j)=>v-.1*avgH[i][j])),newX=Wxh.map((v,i)=>v-.1*avgX[i]);
+  const gWhy=[0,0];for(let t=1;t<=3;t++){gWhy[0]+=e[t]*h[t][0]/3;gWhy[1]+=e[t]*h[t][1]/3}
+  return{Whh,Wxh,Why,x,y,h,a,wx,wh,yh,e,l,d,loc,fut,der,ghh,gxh,avgH,avgX,newH,newX,gWhy}})();
+
+function exDiagram(el){
+  const svg=svgEl(el,1060,375,'Unrolled RNN with two hidden nodes per step');
+  const cx=[110,400,690,980],ys=[148,240],r=35,E=[],B=[],hv=[],yv=[],ev=[],lv=[],dv=[];
+  const node=(x,y,rr,c)=>S('circle',{cx:x,cy:y,r:rr,style:c},svg);
+  const val=(x,y,c)=>S('text',{x:x,y:y,'text-anchor':'middle','dominant-baseline':'central',class:'st',style:'font-size:15px;fill:var('+(c||'--ink')+')'},svg,'');
+  const edge=(g,d)=>S('path',{d:d,class:'ar','marker-end':'url(#ah)'},g);
+  for(let t=1;t<=3;t++){const g=S('g',{},svg);E[t]=g;const c=cx[t],p=cx[t-1];
+    ys.forEach(a=>ys.forEach(b=>edge(g,'M'+(p+r)+' '+a+'L'+(c-r-3)+' '+b)));
+    edge(g,'M'+c+' 315L'+c+' 278');edge(g,'M'+(c+15)+' 322C'+(c+70)+' 300 '+(c+70)+' 180 '+(c+34)+' 160');
+    edge(g,'M'+c+' 113L'+c+' 75');edge(g,'M'+(c-34)+' 230C'+(c-74)+' 200 '+(c-74)+' 82 '+(c-23)+' 58');
+    const b=S('g',{class:'fd'},svg);B[t]=b;
+    S('line',{x1:c+12,y1:74,x2:c+12,y2:112,class:'ar a bk','marker-end':'url(#aha)'},b);
+    if(t<3)ys.forEach(a=>ys.forEach(q=>S('line',{x1:cx[t+1]-r,y1:a,x2:c+r+3,y2:q,class:'ar a bk','marker-end':'url(#aha)'},b)));
+  }
+  cx.forEach((c,t)=>{
+    ys.forEach((y,k)=>node(c,y,r,'fill:'+(t?'var(--blue-pale)':'var(--panel)')+';stroke:'+(t?'var(--blue)':'var(--line)')+';stroke-width:2.2'));
+    hv[t]=ys.map(y=>val(c,y));
+    if(!t){hv[0].forEach(v=>v.textContent='0');TX(svg,c-40,195,'h₀','st','end');return}
+    TX(svg,c,372,'t = '+t,'st b');
+    node(c,335,20,'fill:var(--panel);stroke:var(--soft);stroke-width:2');val(c,335).textContent=fx(EX.x[t]);TX(svg,c-28,335,'x'+sb(t),'st','end');
+    node(c,48,25,'fill:var(--amber-pale);stroke:var(--amber);stroke-width:2.2');yv[t]=val(c,48);TX(svg,c-31,40,'ŷ'+sb(t),'st a','end');
+    TX(svg,c+34,30,'y'+sb(t)+' = '+fx(EX.y[t]),'st','start');ev[t]=TX(svg,c+34,52,'','st a','start');lv[t]=TX(svg,c+34,74,'','st a','start');
+    dv[t]=ys.map(y=>S('text',{x:c,y:y+11,'text-anchor':'middle','dominant-baseline':'central',class:'st a',style:'font-size:14px;font-weight:600'},svg,''));
+  });
+  SUB(svg,(cx[0]+cx[1])/2,282,'W','hh','mt s');SUB(svg,cx[1]+80,300,'W','xh','mt s','start');SUB(svg,cx[1]+18,98,'W','hy','mt s','start');
+  const setE=(t,c)=>E[t].querySelectorAll('path').forEach(p=>{p.setAttribute('class','ar '+(c||''));p.setAttribute('marker-end','url(#ah'+(c||'')+')')});
+  return{fwd(s){for(let t=1;t<=3;t++){const on=t<=s+1;hv[t].forEach((v,k)=>{v.textContent=on?fx(EX.h[t][k]):'';v.setAttribute('y',ys[k])});yv[t].textContent=on?fx(EX.yh[t]):'';
+      ev[t].textContent=on?'e = '+fx(EX.e[t]):'';lv[t].textContent=s>=3?'ℓ = '+fx(EX.l[t]):'';setE(t,t===s+1?'b':'');B[t].style.opacity=0;dv[t].forEach(v=>v.textContent='')}},
+    bwd(s){for(let t=1;t<=3;t++){const on0=t>=3-s;hv[t].forEach((v,k)=>{v.textContent=fx(EX.h[t][k]);v.setAttribute('y',on0?ys[k]-9:ys[k])});yv[t].textContent=fx(EX.yh[t]);ev[t].textContent='e = '+fx(EX.e[t]);lv[t].textContent='';
+      setE(t,'');const on=t>=3-s;dv[t].forEach((v,k)=>v.textContent=on?'δ '+fx(EX.d[t][k]):'');B[t].style.opacity=t===3-s?1:0}}};
+}
+function exCaps(el,list){const box=H('div','ex-caps',el);const ps=list.map(c=>H('p','',box,c));const pips=H('div','pips',el),pp=list.map(()=>H('i','',pips));
+  return s=>{ps.forEach((p,i)=>p.classList.toggle('on',i===s));pp.forEach((p,i)=>p.classList.toggle('on',i<=s))}}
+const L1=h=>'<span class="exl">'+h+'</span>';
+V.exFwd=el=>{vcol(el);el.style.gap='4px';const D=exDiagram(el);const X=EX;
+  const caps=[1,2,3].map(t=>L1(MM('a_'+t+' = W_{xh} x_'+t+' + W_{hh} h_'+(t-1))+' = '+mxc(X.wx[t])+' + '+mxc(X.wh[t])+' = '+mxc(X.a[t]))+
+    L1(MM('h_'+t+' = \\tanh(a_'+t+')')+' = '+mxc(X.h[t],'b')+'&emsp;'+MM('\\hat{y}_'+t+' = W_{hy} h_'+t)+' = '+fx(X.yh[t])+'&emsp;'+MM('e_'+t+' = \\hat{y}_'+t+' - y_'+t)+' = '+fx(X.e[t])));
+  caps.push(L1('Losses '+MM('\\ell_t')+' = '+fx(X.l[1])+', '+fx(X.l[2])+', '+fx(X.l[3]))+L1('<span class="soft">Keep every '+MM('h_t')+': the backward pass needs them.</span>'));
+  const cap=exCaps(el,caps);return{step(s){D.fwd(s);cap(s)}}};
+V.exBwd=el=>{vcol(el);el.style.gap='4px';const D=exDiagram(el);const X=EX;
+  const caps=[3,2,1].map(t=>L1(MM('\\delta_'+t+' = (W_{hy}^\\top e_'+t+' + W_{hh}^\\top \\delta_'+(t+1)+') \\odot (1 - h_'+t+'^2)')+(t===3?'&emsp;<span class="soft">(δ₄ = 0: nothing comes back from the future)</span>':''))+
+    L1('= ( '+mxc(X.loc[t])+' + '+mxc(X.fut[t])+' ) ⊙ '+mxc(X.der[t])+' = '+mxc(X.d[t],'a')));
+  const cap=exCaps(el,caps);return{step(s){D.bwd(s);cap(s)}}};
+V.exGrads=el=>{const X=EX,box=H('div','gcols',el),cols=[];
+  for(let t=1;t<=3;t++){const c=H('div','gcol',box);cols.push(c);
+    H('h4','',c,'t = '+t);
+    H('div','exl',c,MM('g^{hh}_'+t+' = \\delta_'+t+' h_'+(t-1)+'^\\top'));
+    H('div','exl',c,mxc(X.d[t],'a')+mxr(X.h[t-1],'b')+' = '+mxm(X.ghh[t],'a'));
+    H('div','exl',c,MM('g^{xh}_'+t+' = \\delta_'+t+' x_'+t)+' = '+mxc(X.gxh[t],'a'));
+    if(t===1)H('p','soft',c,'h₀ = 0, so step 1 adds nothing to W_hh').style.fontSize='16px';
+  }
+  return{step(s){cols.forEach((c,i)=>c.style.opacity=i<=s?1:.08)}}};
+V.exAvg=el=>{const X=EX,box=H('div','arows',el);
+  const r1=H('div','',box),r2=H('div','fd',box),r3=H('p','soft small fd',box);[r1,r2].forEach(r=>{r.style.display='flex';r.style.flexDirection='column';r.style.gap='14px';r.style.alignItems='center'});
+  H('div','exl',r1,MM('\\nabla W_{hh} = \\frac{1}{3}(g^{hh}_1 + g^{hh}_2 + g^{hh}_3)')+' = '+MM('\\frac{1}{3}')+'( '+mxm(X.ghh[1])+' + '+mxm(X.ghh[2])+' + '+mxm(X.ghh[3])+' ) = '+mxm(X.avgH,'a'));
+  H('div','exl',r1,MM('\\nabla W_{xh} = \\frac{1}{3}(g^{xh}_1 + g^{xh}_2 + g^{xh}_3)')+' = '+MM('\\frac{1}{3}')+'( '+mxc(X.gxh[1])+' + '+mxc(X.gxh[2])+' + '+mxc(X.gxh[3])+' ) = '+mxc(X.avgX,'a'));
+  H('div','exl',r2,MM('W_{hh} \\gets W_{hh} - \\eta \\nabla W_{hh}')+' = '+mxm(X.Whh)+' − 0.1 '+mxm(X.avgH,'a')+' = '+mxm(X.newH,'b'));
+  H('div','exl',r2,MM('W_{xh} \\gets W_{xh} - \\eta \\nabla W_{xh}')+' = '+mxc(X.Wxh)+' − 0.1 '+mxc(X.avgX,'a')+' = '+mxc(X.newX,'b'));
+  r3.innerHTML='Learning rate η = 0.1. '+MM('W_{hy}')+' gets the same treatment: '+MM('\\nabla W_{hy} = \\frac{1}{3} \\sum_t e_t h_t^\\top')+' = '+mxr(X.gWhy,'a')+'. Values rounded to 3 decimals.';
+  r3.style.maxWidth='1000px';
+  return{step(s){r2.style.opacity=s>=1?1:.06;r3.style.opacity=s>=2?1:.06}}};
+
+/* ---------- data: chunk, pad, shift ---------- */
+V.chunk=el=>{
+  const svg=svgEl(el,1100,400,'Token stream cut into sequences, padded, and shifted into inputs and targets');
+  const words=['to','be','or','not','to','be','that','is','the','question','whether','tis','nobler','in','the','mind'],
+    vid={to:1,be:2,or:3,not:4,that:5,is:6,the:7,question:8,whether:9,tis:10,nobler:11,in:12,mind:13},ids=words.map(w=>vid[w]);
+  const bw=52,gap=8,x0=(1100-18*(bw+gap))/2,G=[0,1,2,3].map(i=>S('g',{class:i?'fd':''},svg));
+  TX(G[0],x0,18,'token ids of the whole text','st','start');
+  ids.forEach((v,i)=>{const x=x0+i*(bw+gap);TX(G[0],x+bw/2,44,words[i],'st').style.fontSize='13px';BX(G[0],x,58,bw,40,'bx');TX(G[0],x+bw/2,78,String(v),'lab')});
+  [16,17].forEach(i=>{const x=x0+i*(bw+gap);BX(G[2],x,58,bw,40,'bxd');TX(G[2],x+bw/2,78,'0','lab a');TX(G[2],x+bw/2,44,'PAD','st a')});
+  [0,1,2].forEach(k=>{const a=x0+k*6*(bw+gap),b=a+6*(bw+gap)-gap;S('path',{d:'M'+a+' 106 L'+a+' 114 L'+b+' 114 L'+b+' 106',class:'ar b',style:'stroke-width:2.4'},G[1]);
+    TX(G[1],(a+b)/2,134,'sequence '+(k+1)+'  (T + 1 = 6 ids)','st b')});
+  const seqs=[0,1,2].map(k=>ids.concat([0,0]).slice(6*k,6*k+6)),cw=50,ch=36;
+  const grid=(ox,lab,off)=>{TX(G[3],ox,180,lab,'lab','start');seqs.forEach((s,i)=>s.slice(off,off+5).forEach((v,j)=>{const x=ox+j*(cw+6),y=200+i*(ch+8);
+      BX(G[3],x,y,cw,ch,v?'bxb':'bxd');TX(G[3],x+cw/2,y+ch/2,String(v),v?'lab':'lab a')}))};
+  grid(150,'inputs  X = seq[:−1]',0);grid(650,'targets  Y = seq[1:]',1);
+  TX(G[3],560,265,'→','lab big');TX(G[3],650+5*56+14,354,'0 targets: ignored','st a','start');
+  return{step(s){G.forEach((g,i)=>{if(i)g.style.opacity=s>=i?1:.05})}};
+};
+
+/* ---------- training over epochs ---------- */
+V.epochs=el=>{
+  const svg=svgEl(el,1100,350,'Sequences passed one by one through the RNN, with the loss falling over epochs');
+  const seqs=[[1,2,3,4,1],[5,6,7,8,9],[11,12,7,13,0]];
+  TX(svg,30,40,'training sequences','st','start');
+  const hl=S('rect',{x:22,width:250,height:46,rx:10,y:0,style:'fill:var(--blue-pale);opacity:0;transition:y .3s'},svg);
+  seqs.forEach((s,i)=>s.forEach((v,j)=>{const x=30+j*48,y=72+i*70;BX(svg,x,y,42,34,v?'bx':'bxd');TX(svg,x+21,y+17,String(v),v?'lab':'lab a')}));
+  const cells=[0,1,2,3,4].map(i=>{const x=360+i*66;if(i)AR(svg,x-20,170,x-3,170,'b');return BX(svg,x,150,46,40,'bx')});
+  TX(svg,505,240,'RNN unrolled over T = 5','st');const phase=TX(svg,505,112,'','lab');
+  const px0=760,px1=1075,py0=300,py1=70;S('line',{x1:px0,x2:px1,y1:py0,y2:py0,class:'ax'},svg);S('line',{x1:px0,x2:px0,y1:py0,y2:py1,class:'ax'},svg);
+  TX(svg,px0,py1-14,'loss','st','start');TX(svg,px1,py0+20,'updates','st','end');const ep=TX(svg,px1,py1-14,'','lab b','end');
+  const curve=S('path',{class:'cv',style:'stroke-width:2.6'},svg),dots=S('g',{},svg);
+  const r=RNG(9),EP=5,N=EP*3,loss=Array.from({length:N},(_,k)=>2.3*Math.exp(-k/4.5)+.35+r.n()*.07);
+  const sx=k=>px0+12+k*(px1-px0-24)/(N-1),sy=v=>py0-(v/2.8)*(py0-py1);
+  const T=timers();
+  function run(){T.clear();curve.setAttribute('d','');dots.innerHTML='';let k=0;
+    const order=()=>{const o=[0,1,2];for(let i=2;i>0;i--){const j=Math.floor(r()*(i+1));[o[i],o[j]]=[o[j],o[i]]}return o};
+    let ord=order();
+    const one=()=>{if(k>=N){T.after(run,2500);return}const e=Math.floor(k/3),row=ord[k%3];
+      ep.textContent='epoch '+(e+1)+' / '+EP;hl.setAttribute('y',64+row*70);hl.style.opacity=1;
+      phase.textContent='forward';phase.setAttribute('class','lab b');
+      cells.forEach((c,i)=>T.after(()=>c.setAttribute('class','bxb'),i*110));
+      T.after(()=>{phase.textContent='loss, then BPTT';phase.setAttribute('class','lab a');cells.forEach((c,i)=>T.after(()=>c.setAttribute('class','bxa'),(4-i)*110))},650);
+      T.after(()=>{phase.textContent='update shared weights';phase.setAttribute('class','lab');cells.forEach(c=>c.setAttribute('class','bx'));
+        S('circle',{cx:sx(k),cy:sy(loss[k]),r:4.5,class:'dot'},dots);curve.setAttribute('d',pathOf(loss.slice(0,k+1).map((v,i)=>[sx(i),sy(v)])));
+        k++;if(k%3===0)ord=order();T.after(one,450)},1350)};
+    one()}
+  return{enter(){if(RM){curve.setAttribute('d',pathOf(loss.map((v,i)=>[sx(i),sy(v)])));ep.textContent=EP+' epochs';return}run()},leave(){T.clear()}};
+};
+
+/* ---------- autoregressive generation ---------- */
+V.genFeed=el=>{
+  const svg=svgEl(el,1100,340,'Generated tokens fed back as the next inputs');
+  const out=['be','or','not','to','be','that'],xs=out.map((_,i)=>110+i*176),gs=[];
+  AR(svg,10,175,xs[0]-47,175,'b');
+  xs.forEach((cx,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);
+    if(i)AR(g,xs[i-1]+45,175,cx-47,175,'b');
+    BX(g,cx-45,147,90,56,'bxb');SUB(g,cx,173,'h',String(i+1));
+    TX(g,cx,300,i?out[i-1]:'to',i?'lab a':'lab');AR(g,cx,280,cx,207,i?'a':'');
+    TX(g,cx,58,out[i],'lab a');AR(g,cx,145,cx,82,'a');
+    if(i<out.length-1)PA(g,'M'+(cx+26)+' 58 C'+(cx+95)+' 58 '+(cx+95)+' 300 '+(xs[i+1]-30)+' 300','a',{style:'stroke-dasharray:6 5'});
+  });
+  TX(svg,xs[0],328,'prompt','st');TX(svg,xs[2],22,'sampled from p(· | h_t)','st a');
+  const T=timers();
+  return{enter(){T.clear();gs.forEach(g=>g.style.opacity=RM?1:.06);if(!RM)gs.forEach((g,i)=>T.after(()=>g.style.opacity=1,300+i*650))},leave(){T.clear()}};
+};
+V.derail=el=>{
+  const svg=svgEl(el,1100,230,'Reference text and a generation that goes wrong after one bad token');
+  const ref=['to','be,','or','not','to','be:','that','is','the','question'],gen=['to','be,','or','and','the','king','is','dead,','long','live'];
+  const row=(toks,y,mark)=>{let x=150;return toks.map((t,i)=>{const w=24+t.length*12.5,g=S('g',{class:'fd'},svg);
+    BX(g,x,y,w,46,!mark?'bx':i<3?'bx':i===3?'bxa':'bx');
+    if(mark&&i===3)g.lastChild.setAttribute('style','stroke:var(--bad);fill:var(--panel);stroke-width:3');
+    if(mark&&i>3)g.lastChild.setAttribute('style','fill:var(--amber-pale);stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5 4');
+    TX(g,x+w/2,y+23,t,mark&&i===3?'lab':'lab');x+=w+8;return {g:g,cx:x-w/2-8}})};
+  TX(svg,20,48,'expected','st','start');TX(svg,20,138,'generated','st','start');
+  row(ref,25);const G=row(gen,115,true);
+  TX(svg,G[3].cx,190,'one unlucky sample','st','middle').style.fill='var(--bad)';
+  TX(svg,G[7].cx,190,'everything after builds on the mistake','st a');
+  const T=timers();
+  return{enter(){T.clear();G.forEach(g=>g.g.style.opacity=RM?1:.05);if(!RM)G.forEach((g,i)=>T.after(()=>g.g.style.opacity=1,300+i*380))},leave(){T.clear()}};
+};
+V.drift=el=>{
+  vcol(el);
+  const svg=svgEl(el,1000,280,'True sine wave versus autoregressive generation from a slightly wrong model');
+  const w=.28,N=72,seed=10,sx=t=>30+t*13.4,sy=v=>140-95*Math.max(-1.45,Math.min(1.45,v));
+  S('line',{x1:20,x2:990,y1:140,y2:140,class:'ax',style:'opacity:.5'},svg);
+  S('path',{d:pathOf(Array.from({length:N},(_,t)=>[sx(t),sy(Math.sin(w*t))])),class:'cv thin'},svg);
+  for(let t=0;t<seed;t++)S('circle',{cx:sx(t),cy:sy(Math.sin(w*t)),r:4.5,class:'dot'},svg);
+  S('line',{x1:sx(seed-.5),x2:sx(seed-.5),y1:20,y2:270,class:'ax',style:'stroke-dasharray:4 5'},svg);
+  TX(svg,sx(0),262,'given','st b','start');TX(svg,sx(seed),262,'generated from its own outputs','st a','start');TX(svg,990,22,'dashed: true signal','st','end');
+  const gp=S('path',{class:'cv amber',style:'stroke-width:3'},svg);
+  const ro=H('div','trio',el);
+  const draw=eps=>{const c=2*Math.cos(w)*(1+eps),g=[];for(let t=0;t<seed;t++)g.push(Math.sin(w*t));
+    for(let t=seed;t<N;t++)g.push(c*g[t-1]-g[t-2]);
+    gp.setAttribute('d',pathOf(g.slice(seed-1).map((v,i)=>[sx(i+seed-1),sy(v)])));
+    let one=0;for(let t=2;t<N;t++)one=Math.max(one,Math.abs(c*Math.sin(w*(t-1))-Math.sin(w*(t-2))-Math.sin(w*t)));
+    const end=Math.abs(g[N-1]-Math.sin(w*(N-1)));let mx=0;for(let t=seed;t<N;t++)mx=Math.max(mx,Math.abs(g[t]-Math.sin(w*t)));
+    ro.innerHTML='<span class="soft">largest one-step error (true inputs): <b style="color:var(--blue)">'+one.toFixed(3)+'</b></span><span class="soft">largest error while generating: <b style="color:var(--amber)">'+(mx>99?mx.toExponential(1):mx.toFixed(2))+'</b></span>'};
+  const sl=Slider(el,'model error',0,.05,.001,.02,draw,true,v=>(v*100).toFixed(1)+'%');sl.el.parentNode.style.width='520px';
+  draw(.02);return{enter(){sl.set(.02);draw(.02)}};
+};
+
+/* ---------- LSTM ---------- */
+function TL(p,x0,y,base,sub,cls,anchor){const t=SUB(p,x0,y,base,sub,cls,anchor);
+  const bx=anchor==='start'?x0+6:anchor==='end'?x0-14:x0-4;
+  S('path',{d:'M'+(bx-5)+' '+(y-9)+' q3 -4 6 0 t6 0',style:'fill:none;stroke-width:1.6;stroke:'+(/\ba\b/.test(cls||'')?'var(--amber)':'var(--ink)')},p);return t}
+V.resid=el=>{
+  vcol(el);
+  const svg=svgEl(el,1080,210,'Plain RNN step versus residual step with a skip connection');
+  TX(svg,250,18,'plain RNN step','lab');
+  SUB(svg,55,120,'h','t−1','mt','middle');AR(svg,90,120,148,120);BX(svg,150,92,200,56,'bxb');TX(svg,250,120,'tanh( · )','mt');
+  AR(svg,352,120,410,120,'b');SUB(svg,440,120,'h','t','mt b');
+  TX(svg,810,18,'residual step on a memory c','lab');
+  SUB(svg,595,140,'c','t−1','mt');S('line',{x1:630,y1:140,x2:660,y2:140,class:'ar'},svg);
+  PA(svg,'M660 140 L660 60 L900 60 L900 122','a',{style:'stroke-width:3'});
+  AR(svg,660,140,698,140);BX(svg,700,112,140,56,'bxb');SUB(svg,770,138,'F','θ');
+  AR(svg,842,140,882,140);S('circle',{cx:900,cy:140,r:17,class:'bx'},svg);TX(svg,900,139,'+','lab big');
+  AR(svg,918,140,975,140,'b');SUB(svg,1005,140,'c','t','mt b');
+  TX(svg,780,44,'identity path: the gradient passes unchanged','st a');
+  const row=H('div','row',el);row.style.gap='120px';
+  H('div','math sm',row,M('\\frac{\\partial h_t}{\\partial h_{t-1}} = \\text{diag}(\\tanh\') W_{hh}'));
+  H('div','math sm',row,M('c_t = c_{t-1} + F(c_{t-1}, x_t),\\quad \\frac{\\partial c_t}{\\partial c_{t-1}} = I + \\frac{\\partial F}{\\partial c_{t-1}}'));
+};
+V.highway=el=>{
+  vcol(el);
+  const svg=svgEl(el,940,200,'Gradient size over 30 steps for an RNN and for an LSTM cell path');
+  const rho=.7,bA=[],bB=[];
+  TX(svg,0,50,'vanilla RNN, ρ = 0.7','st b','start');TX(svg,0,140,'LSTM cell path, f','st a','start');
+  for(let k=1;k<=30;k++){const x=190+(k-1)*24;
+    const h=70*Math.pow(rho,k);S('rect',{x:x,y:90-h,width:16,height:Math.max(1,h),rx:2,style:'fill:var(--blue)'},svg);
+    bB.push(S('rect',{x:x,width:16,rx:2,style:'fill:var(--amber)'},svg))}
+  S('line',{x1:186,x2:910,y1:90,y2:90,class:'ax'},svg);S('line',{x1:186,x2:910,y1:180,y2:180,class:'ax'},svg);
+  TX(svg,910,196,'steps back →','st','end');
+  const ro=H('div','trio',el);
+  const draw=f=>{bB.forEach((b,i)=>{const h=70*Math.pow(f,i+1);b.setAttribute('y',180-h);b.setAttribute('height',Math.max(1,h))});
+    const g=v=>{if(v>=1e-3)return v.toFixed(3);const e=Math.floor(Math.log10(v));return (v/Math.pow(10,e)).toFixed(1)+' × '+pw(e)};
+    ro.innerHTML='<span class="soft">after 30 steps: RNN <b style="color:var(--blue)">'+g(Math.pow(rho,30))+'</b></span><span class="soft">LSTM cell path <b style="color:var(--amber)">'+g(Math.pow(f,30))+'</b></span>'};
+  const sl=Slider(el,'forget gate f',.5,1,.01,.97,draw,true,v=>v.toFixed(2));sl.el.parentNode.style.width='520px';
+  draw(.97);return{enter(){sl.set(.97);draw(.97)}};
+};
+V.lstmCell=el=>{
+  vcol(el);el.style.gap='4px';
+  const svg=svgEl(el,1000,370,'LSTM cell with forget, input and output gates');
+  const g=[0,1,2,3].map(()=>S('g',{class:'fd'},svg));
+  const op=(p,x,y,s)=>{S('circle',{cx:x,cy:y,r:16,class:'bx',style:'stroke:var(--ink);stroke-width:2'},p);TX(p,x,y-1,s,'lab')};
+  const gate=(p,x,lab,c)=>{BX(p,x-35,200,70,44,c);TX(p,x,222,lab,lab==='σ'?'mt':'mt a');AR(p,x,298,x,247)};
+  // stage 0
+  SUB(g[0],40,44,'c','t−1','mt b','start');S('line',{x1:40,y1:70,x2:312,y2:70,class:'ar b',style:'stroke-width:4'},g[0]);
+  SUB(g[0],40,276,'h','t−1','mt','start');S('line',{x1:40,y1:300,x2:690,y2:300,class:'ar',style:'stroke-width:2.4'},g[0]);
+  SUB(g[0],150,354,'x','t','mt');AR(g[0],150,338,150,303);
+  // stage 1: forget
+  gate(g[1],330,'σ','bxb');AR(g[1],330,198,330,89);op(g[1],330,70,'×');SUB(g[1],318,150,'f','t','mt','end');
+  S('line',{x1:346,y1:70,x2:472,y2:70,class:'ar b',style:'stroke-width:4'},g[1]);
+  // stage 2: input + candidate
+  gate(g[2],440,'σ','bxb');gate(g[2],540,'tanh','bxa');
+  AR(g[2],448,198,480,154);AR(g[2],532,198,500,154);op(g[2],490,140,'×');AR(g[2],490,123,490,89);op(g[2],490,70,'+');
+  SUB(g[2],430,170,'i','t','mt','end');TL(g[2],552,172,'c','t','mt a','start');
+  S('line',{x1:506,y1:70,x2:930,y2:70,class:'ar b','marker-end':'url(#ahb)',style:'stroke-width:4'},g[2]);SUB(g[2],950,70,'c','t','mt b','start');
+  // stage 3: output
+  gate(g[3],680,'σ','bxb');SUB(g[3],680,186,'o','t','mt');
+  AR(g[3],780,72,780,106);BX(g[3],745,108,70,40,'bxa');TX(g[3],780,128,'tanh','mt a');AR(g[3],780,150,780,197);
+  AR(g[3],717,222,762,216);op(g[3],780,215,'×');
+  S('path',{d:'M780 231 L780 300 L930 300',class:'ar b','marker-end':'url(#ahb)',style:'stroke-width:3'},g[3]);SUB(g[3],950,300,'h','t','mt b','start');
+  TX(g[3],600,40,'cell state: the additive “highway”','st b');
+  const cap=exCaps(el,[
+    L1('Inputs: the cell state '+MM('c_{t-1}')+', the hidden state '+MM('h_{t-1}')+' and the input '+MM('x_t')+'.'),
+    L1('<b>Forget gate</b>&nbsp;'+MM('f_t = \\sigma(W_f [h_{t-1}, x_t] + b_f)')+' in (0, 1): how much of each entry of '+MM('c_{t-1}')+' to keep.'),
+    L1('<b>Input gate</b>&nbsp;'+MM('i_t')+' and <b>candidate</b>&nbsp;'+MM('\\tilde{c}_t')+' decide what to write:')+L1(MM('c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c}_t')+'&ensp;an <span class="imp">additive</span> update.'),
+    L1('<b>Output gate</b>&nbsp;'+MM('o_t')+' decides what to reveal: '+MM('h_t = o_t \\odot \\tanh(c_t)'))
+  ]);
+  return{step(s){g.forEach((x,i)=>x.style.opacity=i<=s?1:.08);cap(s)}};
+};
+V.lstmMem=el=>{
+  const svg=svgEl(el,1100,400,'Gate and cell values of one LSTM unit across a sentence');
+  const P=sentence(svg,8,{x0:95,cls:i=>i===1?'bxa':'bx'});
+  const I=[.1,.95,.05,.05,.1,.05,.05,.1,.05,.1,.05,.05],F=[.2,.5,.97,.97,.96,.97,.97,.95,.97,.96,.97,.97],O=[.1,.1,.05,.05,.1,.05,.05,.05,.1,.05,.05,.95];
+  let c=0;const C=I.map((iv,k)=>c=F[k]*c+iv*(k===1?1:0));
+  const rows=[['i','t',I,108,'var(--blue)'],['f','t',F,180,'var(--blue)'],['c','t',C,252,'var(--amber)'],['o','t',O,324,'var(--blue)']];
+  rows.forEach(r=>{SUB(svg,20,r[3]-22,r[0],r[1],r[4]==='var(--amber)'?'mt a':'mt','start');S('line',{x1:90,x2:1095,y1:r[3],y2:r[3],class:'ax',style:'opacity:.5'},svg)});
+  const cols=P.map((p,k)=>{const g=S('g',{class:'fd'},svg);rows.forEach(r=>{const h=Math.max(1.5,r[2][k]*50);S('rect',{x:p.cx-13,y:r[3]-h,width:26,height:h,rx:3,style:'fill:'+r[4]},g)});return g});
+  TX(cols[11],P[11].cx,356,'h = o ⊙ tanh(c)','st a');TX(cols[11],P[11].cx,382,'→ “are”','lab a');
+  TX(cols[1],P[1].cx,356,'write','st a');
+  const T=timers();
+  return{enter(){T.clear();cols.forEach(g=>g.style.opacity=RM?1:.06);if(!RM)cols.forEach((g,i)=>T.after(()=>g.style.opacity=1,250+i*330))},leave(){T.clear()}};
+};
+V.glyph=el=>{
+  const k=el.dataset.k,svg=svgEl(el,460,84,'');
+  const box=(x,y,c)=>BX(svg,x,y,40,26,c||'bxb');
+  if(k==='gru'){AR(svg,60,42,148,42,'b');BX(svg,150,12,160,60,'bxb');AR(svg,312,42,400,42,'b');
+    [['z',205],['r',255]].forEach(q=>{S('circle',{cx:q[1],cy:42,r:15,class:'bxa'},svg);TX(svg,q[1],41,q[0],'mt a')})}
+  if(k==='bi'){for(let i=0;i<5;i++){box(40+i*80,6);box(40+i*80,52,'bxa');if(i){AR(svg,i*80,19,38+i*80,19,'b');AR(svg,42+i*80,65,i*80+4,65,'a')}}}
+  if(k==='deep'){for(let i=0;i<5;i++){box(40+i*80,52);box(40+i*80,6);AR(svg,60+i*80,50,60+i*80,34,'b');if(i){AR(svg,i*80,65,38+i*80,65,'b');AR(svg,i*80,19,38+i*80,19,'b')}}}
+  if(k==='encdec'){for(let i=0;i<3;i++){box(20+i*70,30);if(i)AR(svg,i*70-10,43,18+i*70,43,'b')}
+    AR(svg,190,43,248,43,'a');for(let i=0;i<3;i++){box(250+i*70,30,'bxa');if(i)AR(svg,220+i*70,43,248+i*70,43,'a')}
+    TX(svg,90,12,'encoder','st b');TX(svg,320,12,'decoder','st a')}
+};
+
+/* tanh and its derivative */
+V.tanhPlot=el=>{
+  vcol(el);
+  const svg=svgEl(el,560,330,'tanh and its derivative');
+  const sx=a=>40+(a+4)/8*500,sy=v=>170-v*120;
+  S('line',{x1:30,x2:550,y1:sy(0),y2:sy(0),class:'ax'},svg);S('line',{x1:sx(0),x2:sx(0),y1:30,y2:310,class:'ax'},svg);
+  TX(svg,550,sy(0)+16,'a','mt s','end');TX(svg,sx(0)+8,sy(1),'1','st','start');TX(svg,sx(0)+8,sy(-1),'−1','st','start');
+  const pts=f=>{const p=[];for(let a=-4;a<=4.001;a+=.05)p.push([sx(a),sy(f(a))]);return pathOf(p)};
+  S('path',{d:pts(Math.tanh),class:'cv'},svg);S('path',{d:pts(a=>1-Math.tanh(a)**2),class:'cv amber'},svg);
+  TX(svg,sx(2.6),sy(1)-16,'tanh(a)','lab b');TX(svg,sx(-2.4),sy(.35),'1 − tanh²(a)','lab a');
+  const tan=S('line',{class:'ar b',style:'stroke-dasharray:6 5'},svg),
+    p1=S('circle',{r:7,class:'dot'},svg),p2=S('circle',{r:7,class:'dot a'},svg),vl=S('line',{class:'ax',style:'stroke-dasharray:3 4'},svg);
+  const ro=H('p','soft small',el);
+  const draw=a=>{const h=Math.tanh(a),d=1-h*h;
+    p1.setAttribute('cx',sx(a));p1.setAttribute('cy',sy(h));p2.setAttribute('cx',sx(a));p2.setAttribute('cy',sy(d));
+    vl.setAttribute('x1',sx(a));vl.setAttribute('x2',sx(a));vl.setAttribute('y1',30);vl.setAttribute('y2',310);
+    const dx=1.1;tan.setAttribute('x1',sx(a-dx));tan.setAttribute('y1',sy(h-d*dx));tan.setAttribute('x2',sx(a+dx));tan.setAttribute('y2',sy(h+d*dx));
+    ro.innerHTML='a = '+a.toFixed(2)+'&emsp;h = tanh(a) = <b style="color:var(--blue)">'+h.toFixed(3)+'</b>&emsp;slope 1 − h² = <b style="color:var(--amber)">'+d.toFixed(3)+'</b>'};
+  const sl=Slider(el,'a',-4,4,.01,1,draw,false,v=>v.toFixed(2));sl.el.parentNode.style.width='460px';
+  draw(1);return{enter(){sl.set(1);draw(1)}};
+};
+
+/* the two routes that make up delta */
+V.deltaRoutes=el=>{
+  const svg=svgEl(el,1000,230,'A pre-activation affects the loss through the current output and through later steps');
+  const circ=(x,y,c)=>S('circle',{cx:x,cy:y,r:30,class:c},svg);
+  circ(90,160,'bxb');SUB(svg,90,160,'a','t,j');AR(svg,122,160,178,160,'b');
+  BX(svg,180,136,100,48,'bxb');TX(svg,230,160,'tanh','mt');TX(svg,230,202,'slope 1 − h²','st');AR(svg,282,160,338,160,'b');
+  circ(370,160,'bxb');SUB(svg,370,160,'h','t,j');
+  AR(svg,394,140,520,70,'b');SUB(svg,440,90,'W','hy','mt s','end');
+  circ(550,60,'bxa');SUB(svg,550,60,'ŷ','t','mt a');AR(svg,582,60,648,60,'a');BX(svg,650,38,90,44,'bxa');SUB(svg,695,60,'ℓ','t','mt a');
+  TX(svg,770,60,'now','lab a','start');
+  AR(svg,402,160,538,160,'b');SUB(svg,470,140,'W','hh','mt s');
+  circ(570,160,'bxb');SUB(svg,570,160,'a','t+1');AR(svg,602,160,648,160,'b');TX(svg,680,160,'···','lab');AR(svg,712,160,758,160,'b');
+  BX(svg,760,136,170,48,'bxa');TX(svg,845,160,'ℓₜ₊₁, ℓₜ₊₂, …','mt a');TX(svg,845,205,'later','lab a');
+  TX(svg,90,214,'δ collects both routes','st a');
 };
 
 const stage=document.getElementById('stage'),slides=[].slice.call(document.querySelectorAll('.slide'));
