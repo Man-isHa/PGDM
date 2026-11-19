@@ -1087,16 +1087,89 @@ out, (hT, cT) = self.rnn(e)                  <span class="cm"># state is now (h,
   </div>
 </section>
 
-<!-- other rnns -->
+<!-- tasks overview -->
 <section class="slide">
-  <h2>Other recurrent networks, in brief</h2>
-  <div class="body">
-    <div class="cards six rnnk" style="max-width:1120px">
-      <div class="card" style="width:500px"><div data-v="glyph" data-k="gru"></div><h3>GRU</h3><p>Two gates (update, reset) and no separate cell state. Fewer parameters, often as good as an LSTM.</p></div>
-      <div class="card" style="width:500px"><div data-v="glyph" data-k="bi"></div><h3>Bidirectional RNN</h3><p>One RNN reads forward, one backward; their states are combined. For tagging and classification, not generation.</p></div>
-      <div class="card" style="width:500px"><div data-v="glyph" data-k="deep"></div><h3>Stacked (deep) RNN</h3><p>Several recurrent layers: each layer’s <i>h<sub>t</sub></i> is the next layer’s input.</p></div>
-      <div class="card" style="width:500px"><div data-v="glyph" data-k="encdec"></div><h3>Encoder–decoder</h3><p>One RNN reads the input into a state, another generates the output. Translation, summarization.</p></div>
+  <h2>One RNN, three kinds of prediction</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="taskTypes"></div>
+    <p class="soft small">So far: the left one. Next: a <b>label</b> for a whole sequence, and a <b>new sequence</b> from a sequence.</p>
+  </div>
+</section>
+
+<!-- seq2label 1 -->
+<section class="slide">
+  <h2>Sequence → label: sentiment classification</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="sentiment"></div>
+    <div class="row frag" style="gap:50px">
+      <div class="math sm" data-m="\hat{y} = \text{softmax}(W_{hy} h_T + b_y)"></div>
+      <div class="math sm" data-m="\L = -\log \hat{y}_{\text{true class}}"></div>
     </div>
+    <p class="soft small frag">Read the whole review first; only the final state <span class="math" style="font-size:22px" data-m="h_T"></span>, a summary of everything read, is classified.</p>
+  </div>
+</section>
+
+<!-- seq2label 2 -->
+<section class="slide">
+  <h2>Training a sequence classifier</h2>
+  <div class="body">
+    <div class="row" style="gap:30px;align-items:center">
+      <ul class="pts" style="font-size:21px;gap:12px;max-width:440px;text-align:left">
+        <li>One label per sequence, so <b>one loss</b>, at the last step.</li>
+        <li class="frag">BPTT carries it back through every step; the <span class="fire">earliest words</span> get the weakest gradient. Use an LSTM/GRU, or pool all states (mean or max of the <span class="math" style="font-size:21px" data-m="h_t"></span>).</li>
+        <li class="frag">With padded batches, classify the state at each review’s <b>last real token</b> (<code>pack_padded_sequence</code>).</li>
+      </ul>
+<pre class="code pyc frag" style="font-size:16px"><b>class</b> SentimentRNN(nn.Module):
+    <b>def</b> __init__(self, V, d=64, H=128, n_classes=2):
+        super().__init__()
+        self.embed = nn.Embedding(V, d, padding_idx=0)
+        self.rnn   = nn.LSTM(d, H, batch_first=True)
+        self.head  = nn.Linear(H, n_classes)
+
+    <b>def</b> forward(self, x):                   <span class="cm"># (B, T) ids</span>
+        _, (hT, _) = self.rnn(self.embed(x))
+        <b>return</b> self.head(hT[-1])            <span class="cm"># (B, classes)</span>
+
+loss = nn.CrossEntropyLoss()(model(xb), labels)  <span class="cm"># (B,)</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- seq2seq 1 -->
+<section class="slide">
+  <h2>Sequence → sequence: the encoder–decoder</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="seq2seq"></div>
+    <ul class="pts" style="font-size:22px;gap:8px;max-width:1040px">
+      <li class="frag">The <span class="imp">encoder</span> RNN reads the input and compresses it into one context vector <span class="math" style="font-size:22px" data-m="c = h_T"></span>.</li>
+      <li class="frag">The <span class="fire">decoder</span> is a second RNN, started from <span class="math" style="font-size:22px" data-m="c"></span>, that generates the output token by token until <code>&lt;eos&gt;</code>. Input and output lengths can differ.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- seq2seq 2 -->
+<section class="slide">
+  <h2>Training and using an encoder–decoder</h2>
+  <div class="body" style="gap:18px">
+    <div class="row" style="gap:36px">
+      <div class="math sm" data-m="c = h^{enc}_T"></div>
+      <div class="math sm" data-m="s_k = \text{RNN}_{dec}(s_{k-1}, y_{k-1}),\ s_0 = c"></div>
+      <div class="math sm" data-m="p(y_k \mid y_{<k}, x) = \text{softmax}(W s_k)"></div>
+    </div>
+    <ul class="pts" style="font-size:23px;gap:12px;max-width:1040px">
+      <li class="frag"><b>Training:</b> teacher forcing on the target. Decoder input <code>&lt;bos&gt;</code>, <i>y</i><sub>1</sub>, …, <i>y<sub>K</sub></i>; targets <i>y</i><sub>1</sub>, …, <i>y<sub>K</sub></i>, <code>&lt;eos&gt;</code>. Cross-entropy averaged over output tokens; one BPTT through decoder <i>and</i> encoder.</li>
+      <li class="frag"><b>Inference:</b> autoregressive, as before. Greedy or beam search; stop at <code>&lt;eos&gt;</code>.</li>
+      <li class="frag"><span class="fire">Bottleneck:</span> the whole input must fit in one fixed vector <span class="math" style="font-size:23px" data-m="c"></span>, so long inputs lose detail. <b>Attention</b> lets the decoder look back at every encoder state, the step that leads to Transformers.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- beam search -->
+<section class="slide" data-steps="3">
+  <h2>Beam search: keep the k best partial outputs</h2>
+  <div class="body" style="gap:6px">
+    <div data-v="beam"></div>
+    <p class="soft" style="font-size:17px">Score = product of probabilities (sum of log-probabilities), usually divided by length so short outputs are not favoured. <i>k</i> = 1 is greedy decoding; a larger <i>k</i> searches more at about <i>k</i>× the cost.</p>
   </div>
 </section>
 
@@ -1918,6 +1991,82 @@ V.deltaRoutes=el=>{
   circ(570,160,'bxb');SUB(svg,570,160,'a','t+1');AR(svg,602,160,648,160,'b');TX(svg,680,160,'···','lab');AR(svg,712,160,758,160,'b');
   BX(svg,760,136,170,48,'bxa');TX(svg,845,160,'ℓₜ₊₁, ℓₜ₊₂, …','mt a');TX(svg,845,205,'later','lab a');
   TX(svg,90,214,'δ collects both routes','st a');
+};
+
+/* ---------- task types ---------- */
+V.taskTypes=el=>{
+  const svg=svgEl(el,1100,300,'Three ways to use an RNN: next-step, sequence to label, sequence to sequence');
+  const cell=(x,c)=>BX(svg,x-22,130,44,40,c||'bxb');
+  const panel=(ox,title,cls)=>TX(svg,ox,18,title,'lab '+(cls||''));
+  // next step
+  panel(170,'next step (many → many)');[0,1,2,3].forEach(i=>{const x=60+i*72;cell(x);AR(svg,x,232,x,174);TX(svg,x,250,'x'+sb(i+1),'mt');AR(svg,x,128,x,84,'a');HAT(svg,x-5,66,String(i+2),'mt a');if(i)AR(svg,x-50,150,x-25,150,'b')});
+  // seq -> label
+  panel(540,'sequence → label (many → one)');[0,1,2,3].forEach(i=>{const x=430+i*72;cell(x);AR(svg,x,232,x,174);TX(svg,x,250,['the','movie','was','great'][i],'st');if(i)AR(svg,x-50,150,x-25,150,'b')});
+  AR(svg,646,128,646,84,'a');BX(svg,606,40,80,40,'bxa');TX(svg,646,60,'positive','st a');
+  // seq2seq
+  panel(920,'sequence → sequence');[0,1,2].forEach(i=>{const x=790+i*52;BX(svg,x-20,130,40,40,'bxb');AR(svg,x,232,x,174);if(i)AR(svg,x-34,150,x-23,150,'b')});
+  [0,1,2].forEach(i=>{const x=968+i*54;BX(svg,x-18,130,36,40,'bxa');AR(svg,x,128,x,84,'a');if(i)AR(svg,x-30,150,x-21,150,'a')});
+  AR(svg,892,150,948,150,'a');TX(svg,842,250,'input','st b');TX(svg,1022,66,'output','st a');TX(svg,920,136,'c','mt a');
+  [['many → many: predict at every step',170],['one prediction for the sequence',540],['encoder → decoder',920]].forEach(q=>TX(svg,q[1],290,q[0],'st'));
+};
+
+/* ---------- sentiment ---------- */
+V.sentiment=el=>{
+  const svg=svgEl(el,1100,260,'RNN reading a review, then classifying the final state');
+  const toks=['the','movie','was','not','good'],xs=toks.map((_,i)=>150+i*128),gs=[];
+  BX(svg,10,108,56,44,'bx');SUB(svg,38,130,'h','0');
+  xs.forEach((x,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);AR(g,i?xs[i-1]+46:68,130,x-48,130,'b');
+    BX(g,x-45,102,90,56,'bxb');SUB(g,x,130,'h',String(i+1));AR(g,x,224,x,162);TX(g,x,242,toks[i],'lab')});
+  const fin=S('g',{class:'fd'},svg);gs.push(fin);
+  AR(fin,xs[4]+47,130,780,130,'a');BX(fin,782,102,110,56,'bxa');TX(fin,837,122,'linear','st a');TX(fin,837,140,'+ softmax','st a');
+  AR(fin,894,130,918,130,'a');
+  [['positive',.13],['negative',.87]].forEach((p,i)=>{const y=96+i*50;TX(fin,924,y,p[0],'st','start');
+    S('rect',{x:924,y:y+8,width:110*p[1],height:14,rx:3,style:'fill:'+(i?'var(--amber)':'var(--blue)')},fin);TX(fin,924+110*p[1]+6,y+15,p[1].toFixed(2),'st','start')});
+  TX(svg,xs[2],22,'only the last state is used','st a');
+  const T=timers();
+  return{enter(){T.clear();gs.forEach(g=>g.style.opacity=RM?1:.06);if(!RM)gs.forEach((g,i)=>T.after(()=>g.style.opacity=1,250+i*450))},leave(){T.clear()}};
+};
+
+/* ---------- seq2seq ---------- */
+V.seq2seq=el=>{
+  const svg=svgEl(el,1100,320,'Encoder reads an English sentence; decoder generates the French translation');
+  const enc=['I','love','cats'],dec=['<bos>','j’aime','les','chats'],out=['j’aime','les','chats','<eos>'];
+  const ex=enc.map((_,i)=>70+i*130),dx=dec.map((_,i)=>540+i*150),gs=[];
+  TX(svg,200,24,'encoder','lab b');TX(svg,765,24,'decoder','lab a');
+  ex.forEach((x,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);if(i)AR(g,ex[i-1]+42,170,x-44,170,'b');
+    BX(g,x-40,144,80,52,'bxb');SUB(g,x,170,'h',String(i+1));AR(g,x,266,x,200);TX(g,x,286,enc[i],'lab')});
+  const cg=S('g',{class:'fd'},svg);gs.push(cg);AR(cg,ex[2]+42,170,dx[0]-46,170,'a');TX(cg,(ex[2]+dx[0])/2,150,'c = h₃','mt a');
+  TX(cg,(ex[2]+dx[0])/2,112,'summary of the input','st a');
+  dx.forEach((x,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);if(i)AR(g,dx[i-1]+44,170,x-46,170,'a');
+    BX(g,x-42,144,84,52,'bxa');SUB(g,x,170,'s',String(i+1),'mt a');AR(g,x,266,x,200);TX(g,x,286,dec[i],i?'lab a':'lab');
+    AR(g,x,142,x,86);TX(g,x,68,out[i],'lab a');
+    if(i<3)PA(g,'M'+(x+30)+' 68 C'+(x+90)+' 68 '+(x+90)+' 286 '+(dx[i+1]-40)+' 286','a',{style:'stroke-dasharray:6 5'})});
+  const T=timers();
+  return{enter(){T.clear();gs.forEach(g=>g.style.opacity=RM?1:.06);if(!RM)gs.forEach((g,i)=>T.after(()=>g.style.opacity=1,250+i*480))},leave(){T.clear()}};
+};
+
+/* ---------- beam search ---------- */
+V.beam=el=>{vcol(el);el.style.gap='4px';
+  const svg=svgEl(el,1060,330,'Beam search tree with beam width two');
+  const node=(g,x,y,t,c)=>{const b=BX(g,x-52,y-20,104,40,c||'bx');TX(g,x,y,t,'lab');return b};
+  const edge=(g,x1,y1,x2,y2,p)=>{AR(g,x1,y1,x2,y2);TX(g,(x1+x2)/2,(y1+y2)/2-12,p,'st')};
+  const G=[0,1,2,3].map(()=>S('g',{class:'fd'},svg));
+  node(G[0],70,165,'<bos>','bxb');
+  const LV=[['The cat',.5,70],['The dog',.4,175],['A',.1,280]];
+  const n1=LV.map(q=>{edge(G[0],124,165,276,q[2],q[1].toFixed(1));return node(G[0],330,q[2],q[0])});
+  const pr=S('g',{class:'fd'},svg);S('line',{x1:270,x2:390,y1:262,y2:298,style:'stroke:var(--bad);stroke-width:3'},pr);S('line',{x1:270,x2:390,y1:298,y2:262,style:'stroke:var(--bad);stroke-width:3'},pr);
+  TX(pr,330,316,'pruned: not in top 2','st');
+  const L2=[['is',.4,20,0],['sat',.35,95,0],['barked',.9,165,1],['ran',.05,240,1]],sc=[];
+  L2.forEach(q=>{const py=LV[q[3]][2],tot=LV[q[3]][1]*q[1];edge(G[2],384,py,596,q[2],q[1].toFixed(2));
+    sc.push({b:node(G[2],650,q[2],q[0]),t:TX(G[2],760,q[2],'score '+tot.toFixed(3),'lab','start'),tot})});
+  TX(G[3],900,165,'← best: “The dog barked”','lab a','start');
+  TX(G[3],900,20,'← greedy ends here','st','start');
+  const cap=exCaps(el,[L1('Step 1: score every first word. Beam width '+MM('k = 2')+'.'),
+    L1('Keep only the <b>2 best</b> partial outputs. Greedy decoding would keep just “The cat” (0.5).'),
+    L1('Step 2: extend each kept output; score = product of the probabilities along the path.'),
+    L1('Keep the 2 best again. “The dog barked” (0.36) beats greedy’s “The cat is” (0.20).')]);
+  return{step(s){G[0].style.opacity=1;pr.style.opacity=s>=1?1:0;G[2].style.opacity=s>=2?1:0;G[3].style.opacity=s>=3?1:0;
+    n1[2].parentNode;sc.forEach((q,i)=>{q.b.setAttribute('class',s>=3?(i===2?'bxa':i===0?'bxb':'bx'):'bx');q.t.style.opacity=s>=3&&(i===1||i===3)?.35:1});cap(s)}};
 };
 
 const stage=document.getElementById('stage'),slides=[].slice.call(document.querySelectorAll('.slide'));
