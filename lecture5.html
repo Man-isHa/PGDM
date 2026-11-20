@@ -1,0 +1,2134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gradient Boosting: Theory and Mathematics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400;1,600&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --bg:#E6ECF2; --stage:#F7F9FC; --ink:#16263A; --soft:#5B6B7E; --line:#C5D0DC;
+  --blue:#2457C5; --blue-pale:#DCE6FA; --amber:#D07A00; --amber-pale:#FBE6BF;
+  --panel:#FFFFFF; --bad:#C2413A;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#070D16; --stage:#0F1A29; --ink:#E6EDF5; --soft:#94A4B7; --line:#2B3C52;
+    --blue:#7FA8FF; --blue-pale:#1A2B4C; --amber:#FFB23E; --amber-pale:#4A3511;
+    --panel:#17263A; --bad:#FF7B72;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#070D16; --stage:#0F1A29; --ink:#E6EDF5; --soft:#94A4B7; --line:#2B3C52;
+  --blue:#7FA8FF; --blue-pale:#1A2B4C; --amber:#FFB23E; --amber-pale:#4A3511;
+  --panel:#17263A; --bad:#FF7B72;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);overflow:hidden;font-family:'Bricolage Grotesque',system-ui,-apple-system,'Segoe UI',sans-serif}
+#deck{position:relative;width:100%;height:100%;overflow:hidden}
+#stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;background:var(--stage);transform-origin:center;border-radius:6px;overflow:hidden;font-size:26px;line-height:1.35}
+.slide{position:absolute;inset:0;padding:52px 76px 70px;display:flex;flex-direction:column;opacity:0;visibility:hidden;transition:opacity .35s ease,visibility 0s .35s}
+.slide.on{opacity:1;visibility:visible;transition:opacity .35s ease}
+h1{font-size:76px;line-height:1.02;font-weight:800;letter-spacing:-.02em;margin:0}
+h2{font-size:40px;line-height:1.1;font-weight:800;letter-spacing:-.015em;margin:0 0 6px}
+p{margin:0}
+.body{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:26px;min-height:0;text-align:center}
+.row{display:flex;align-items:center;justify-content:center;gap:56px;width:100%}
+.col{display:flex;flex-direction:column;align-items:center;gap:16px;flex:1;min-width:0}
+.left{align-items:flex-start;text-align:left}
+.soft{color:var(--soft)} .small{font-size:20px} .big{font-size:32px}
+.imp{color:var(--blue);font-weight:600}
+.fire{color:var(--amber);font-weight:600}
+b,strong{font-weight:600}
+.frag{opacity:0;transform:translateY(8px);transition:opacity .45s ease,transform .45s ease}
+.frag.show{opacity:1;transform:none}
+/* math */
+.math{font-family:'STIX Two Text','Cambria Math',Georgia,serif;font-size:34px;line-height:1.3;white-space:nowrap}
+.math i{font-style:italic}
+.math sub,.math sup{font-size:.62em}
+.math.sm{font-size:27px}
+.boxed{display:inline-block;border:2px solid var(--blue);border-radius:8px;padding:10px 26px;background:var(--panel)}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;font-size:.86em;line-height:1.15}
+.fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 .3em 2px}
+.fr>span:last-child{padding:2px .3em 0}
+.cases{display:inline-flex;align-items:center;gap:10px}
+.cases .brace{font-size:96px;line-height:.9;font-weight:400;transform:scaleX(.7);margin:-10px -6px 0}
+.cases .rows{display:grid;grid-template-columns:auto auto;column-gap:26px;row-gap:4px;text-align:left}
+.cases .rows span:nth-child(even){font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:24px;color:var(--soft);align-self:center}
+.ineq{display:grid;grid-template-columns:auto auto auto;column-gap:22px;row-gap:8px;text-align:left;align-items:baseline}
+/* figures */
+figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:10px}
+figure img{display:block;max-width:100%;border-radius:10px;background:#fff}
+figcaption{font-size:18px;color:var(--soft)}
+.stack{position:relative;border-radius:10px;overflow:hidden;background:#000}
+.stack img{display:block;width:100%;height:100%;object-fit:contain;background:#000;border-radius:0}
+.stack img+img{position:absolute;inset:0}
+.stack img.frag{transform:none;transition:opacity .9s ease}
+/* tables */
+table.tt{border-collapse:collapse;font-family:'STIX Two Text',Georgia,serif;font-size:28px}
+.tt th,.tt td{padding:5px 20px;text-align:center}
+.tt thead th{border-bottom:2px solid var(--ink);font-weight:600}
+.tt th:nth-child(2),.tt td:nth-child(2){border-right:1.5px solid var(--line)}
+.tt tr.hl td{background:var(--amber-pale)}
+.tt td.ok{color:var(--blue)} .tt td.no{color:var(--bad)}
+.tt td.one{color:var(--amber);font-weight:600}
+/* plots */
+svg{display:block;overflow:visible}
+.ax{stroke:var(--soft);stroke-width:1.4}
+.tk{fill:var(--soft);font-size:16px;font-family:'STIX Two Text',Georgia,serif}
+.cv{fill:none;stroke:var(--blue);stroke-width:3.6;stroke-linejoin:round;stroke-linecap:round}
+.cv.thin{stroke-width:2;stroke:var(--soft);stroke-dasharray:6 6}
+.cv.amber{stroke:var(--amber)}
+.cv.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.5s ease .2s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.kink{fill:var(--amber);stroke:var(--stage);stroke-width:2}
+.st{fill:var(--soft);font-size:16px;font-family:'Bricolage Grotesque',system-ui,sans-serif}
+.mt{fill:var(--ink);font-size:24px;font-family:'STIX Two Text',Georgia,serif;font-style:italic}
+/* networks */
+.net line{stroke:var(--line);stroke-width:1.5;transition:stroke .3s}
+.net .eg.on line{stroke:var(--amber);stroke-width:2.2}
+.net circle{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.6;transition:fill .3s,stroke .3s}
+.net .ng.on circle{fill:var(--amber);stroke:var(--amber)}
+.flow{stroke:var(--soft);stroke-width:2;fill:none;stroke-dasharray:7 9;animation:flow 1s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-16}}
+.node{fill:var(--blue-pale);stroke:var(--blue);stroke-width:3}
+.node.lit{fill:var(--amber);stroke:var(--amber)}
+.edge{stroke:var(--soft);stroke-width:2;fill:none}
+.edge.lit{stroke:var(--amber);stroke-width:3}
+/* gate widget */
+.gate{display:flex;align-items:center;justify-content:center;gap:44px;width:100%}
+.gate .region{fill:var(--blue-pale)}
+.gate .bline{stroke:var(--blue);stroke-width:3.5;stroke-linecap:round}
+.gate .frame{fill:var(--panel);stroke:var(--line);stroke-width:1.5}
+.gate .pt{stroke-width:3;stroke:var(--soft);fill:var(--stage)}
+.gate .pt.t1{stroke:var(--amber);fill:var(--amber)}
+.gate .pt.bad{stroke:var(--bad);stroke-dasharray:4 3}
+.gate .pt.cur{stroke-width:6;stroke:var(--ink)}
+.gate .pl{font-size:15px;fill:var(--soft);font-family:'STIX Two Text',Georgia,serif}
+.gctl>button{align-self:flex-start}
+.gctl{display:flex;flex-direction:column;gap:12px;align-items:stretch;width:330px;text-align:left}
+.sl{display:grid;grid-template-columns:54px 1fr 56px;align-items:center;gap:10px;font-family:'STIX Two Text',Georgia,serif;font-size:26px}
+.sl.wide{grid-template-columns:150px 1fr 30px;white-space:nowrap;font-family:inherit;font-size:21px}
+.sl output{text-align:right;font-variant-numeric:tabular-nums;font-size:22px}
+input[type=range]{width:100%;accent-color:var(--blue);height:26px;margin:0;cursor:pointer}
+.status{font-size:21px;min-height:58px;color:var(--soft)}
+.status.win{color:var(--blue);font-weight:600}
+.live{font-size:22px;white-space:nowrap}
+button{font:inherit;font-size:19px;color:var(--ink);background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:7px 16px;cursor:pointer}
+button:hover{border-color:var(--blue)}
+button.act{background:var(--blue);border-color:var(--blue);color:var(--stage)}
+button:focus-visible,input:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.log{font-family:'STIX Two Text',Georgia,serif;font-size:21px;white-space:nowrap;line-height:1.5;min-height:112px}
+.stat{display:flex;flex-direction:column;align-items:flex-start;gap:0;text-align:left}
+.stat .n{font-size:44px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+.stat .l{font-size:19px;color:var(--soft)}
+canvas{display:block;border-radius:10px;border:1.5px solid var(--line)}
+ul.pts,ol.pts{margin:0;padding-left:1.1em;text-align:left;display:flex;flex-direction:column;gap:22px;font-size:30px}
+.bar{height:16px;border-radius:8px;background:var(--line);width:100%;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--amber);border-radius:8px}
+/* history */
+.year{font-size:112px;font-weight:800;line-height:.95;letter-spacing:-.03em;color:var(--blue)}
+.tl{position:absolute;left:76px;right:76px;bottom:64px;height:46px}
+.tl:before{content:"";position:absolute;left:0;right:0;top:9px;height:2px;background:var(--line)}
+.tl span{position:absolute;top:0;transform:translateX(-50%);font-size:15px;color:var(--soft);padding-top:24px;font-variant-numeric:tabular-nums}
+.tl span:before{content:"";position:absolute;left:50%;top:4px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--stage);border:2px solid var(--soft)}
+.tl span.past:before{background:var(--soft)}
+.tl span.now{color:var(--amber);font-weight:600}
+.tl span.now:before{background:var(--amber);border-color:var(--amber);box-shadow:0 0 0 6px var(--amber-pale)}
+.hist .body{padding-bottom:70px}
+/* chrome */
+#bar{position:absolute;left:0;bottom:0;height:4px;background:var(--blue);transition:width .3s}
+#nav{position:absolute;right:26px;bottom:16px;display:flex;align-items:center;gap:10px;font-size:16px;color:var(--soft);font-variant-numeric:tabular-nums}
+#nav button{font-size:18px;padding:3px 12px;line-height:1.2}
+@media (prefers-reduced-motion: reduce){
+  .flow,.cv.draw{animation:none;stroke-dashoffset:0}
+  .frag,.slide{transition:none}
+}
+.gr{color:var(--amber)} .fw{color:var(--blue)}
+.op{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1;margin:0 .14em}
+.op .sg{font-size:1.5em;line-height:1.05}
+.op .lim{font-size:.5em;min-height:1.15em;line-height:1.15}
+.ub{display:inline-flex;flex-direction:column;align-items:center;vertical-align:top}
+.ubl{font-size:.62em;margin-top:1px;color:var(--soft);text-align:center}
+.tx{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:.74em}
+.bp{font-size:1.55em;font-weight:300;vertical-align:-.14em;line-height:1}
+.math .boxed{padding:10px 24px}
+.legend{display:grid;grid-template-columns:auto auto;column-gap:22px;row-gap:16px;align-items:center;text-align:left;font-size:20px}
+/* annotated network */
+.nv line{stroke:var(--line);stroke-width:1.6;transition:stroke .3s}
+.nv line.fw{stroke:var(--blue);stroke-width:2}
+.nv line.gr{stroke:var(--amber);stroke-width:3.2}
+.nv circle{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.6;transition:fill .3s,stroke .3s}
+.nv circle.gr{fill:var(--amber-pale);stroke:var(--amber)}
+.nv circle.dead{fill:var(--stage);stroke:var(--line)}
+.nv circle.off{fill:var(--stage);stroke:var(--line)}
+.nv circle.pick{cursor:pointer}
+.nv .nm{font:italic 20px 'STIX Two Text',Georgia,serif;fill:var(--ink);pointer-events:none}
+.nv .tg{font:17px 'STIX Two Text',Georgia,serif;fill:var(--ink);paint-order:stroke;stroke:var(--stage);stroke-width:5px;stroke-linejoin:round}
+.nv .tg .b{fill:var(--amber);font-weight:600}
+.nv .el{font:600 18px 'STIX Two Text',Georgia,serif;fill:var(--amber);paint-order:stroke;stroke:var(--stage);stroke-width:6px;stroke-linejoin:round}
+.nv .el.k{fill:var(--ink)}
+/* loop */
+.loop{display:flex;align-items:center;gap:14px}
+.lp{padding:14px 26px;border-radius:999px;border:2px solid var(--line);background:var(--panel);font-size:24px;font-weight:600;transition:background .35s,border-color .35s,color .35s}
+.lp.on{background:var(--amber);border-color:var(--amber);color:var(--stage)}
+.lpa{color:var(--soft);font-size:26px}
+/* chain + pipe */
+.chain{display:grid;grid-template-columns:110px 96px 110px 96px 110px 96px 110px 96px 110px;justify-items:center;align-items:center;row-gap:16px}
+.po{padding:12px 14px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel);font-size:23px;min-width:64px;text-align:center}
+.chain .po{font-size:28px;min-width:96px;border-color:var(--blue);border-width:2px}
+.pa{color:var(--soft);font-size:24px}
+.pa.fwd{color:var(--blue);font-size:30px}
+.back{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--amber)}
+.back>span:first-child{font-size:32px;line-height:1}
+.back .math{font-size:23px}
+.pipe{display:grid;grid-template-columns:70px 30px 128px 30px 70px 30px 128px 30px 70px 30px 128px 30px 70px 30px 100px 30px 70px;justify-items:center;align-items:center;row-gap:12px}
+.pipe>div{white-space:nowrap}
+.pv{width:66px;height:66px;border-radius:50%;border:2.6px solid var(--blue);background:var(--blue-pale);display:flex;align-items:center;justify-content:center;font-size:24px}
+.pg{color:var(--amber);font-size:21px}
+.pg.big{font-size:32px;font-weight:600}
+.pn{font-size:18px;color:var(--soft)}
+.pd{color:var(--soft);font-size:24px}
+/* multilayer picture */
+.lb{position:absolute;transform:translateX(-50%);font-size:20px;transition:opacity .45s;white-space:nowrap}
+.lb.off{opacity:0}
+.lb.hd{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:17px;color:var(--soft)}
+/* dims */
+.dm{display:flex;flex-direction:column;gap:16px;margin-top:14px}
+.dr{display:flex;align-items:center;gap:12px}
+.dl{width:104px;text-align:left;font-size:20px;font-weight:600}
+.mx{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:74px}
+.mg{display:grid;gap:2px}
+.mg i{width:22px;height:22px;border-radius:3px;display:block}
+.mg.f i{background:var(--blue-pale);border:1.5px solid var(--blue)}
+.mg.g i{background:var(--amber-pale);border:1.5px solid var(--amber)}
+.mc{font-size:20px}
+.md{font-size:16px;color:var(--soft);font-variant-numeric:tabular-nums}
+.mo{font-size:26px;padding:0 2px;margin-bottom:46px}
+/* table */
+table.cmp{border-collapse:collapse;font-size:23px}
+.cmp th,.cmp td{padding:13px 30px;text-align:center}
+.cmp thead th{border-bottom:2px solid var(--ink);font-weight:600}
+.cmp td:first-child{text-align:left;font-weight:600;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:22px}
+.cmp tr.frag{transform:none}
+/* softmax bars */
+.sbars{display:flex;gap:26px;align-items:flex-end;height:230px}
+.sbar{display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;height:100%;width:74px}
+.sbar>i{display:block;width:100%;background:var(--blue);border-radius:6px 6px 0 0;transition:height .15s}
+.sbar>b{font-variant-numeric:tabular-nums;font-size:20px}
+.ubr{align-self:stretch;width:100%;height:11px;margin-top:4px;fill:none;stroke:var(--soft);stroke-width:1.6;stroke-linecap:round}
+.rows{display:grid;grid-template-columns:auto auto auto;column-gap:40px;row-gap:12px;align-items:center;text-align:left;font-size:23px}
+.rows .math{font-size:inherit}
+.math.dim,.rows .math.dim{font-size:19px;color:var(--soft)}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:24px;text-align:left;background:var(--panel);border:1.5px solid var(--line);border-left:6px solid var(--blue);border-radius:8px;padding:22px 30px;line-height:1.7;margin:0}
+a{color:var(--blue);text-underline-offset:4px}
+.cbox{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 6px;min-width:112px;border-radius:10px;border:2px solid var(--blue);background:var(--panel)}
+.cbox .math{font-size:21px}
+.cbox b{font-size:22px;color:var(--blue);font-variant-numeric:tabular-nums}
+.back b{font-variant-numeric:tabular-nums;font-size:20px}
+.dg{display:flex;gap:6px}
+.dgi{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
+.dgi.ok{color:var(--blue)} .dgi.no{color:var(--bad)}
+:root{--teal:#0B8577;--rose:#C2356B}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--teal:#4FD1C5;--rose:#FF8FB3}}
+:root[data-theme="dark"]{--teal:#4FD1C5;--rose:#FF8FB3}
+.c0{color:var(--blue)}.c1{color:var(--amber)}.c2{color:var(--teal)}.c3{color:var(--rose)}
+.tt th.c0,.tt th.c1,.tt th.c2,.tt th.c3,.cmp td.c0,.cmp td.c1,.cmp td.c2,.cmp td.c3{font-weight:700}
+.sq{white-space:nowrap}.sq>span{border-top:1.5px solid currentColor;padding:1px 2px 0;margin-left:-1px}
+.vec{display:inline-flex;flex-direction:column;align-items:center;padding:4px 14px;border-left:2.5px solid currentColor;border-right:2.5px solid currentColor;border-radius:8px;line-height:1.25}
+.hb{display:grid;grid-template-columns:150px 1fr;align-items:center;gap:12px;font-size:20px;position:relative;width:100%}
+.hb i{display:block;height:26px;border-radius:5px}
+.hb b{position:absolute;left:176px;font-weight:400;font-size:19px}
+.cur{width:120px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;background:var(--blue-pale);border:2px solid var(--blue);border-radius:8px;font-size:20px}
+.lg{display:flex;flex-wrap:wrap;gap:8px 26px;align-items:center;justify-content:center;font-size:20px}
+.lg>span{display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.lg i.ch{display:inline-block;width:26px;height:5px;border-radius:3px}
+.lg em{font-style:normal;color:var(--soft);font-size:17px}
+.o2{position:relative;border-radius:10px;overflow:hidden;border:1.5px solid var(--line)}
+.o2 canvas{display:block;border:0;border-radius:0}
+.o2 svg{position:absolute;left:0;top:0}
+.info{font-size:21px;line-height:1.5;min-height:130px;text-align:left}
+.info b{font-variant-numeric:tabular-nums}
+.rt{border-collapse:collapse;font-size:21px;font-variant-numeric:tabular-nums}
+.rt td,.rt th{padding:6px 12px;text-align:right;white-space:nowrap}.rt td:first-child,.rt th:first-child{text-align:left;font-weight:600}
+.rt th{font-weight:400;color:var(--soft);font-size:17px;border-bottom:1.5px solid var(--line)}
+.sh{display:grid;grid-template-columns:auto repeat(4,64px);gap:12px 14px;align-items:center;font-size:24px}
+.sh b{display:flex;align-items:center;justify-content:center;height:56px;border-radius:10px;border:2.5px solid;background:var(--panel);font-size:26px;transition:transform .5s}
+.sh span{text-align:right;padding-right:10px;color:var(--soft);font-size:21px}
+.sl.wide{grid-template-columns:150px 1fr 58px}
+.hat{position:relative;display:inline-block;line-height:1}
+.hat::before{content:'^';position:absolute;left:50%;top:-.34em;transform:translateX(-42%) scaleX(1.25);font-style:normal;font-size:.82em;line-height:1}
+.sq>span{padding-top:.34em}
+.fr .hat{margin-top:.22em}
+.code .cm{color:var(--soft)}.code b{color:var(--blue);font-weight:600}.code .frag{transform:none}
+.cards{display:flex;gap:26px}
+.card{width:330px;padding:22px 24px;border:2px solid var(--line);border-top:6px solid var(--blue);border-radius:12px;background:var(--panel);text-align:left;display:flex;flex-direction:column;gap:12px}
+.card h3{margin:0;font-size:27px}.card p{font-size:21px;color:var(--soft)}.card b{font-size:21px;font-weight:600}
+ul.refs{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:14px;font-size:19px;line-height:1.35}
+.hat.tld::before{content:'~';top:-.68em}
+.big2{font-size:34px}
+.kv{display:grid;grid-template-columns:auto auto;column-gap:18px;row-gap:4px;font-size:21px;text-align:left;font-variant-numeric:tabular-nums}
+.kv span:nth-child(odd){color:var(--soft)}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.mbar{width:150px;height:14px;background:var(--line);border-radius:7px;overflow:hidden}.mbar i{display:block;height:100%;border-radius:7px}
+.sq.tall{display:inline-flex;align-items:center}.sq.tall>.rad{font-size:2.2em;line-height:1;border-top:0;padding:0;margin:0 -.04em 0 0;transform:scaleX(.85)}.sq.tall>span:last-child{border-top:1.5px solid currentColor;padding:.12em .2em 0;margin-left:0;display:inline-block}
+
+/* ---- sequence deck additions ---- */
+.lab{font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:22px;fill:var(--ink)}
+.lab.a{fill:var(--amber);font-weight:600}.lab.b{fill:var(--blue);font-weight:600}.lab.big{font-size:32px;font-weight:600}
+.mt.a{fill:var(--amber)}.mt.b{fill:var(--blue)}.mt.s{fill:var(--soft)}
+.st.a{fill:var(--amber)}.st.b{fill:var(--blue)}
+.bx{fill:var(--panel);stroke:var(--line);stroke-width:1.8}
+.bxb{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2.4}
+.bxa{fill:var(--amber-pale);stroke:var(--amber);stroke-width:2.4}
+.bxd{fill:var(--panel);stroke:var(--amber);stroke-width:2.4;stroke-dasharray:7 5}
+.ar{stroke:var(--soft);stroke-width:2;fill:none}.ar.b{stroke:var(--blue)}.ar.a{stroke:var(--amber)}
+.bk{stroke-dasharray:8 7;animation:flow 1s linear infinite}
+.dot{fill:var(--blue)}.dot.a{fill:var(--amber)}
+.win{fill:var(--blue-pale);stroke:var(--blue);stroke-width:2;stroke-dasharray:6 5}
+.band{fill:var(--amber-pale)}
+.fd{transition:opacity .45s ease}
+.prompt{border-left:5px solid var(--amber);padding:6px 0 6px 22px;text-align:left;font-size:28px;max-width:980px;align-self:center}
+.prompt small{display:block;font-size:17px;color:var(--soft);margin-bottom:4px}
+.toks{display:flex;gap:12px;font-size:42px;font-family:'STIX Two Text',Georgia,serif}
+.tok{padding:4px 18px;border:2px solid var(--line);border-radius:10px;background:var(--panel)}
+.tok.q{border:3px dashed var(--amber);color:var(--amber);font-weight:600}
+.pb{display:grid;grid-template-columns:70px 380px 56px;gap:8px 14px;align-items:center;font-size:22px}
+.pb>span{text-align:right}.pb>b{font-weight:400;color:var(--soft);font-size:19px;font-variant-numeric:tabular-nums;text-align:left}
+.pb>div{height:22px;background:var(--line);border-radius:5px;overflow:hidden}
+.pb i{display:block;height:100%;width:0;background:var(--amber);border-radius:5px;transition:width .7s ease}
+.seqbig{font-size:92px;font-weight:800;letter-spacing:.01em;font-variant-numeric:tabular-nums}
+.qbox{display:inline-block;min-width:1.15em;border:5px dashed var(--amber);border-radius:14px;color:var(--amber);padding:0 .12em;line-height:1.1}
+.cards.six{flex-wrap:wrap;justify-content:center;max-width:1100px;gap:22px}
+.cards.six .card{width:340px;padding:18px 22px;gap:8px}.cards.six .card h3{font-size:25px}
+.sent{font-size:33px;line-height:1.7;text-align:left;max-width:560px;margin:0}
+.sent .win{background:var(--blue-pale);border:2.5px dashed var(--blue);border-radius:8px;padding:1px 8px;fill:none}
+.clue{color:var(--amber);font-weight:600}
+.tgt{color:var(--amber);font-weight:600;border-bottom:3px solid var(--amber)}
+.histab{display:grid;grid-template-columns:auto auto auto;gap:22px 34px;align-items:center;font-family:'STIX Two Text',Georgia,serif;font-size:44px;text-align:left}
+.histab>span:nth-child(3n+1){font-family:'Bricolage Grotesque',sans-serif;font-size:24px}
+.winh{background:var(--blue-pale);border:2.5px dashed var(--blue);border-radius:10px;padding:0 12px}
+.wb{text-align:left!important;white-space:nowrap}
+.wb span{display:inline-block;width:330px;vertical-align:middle}
+.wb span i{display:block;height:14px;background:var(--amber);border-radius:4px;min-width:2px}
+.wb em{font-style:normal;margin-left:6px}
+.steps{display:grid;grid-template-columns:auto auto;column-gap:30px;row-gap:16px;align-items:center;text-align:left}
+.steps>span{font-size:20px}
+.steps .frag{transform:none}
+.caps{position:relative;height:96px;width:1000px}
+.caps>p{position:absolute;inset:0;font-size:25px;opacity:0;transition:opacity .35s;display:flex;align-items:center;justify-content:center;gap:.35em;flex-wrap:wrap}
+.caps>p.on{opacity:1}
+.caps .math{font-size:27px}
+.pips{display:flex;gap:10px;justify-content:center}
+.pips i{width:12px;height:12px;border-radius:50%;background:var(--line);transition:background .3s}
+.pips i.on{background:var(--blue)}
+.tasks td:last-child{text-align:left;font-weight:400}
+@media (prefers-reduced-motion: reduce){.bk{animation:none}.pb i,.caps>p,.fd{transition:none}}
+.code.pyc{font-size:17px;line-height:1.45;padding:18px 26px;white-space:pre;max-width:780px}
+.code .s{color:var(--amber)}
+.bp-caps{position:relative;height:92px;width:1060px}
+.bp-caps>p{position:absolute;inset:0;font-size:24px;opacity:0;transition:opacity .35s;display:flex;align-items:center;justify-content:center;gap:.35em;flex-wrap:wrap;text-align:center}
+.bp-caps>p.on{opacity:1}
+.bp-caps .math{font-size:25px}
+.trio{display:flex;gap:34px;justify-content:center;font-size:20px;font-variant-numeric:tabular-nums}
+.trio b{font-weight:600}
+.mx{display:inline-grid;column-gap:16px;row-gap:1px;padding:3px 9px;border-left:2px solid currentColor;border-right:2px solid currentColor;border-radius:8px;vertical-align:middle;font-family:'STIX Two Text',Georgia,serif;font-size:24px;text-align:right;font-variant-numeric:tabular-nums;line-height:1.2}
+.mx.sm{font-size:20px;column-gap:12px;padding:2px 7px}
+.mx.a{color:var(--amber)}.mx.b{color:var(--blue)}
+.exl{display:flex;align-items:center;justify-content:center;gap:9px;flex-wrap:nowrap;font-size:22px;white-space:nowrap}
+.exl .math{font-size:24px}
+.ex-caps{position:relative;height:118px;width:1100px}
+.ex-caps>p{position:absolute;inset:0;margin:0;opacity:0;transition:opacity .35s;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
+.ex-caps>p.on{opacity:1}
+.gcols{display:flex;gap:30px;justify-content:center}
+.gcol{display:flex;flex-direction:column;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid var(--line);border-radius:12px;background:var(--panel);transition:opacity .4s}
+.gcol h4{margin:0;font-size:21px;color:var(--soft);font-weight:600}
+.arows{display:flex;flex-direction:column;gap:18px;align-items:center}
+.arows p .math{font-size:22px}
+.rnnk .card{padding:12px 20px;gap:4px}.rnnk .card h3{font-size:22px}.rnnk .card p{font-size:18px}.rnnk svg{height:64px;width:auto}
+.blk{display:inline-flex;border-left:2px solid var(--ink);border-right:2px solid var(--ink);border-radius:8px;padding:3px;gap:3px;vertical-align:middle}
+.blk.v{flex-direction:column}
+.bm{display:flex;flex-direction:column;align-items:center;justify-content:center;height:82px;background:var(--blue-pale);border:1.5px solid var(--blue);border-radius:4px;font-family:'STIX Two Text',Georgia,serif;font-size:21px}
+.bm small{font-family:'Bricolage Grotesque',sans-serif;font-size:13px;color:var(--soft);font-style:normal}
+.bv{display:flex;align-items:center;justify-content:center;width:62px;background:var(--amber-pale);border:1.5px solid var(--amber);border-radius:4px;font-family:'STIX Two Text',Georgia,serif;font-size:19px}
+.algo{display:grid;grid-template-columns:30px auto;gap:12px 16px;text-align:left;font-size:22px;background:var(--panel);border:1.5px solid var(--line);border-left:5px solid var(--blue);border-radius:12px;padding:22px 34px;align-items:center;max-width:1000px}
+.algo .ln{color:var(--soft);font-size:16px;text-align:right;font-variant-numeric:tabular-nums}
+.algo .in{padding-left:40px}
+.algo .math{font-size:24px}
+
+</style>
+</head>
+<body>
+<div id="deck"><div id="stage">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" style="fill:var(--soft)"/></marker>
+<marker id="ahb" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" style="fill:var(--blue)"/></marker>
+<marker id="aha" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9z" style="fill:var(--amber)"/></marker>
+</defs></svg>
+
+<!-- 1 title -->
+<section class="slide">
+  <div class="row" style="flex:1;gap:30px">
+    <div class="col left" style="flex:1.2;gap:22px">
+      <p class="soft">PGD in AI-ML · 25 March 2026</p>
+      <h1 style="font-size:64px">Gradient Boosting</h1>
+      <p class="soft big">Theory and mathematics</p>
+    </div>
+    <div class="col" style="flex:none"><div data-v="titleGB"></div></div>
+  </div>
+</section>
+
+<!-- 2 tree -->
+<section class="slide">
+  <h2>A decision tree splits one feature at a time</h2>
+  <div class="body"><div data-v="treeIntro"></div></div>
+</section>
+
+<!-- 3 depth -->
+<section class="slide">
+  <h2>Deeper trees: more rectangles</h2>
+  <div class="body"><div data-v="depthViz"></div></div>
+</section>
+
+<!-- 4 two trees -->
+<section class="slide">
+  <h2>Different samples, different trees</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="twoTrees"></div>
+    <p class="soft small">Two depth-2 trees, each trained on a bootstrap sample of the same data.</p>
+  </div>
+</section>
+
+<!-- 5 bagging -->
+<section class="slide">
+  <h2>Bagging: average many trees</h2>
+  <div class="body"><div data-v="baggingViz"></div></div>
+</section>
+
+<!-- 6 why -->
+<section class="slide">
+  <h2>Why averaging does not fix it</h2>
+  <div class="body" style="gap:30px">
+    <ul class="pts" style="font-size:27px;gap:16px;max-width:980px">
+      <li class="frag">Every tree splits on <span class="imp">one feature at a time</span>: its boundary is made of horizontal and vertical edges.</li>
+      <li class="frag">A slanted edge needs many small steps; a shallow tree cannot make them.</li>
+      <li class="frag">All trees make the <span class="fire">same kind</span> of mistake, so their average makes it too. Averaging reduces <b>variance</b>, not <b>bias</b>.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 7 boosting viz -->
+<section class="slide">
+  <h2>Gradient boosting: same trees, used differently</h2>
+  <div class="body"><div data-v="boostingViz"></div></div>
+</section>
+
+<!-- 8 idea -->
+<section class="slide">
+  <h2>The idea</h2>
+  <div class="body">
+    <p class="big" style="font-size:40px;max-width:900px">Instead of <span class="soft">averaging</span> wrong models, <span class="imp">correct</span> them step by step.</p>
+  </div>
+</section>
+
+<!-- 9 one round -->
+<section class="slide" data-steps="3">
+  <h2>One round of boosting</h2>
+  <div class="body" style="gap:4px"><div data-v="roundViz"></div></div>
+</section>
+
+<!-- 10 repeat -->
+<section class="slide">
+  <h2>Repeat: build the model step by step</h2>
+  <div class="body" style="gap:10px">
+    <div data-v="repeatViz"></div>
+    <div class="row frag" style="gap:40px">
+      <div class="math sm boxed" data-m="F_M(x) = F_0(x) + \eta \sum_{m=1}^{M} h_m(x)"></div>
+      <p class="soft small" style="text-align:left;max-width:420px">Residuals → fit a tree → add it with step <span class="math" style="font-size:22px" data-m="\eta"></span> → repeat.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 11 compare -->
+<section class="slide">
+  <h2>Bagging vs. boosting</h2>
+  <div class="body" style="gap:24px">
+    <div data-v="bagVsBoost"></div>
+    <table class="cmp frag">
+      <thead><tr><th></th><th>Bagging (random forest)</th><th>Boosting</th></tr></thead>
+      <tbody>
+        <tr><td>Training</td><td>Parallel</td><td class="c0">Sequential</td></tr>
+        <tr><td>Combine</td><td>Average models</td><td class="c0">Add corrections</td></tr>
+        <tr><td>Reduces</td><td>Variance</td><td class="c0">Bias</td></tr>
+      </tbody>
+    </table>
+    <p class="soft small frag">Both ideas work with any model, not only trees.</p>
+  </div>
+</section>
+
+<!-- 12 netflix -->
+<section class="slide">
+  <h2>Ensembles in practice: the Netflix Prize</h2>
+  <div class="body" style="gap:26px">
+    <p class="big" style="max-width:960px">2006–2009: a $1M prize for improving Netflix’s movie-rating predictions by 10%.</p>
+    <p class="big frag" style="max-width:960px">The winning team did not have one best model. It <span class="imp">combined hundreds</span> of them.</p>
+  </div>
+</section>
+
+<!-- 13 learning problem -->
+<section class="slide">
+  <h2>The learning problem</h2>
+  <div class="body" style="gap:26px">
+    <p class="small">Given data <span class="math" style="font-size:26px" data-m="(x_i, y_i),\ i = 1, \ldots, n"></span>, learn a predictor <span class="math" style="font-size:26px" data-m="F(x)"></span>. For regression:</p>
+    <div class="math" data-m="\L(F) = \frac{1}{2} \sum_{i=1}^{n} (y_i - F(x_i))^2"></div>
+    <div class="prompt frag"><small>Question</small>Instead of fitting one complex predictor, can we <b>build it gradually</b>, one simple model at a time?</div>
+  </div>
+</section>
+
+<!-- 14 additive model -->
+<section class="slide">
+  <h2>Boosting: an additive model</h2>
+  <div class="body" style="gap:26px">
+    <div class="math boxed" data-m="F_M(x) = F_0(x) + \eta \sum_{m=1}^{M} h_m(x)"></div>
+    <div class="row" style="gap:46px">
+      <p class="small"><span class="math" style="font-size:26px" data-m="F_0"></span>: a constant start</p>
+      <p class="small"><span class="math" style="font-size:26px" data-m="h_m"></span>: a simple model, often a small tree</p>
+      <p class="small"><span class="math" style="font-size:26px" data-m="\eta > 0"></span>: learning rate</p>
+    </div>
+    <p class="big frag">How should we choose the next <span class="math" style="font-size:32px" data-m="h_m"></span>?</p>
+  </div>
+</section>
+
+<!-- 15 GD recall -->
+<section class="slide">
+  <h2>Recall: ordinary gradient descent</h2>
+  <div class="body" style="gap:24px">
+    <div class="math boxed" data-m="\theta_{m+1} = \theta_m - \eta \nabla L(\theta_m)"></div>
+    <p class="big frag"><b>Idea:</b> take a gradient step in the <span class="imp">predictions</span> themselves.</p>
+  </div>
+</section>
+
+<!-- 16 predictions as vector -->
+<section class="slide">
+  <h2>Treat the predictions as the parameters</h2>
+  <div class="body" style="gap:14px">
+    <div class="row" style="gap:40px">
+      <div class="math sm" data-m="\bf{f} = (F(x_1), \ldots, F(x_n))^\top"></div>
+      <div class="math sm" data-m="\L(\bf{f}) = \sum_{i=1}^{n} \ell(y_i, f_i)"></div>
+      <div class="math sm" data-m="f_i \gets f_i - \eta \frac{\partial \ell(y_i, f_i)}{\partial f_i}"></div>
+    </div>
+    <div data-v="predVec"></div>
+    <div class="row frag" style="gap:24px"><p class="small">Pseudo-residual:</p><div class="math sm boxed" data-m="r_{im} = -\frac{\partial \ell(y_i, f)}{\partial f}\ \text{at}\ f = F_m(x_i)"></div><p class="soft small" style="max-width:300px;text-align:left">how each prediction should change</p></div>
+  </div>
+</section>
+
+<!-- 17 fit a model -->
+<section class="slide" data-steps="1">
+  <h2>Why fit a model to the negative gradients?</h2>
+  <div class="body" style="gap:10px">
+    <div data-v="fitGrad"></div>
+    <div class="row frag" data-f="1" style="gap:40px">
+      <div class="math sm" data-m="h_{m+1} = \argmin_{h} \sum_{i=1}^{n} (r_{im} - h(x_i))^2"></div>
+      <div class="math sm boxed" data-m="F_{m+1}(x) = F_m(x) + \eta h_{m+1}(x)"></div>
+    </div>
+    <p class="small frag" data-f="1"><b>Gradient boosting = gradient direction + a model fitted to that direction.</b></p>
+  </div>
+</section>
+
+<!-- 18 squared error -->
+<section class="slide">
+  <h2>Squared error: the gradients are residuals</h2>
+  <div class="body" style="gap:24px">
+    <div class="math sm" data-m="\ell(y_i, F(x_i)) = \frac{1}{2}(y_i - F(x_i))^2"></div>
+    <div class="row frag" style="gap:50px">
+      <div class="math sm" data-m="\frac{\partial \ell}{\partial F(x_i)} = F(x_i) - y_i"></div>
+      <div class="math boxed" data-m="r_{im} = y_i - F_m(x_i)"></div>
+    </div>
+    <p class="big frag">Each new tree learns the <span class="imp">remaining errors</span> of the current ensemble.</p>
+  </div>
+</section>
+
+<!-- 19 tiny init -->
+<section class="slide">
+  <h2>A tiny example: initialize</h2>
+  <div class="body" style="gap:22px">
+    <table class="tt" style="font-size:26px"><tbody>
+      <tr><td><i>x<sub>i</sub></i></td><td>1</td><td>2</td><td>3</td><td>4</td></tr>
+      <tr><td><i>y<sub>i</sub></i></td><td>2</td><td>4</td><td>8</td><td>10</td></tr></tbody></table>
+    <p class="small frag">Best constant for squared error: the mean,
+      <span class="math" style="font-size:28px" data-m="F_0(x) = \argmin_c \frac{1}{2} \sum_i (y_i - c)^2 = \frac{2 + 4 + 8 + 10}{4} = \boxed{6}"></span></p>
+    <p class="small frag">Pseudo-residuals: <span class="math" style="font-size:28px" data-m="(r_{10}, r_{20}, r_{30}, r_{40}) = (-4, -2, 2, 4)"></span></p>
+  </div>
+</section>
+
+<!-- 20 stump -->
+<section class="slide">
+  <h2>Fit a decision stump to the residuals</h2>
+  <div class="body" style="gap:14px">
+    <div data-v="stump4"></div>
+    <div class="math sm frag" data-m="h_1(x) = -3\ \text{if}\ x \le 2.5,\quad +3\ \text{if}\ x > 2.5"></div>
+    <div class="row frag" style="gap:30px">
+      <p class="soft small" style="max-width:420px;text-align:left">The question is about the <b>input x</b> (known for new points); the threshold is the one that best fits the residuals:</p>
+      <table class="tt" style="font-size:19px"><thead><tr><th>split</th><th>left mean</th><th>right mean</th><th>squared error</th></tr></thead>
+        <tbody><tr><td>x ≤ 1.5</td><td>−4</td><td>1.33</td><td>18.67</td></tr>
+        <tr class="hl"><td>x ≤ 2.5</td><td>−3</td><td>3</td><td>4</td></tr>
+        <tr><td>x ≤ 3.5</td><td>−1.33</td><td>4</td><td>18.67</td></tr></tbody></table>
+    </div>
+  </div>
+</section>
+
+<!-- 21 update -->
+<section class="slide">
+  <h2>Update the predictions</h2>
+  <div class="body" style="gap:20px">
+    <p class="small">With <span class="math" style="font-size:26px" data-m="\eta = 0.5"></span>: <span class="math" style="font-size:26px" data-m="F_1(x) = F_0(x) + 0.5 h_1(x)"></span></p>
+    <table class="tt" style="font-size:24px"><tbody>
+      <tr><td><i>x<sub>i</sub></i></td><td>1</td><td>2</td><td>3</td><td>4</td></tr>
+      <tr><td>actual <i>y<sub>i</sub></i></td><td>2</td><td>4</td><td>8</td><td>10</td></tr>
+      <tr><td>old <i>F</i><sub>0</sub></td><td>6</td><td>6</td><td>6</td><td>6</td></tr>
+      <tr><td>tree <i>h</i><sub>1</sub></td><td>−3</td><td>−3</td><td>3</td><td>3</td></tr>
+      <tr class="hl"><td><b>new <i>F</i><sub>1</sub></b></td><td>4.5</td><td>4.5</td><td>7.5</td><td>7.5</td></tr></tbody></table>
+    <p class="big frag">Loss: <span class="math" style="font-size:32px" data-m="\L(F_0) = 20 \to \L(F_1) = 6.5"></span></p>
+  </div>
+</section>
+
+<!-- 22 repeat -->
+<section class="slide" data-steps="2">
+  <h2>Now repeat</h2>
+  <div class="body" style="gap:8px">
+    <div data-v="tiny4"></div>
+    <p class="small"><b>Takeaway:</b> trees are not trained independently. Each one improves the <span class="imp">current ensemble</span>, so each has a different target.</p>
+  </div>
+</section>
+
+<!-- 23 algorithm -->
+<section class="slide">
+  <h2>Gradient boosting: the algorithm</h2>
+  <div class="body" style="gap:14px">
+    <p class="soft small">Inputs: data <span class="math" style="font-size:22px" data-m="(x_i, y_i)"></span>, a differentiable loss <span class="math" style="font-size:22px" data-m="\ell"></span>, learning rate <span class="math" style="font-size:22px" data-m="\eta"></span>, number of rounds <span class="math" style="font-size:22px" data-m="M"></span></p>
+    <div class="algo">
+      <span class="ln">1</span><span>Initialize with the best constant: <span class="math" data-m="F_0(x) = \argmin_c \sum_i \ell(y_i, c)"></span></span>
+      <span class="ln">2</span><span><b>for</b> <span class="math" data-m="m = 0, 1, \ldots, M - 1"></span> <b>do</b></span>
+      <span class="ln">3</span><span class="in">pseudo-residuals: <span class="math" data-m="r_{im} = -\frac{\partial \ell(y_i, f)}{\partial f}\ \text{at}\ f = F_m(x_i)"></span></span>
+      <span class="ln">4</span><span class="in">fit a regression tree <span class="math" data-m="h_{m+1}"></span> to the pairs <span class="math" data-m="(x_i, r_{im})"></span></span>
+      <span class="ln">5</span><span class="in">update: <span class="math" data-m="F_{m+1}(x) = F_m(x) + \eta h_{m+1}(x)"></span></span>
+      <span class="ln">6</span><span><b>return</b> <span class="math" data-m="F_M(x)"></span>: the constant plus all the correction trees</span>
+    </div>
+  </div>
+</section>
+
+<!-- 24 logistic -->
+<section class="slide">
+  <h2>Classification: logistic loss</h2>
+  <div class="body" style="gap:10px">
+    <div class="row" style="gap:34px">
+      <p class="small" style="text-align:left;max-width:360px"><span class="math" style="font-size:23px" data-m="y_i \in \lb 0, 1 \rb"></span>, logit <span class="math" style="font-size:23px" data-m="F(x)"></span>, <span class="math" style="font-size:23px" data-m="p = \sigma(F)"></span></p>
+      <div class="math sm" data-m="\ell = -y \log p - (1 - y) \log(1 - p),\quad \frac{\partial \ell}{\partial F} = p - y"></div>
+      <div class="math sm boxed" data-m="r_{im} = y_i - p_m(x_i)"></div>
+    </div>
+    <div data-v="logitBoost"></div>
+  </div>
+</section>
+
+<!-- 25 trees & lr -->
+<section class="slide">
+  <h2>Why trees? What does the learning rate do?</h2>
+  <div class="body" style="gap:24px">
+    <ul class="pts" style="font-size:24px;gap:12px">
+      <li>A shallow tree captures nonlinear patterns and feature interactions.</li>
+      <li>It maps any <i>x</i> to a correction, so we can predict on unseen examples.</li>
+      <li class="frag">Smaller <span class="math" style="font-size:24px" data-m="\eta"></span>: smaller steps, usually more trees needed.</li>
+      <li class="frag">Tree depth controls how complex each correction can be.</li>
+    </ul>
+    <p class="soft small frag" style="max-width:960px"><b>Nuance:</b> the tree only <i>approximates</i> the negative gradient. Practical implementations often re-optimize the leaf values using the original loss.</p>
+  </div>
+</section>
+
+<!-- 26 new loss -->
+<section class="slide">
+  <h2>AdaBoost: the same recipe with a new loss</h2>
+  <div class="body" style="gap:12px">
+    <div class="row" style="gap:40px">
+      <p class="small" style="text-align:left;max-width:400px">Labels <span class="math" style="font-size:24px" data-m="y_i \in \lb -1, +1 \rb"></span>; the sign of <span class="math" style="font-size:24px" data-m="F(x)"></span> is the class. Exponential loss:</p>
+      <div class="math boxed" data-m="\ell(y, F) = \exp(-y F)"></div>
+    </div>
+    <div data-v="expLoss"></div>
+    <p class="soft small">Same plan as before: add one simple model per round. But for this loss the best step can be <b>solved exactly</b>, which gives AdaBoost.</p>
+  </div>
+</section>
+
+<!-- 27 pseudo-residuals -->
+<section class="slide" data-steps="1">
+  <h2>Same recipe: the pseudo-residuals</h2>
+  <div class="body" style="gap:10px">
+    <div class="row" style="gap:24px">
+      <div class="math sm" data-m="r_{im} = -\frac{\partial \ell}{\partial F(x_i)} = y_i \exp(-y_i F_{m-1}(x_i)) ="></div>
+      <div class="math boxed" data-m="y_i w_i^{(m)}"></div>
+    </div>
+    <div data-v="adaResid"></div>
+  </div>
+</section>
+
+<!-- 28 fit classifier -->
+<section class="slide">
+  <h2>Which classifier? Plug it into the loss</h2>
+  <div class="body" style="gap:18px">
+    <p class="small">Put the new model <span class="math" style="font-size:26px" data-m="F_{m-1} + \alpha h"></span>, with <span class="math" style="font-size:26px" data-m="h(x) \in \lb -1, +1 \rb"></span>, into the original loss:</p>
+    <div class="math sm frag" data-m="\sum_i \exp(-y_i [F_{m-1}(x_i) + \alpha h(x_i)]) = \sum_i w_i^{(m)} \exp(-\alpha y_i h(x_i))"></div>
+    <div class="row frag" style="gap:20px"><p class="small" style="text-align:left;white-space:nowrap"><span class="math" style="font-size:24px" data-m="y_i h(x_i) = +1"></span> if correct, <span class="math" style="font-size:24px" data-m="-1"></span> if wrong:</p>
+      <div class="math sm" data-m="= W_m [(1 - \epsilon_m) e^{-\alpha} + \epsilon_m e^{\alpha}] = W_m [e^{-\alpha} + \epsilon_m (e^{\alpha} - e^{-\alpha})]"></div></div>
+    <p class="soft small frag" data-f="2"><span class="math" style="font-size:22px" data-m="W_m = \sum_i w_i^{(m)}"></span> need not be 1, but it is a positive constant: it does not change which <i>h</i> or <i>α</i> is best.</p>
+    <div class="row frag" style="gap:24px"><p class="small">For any <span class="math" style="font-size:24px" data-m="\alpha > 0"></span> this grows with the weighted error, so pick</p>
+      <div class="math sm boxed" data-m="\min_h \epsilon_m,\quad \epsilon_m = \frac{\sum_i w_i^{(m)} \ind(h(x_i) \neq y_i)}{\sum_i w_i^{(m)}}"></div></div>
+  </div>
+</section>
+
+<!-- 29 which alpha -->
+<section class="slide">
+  <h2>How much to trust it? Solve for α</h2>
+  <div class="body" style="gap:10px">
+    <div class="row" style="gap:22px">
+      <p class="small">Loss after adding <span class="math" style="font-size:24px" data-m="\alpha h_m"></span>:</p>
+      <div class="math sm" data-m="\sum_i w_i^{(m)} e^{-\alpha y_i h_m(x_i)} = W_m [(1 - \epsilon_m) e^{-\alpha} + \epsilon_m e^{\alpha}]"></div>
+    </div>
+    <div class="row frag" style="gap:22px">
+      <p class="small">Derivative = 0:</p>
+      <div class="math sm" data-m="-(1 - \epsilon_m) e^{-\alpha} + \epsilon_m e^{\alpha} = 0 \quad \Rightarrow"></div>
+      <div class="math boxed" data-m="\alpha_m = \frac{1}{2} \log \frac{1 - \epsilon_m}{\epsilon_m}"></div>
+    </div>
+    <div class="frag" data-v="alphaCurve"></div>
+  </div>
+</section>
+
+<!-- 29b weights -->
+<section class="slide">
+  <h2>The weights for the next round</h2>
+  <div class="body" style="gap:22px">
+    <p class="small">Next round’s weights come from the updated model:</p>
+    <div class="math boxed" data-m="w_i^{(m+1)} \propto \exp(-y_i F_m(x_i)) = w_i^{(m)} \exp(-\alpha_m y_i h_m(x_i))"></div>
+    <p class="soft small">Divide by <span class="math" style="font-size:22px" data-m="Z_m"></span> so they sum to one.</p>
+    <table class="cmp frag" style="font-size:24px">
+      <thead><tr><th></th><th><i>y<sub>i</sub> h<sub>m</sub></i>(<i>x<sub>i</sub></i>)</th><th>weight multiplier</th></tr></thead>
+      <tbody><tr><td>correct</td><td>+1</td><td><i>e</i><sup>−<i>α<sub>m</sub></i></sup></td></tr>
+      <tr><td>incorrect</td><td>−1</td><td class="c0"><i>e</i><sup>+<i>α<sub>m</sub></i></sup></td></tr></tbody></table>
+    <p class="big frag">Misclassified points get <span class="fire">more attention</span> in the next round.</p>
+  </div>
+</section>
+
+<!-- 30 5-point -->
+<section class="slide" data-steps="1">
+  <h2>AdaBoost: a 5-point example</h2>
+  <div class="body" style="gap:12px">
+    <p class="small">All weights start at 0.2; a stump misclassifies one point.
+      <span class="math" style="font-size:26px" data-m="\epsilon_1 = 0.2,\ \alpha_1 = \frac{1}{2} \log \frac{0.8}{0.2} = \log 2 \approx 0.693"></span></p>
+    <div data-v="weights5"></div>
+    <p class="big frag" data-f="1">The one hard point now carries <span class="fire">half</span> of the total weight.</p>
+  </div>
+</section>
+
+<!-- 32 adaboost algorithm -->
+<section class="slide">
+  <h2>AdaBoost: the complete algorithm</h2>
+  <div class="body" style="gap:12px">
+    <div class="algo">
+      <span class="ln">1</span><span>Initialize equal weights: <span class="math" data-m="w_i^{(1)} = 1/n"></span></span>
+      <span class="ln">2</span><span><b>for</b> <span class="math" data-m="m = 1, \ldots, M"></span> <b>do</b></span>
+      <span class="ln">3</span><span class="in">train a weak classifier <span class="math" data-m="h_m(x) \in \lb -1, +1 \rb"></span> on the weighted data</span>
+      <span class="ln">4</span><span class="in">weighted error: <span class="math" data-m="\epsilon_m = \sum_i w_i^{(m)} \ind(h_m(x_i) \neq y_i)"></span></span>
+      <span class="ln">5</span><span class="in">vote: <span class="math" data-m="\alpha_m = \frac{1}{2} \log \frac{1 - \epsilon_m}{\epsilon_m}"></span></span>
+      <span class="ln">6</span><span class="in">reweight: <span class="math" data-m="w_i^{(m+1)} \propto w_i^{(m)} e^{-\alpha_m y_i h_m(x_i)}"></span></span>
+      <span class="ln">7</span><span><b>return</b> <span class="math" data-m="H(x) = \sign(\sum_{m=1}^{M} \alpha_m h_m(x))"></span></span>
+    </div>
+    <p class="soft" style="font-size:16px">Assumes 0 &lt; ε<sub>m</sub> &lt; ½; stop or handle the edge cases when the error is 0 or ≥ ½.</p>
+  </div>
+</section>
+
+<!-- 33 GB vs Ada -->
+<section class="slide">
+  <h2>Gradient boosting vs. AdaBoost</h2>
+  <div class="body">
+    <table class="cmp" style="font-size:21px">
+      <thead><tr><th></th><th>Gradient boosting</th><th>AdaBoost</th></tr></thead>
+      <tbody>
+        <tr><td>Each round</td><td>Fits a model to negative loss gradients</td><td>Reweights the training examples</td></tr>
+        <tr><td>Weak learner</td><td>Usually a regression tree</td><td>Usually a classification stump</td></tr>
+        <tr><td>Update</td><td><i>F</i> ← <i>F</i> + <i>η h</i></td><td><i>F</i> ← <i>F</i> + <i>α<sub>m</sub> h<sub>m</sub></i></td></tr>
+        <tr><td>Loss</td><td>Any differentiable loss</td><td>Exponential loss (classic binary)</td></tr>
+        <tr><td>Tasks</td><td>Regression and classification</td><td>Mainly classification</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 34 take-home -->
+<section class="slide">
+  <h2>Take-home messages</h2>
+  <div class="body" style="gap:20px">
+    <ol class="pts" style="font-size:24px;gap:14px">
+      <li class="frag"><b>Boosting</b> builds a strong model by adding weak models one after another.</li>
+      <li class="frag"><b>Gradient boosting</b> fits trees to the negative loss gradients: <span class="math" style="font-size:25px" data-m="F_{m+1} = F_m + \eta h_{m+1}"></span>.</li>
+      <li class="frag">For squared error, the negative gradients are simply the <b>residuals</b>.</li>
+      <li class="frag"><b>AdaBoost</b> up-weights misclassified examples and combines classifiers by weighted vote.</li>
+      <li class="frag">Both are stagewise additive models; they differ in their update rules and usual losses.</li>
+    </ol>
+  </div>
+</section>
+
+<div id="bar"></div>
+<div id="nav"><button id="prev" aria-label="Previous slide">‹</button><span id="count"></span><button id="next" aria-label="Next slide">›</button></div>
+</div></div>
+<script>
+(function(){
+'use strict';
+
+
+
+const NS='http://www.w3.org/2000/svg';
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function S(tag,attrs,parent,text){const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(text!=null)e.textContent=text;if(parent)parent.appendChild(e);return e}
+function H(tag,cls,parent,html){const e=document.createElement(tag);if(cls)e.className=cls;if(html!=null)e.innerHTML=html;if(parent)parent.appendChild(e);return e}
+function tween(ms,fn,done){if(RM){fn(1);done&&done();return()=>{}}let s=null,id;const f=t=>{if(s===null)s=t;const u=Math.min(1,(t-s)/ms);fn(u);if(u<1)id=requestAnimationFrame(f);else done&&done()};id=requestAnimationFrame(f);return()=>cancelAnimationFrame(id)}
+const ease=u=>u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2;
+const fmt=v=>(Math.abs(v)<5e-7?0:v).toFixed(1).replace('-','−');
+const relu=x=>x>0?x:0, sig=x=>1/(1+Math.exp(-x));
+let uid=0;
+
+function Plot(host,o){
+  const w=o.w,h=o.h,p=o.pad==null?30:o.pad;
+  const svg=S('svg',{viewBox:'0 0 '+w+' '+h,width:w,height:h,role:'img','aria-label':o.label||'Plot'},host);
+  const sx=x=>p+(x-o.x[0])/(o.x[1]-o.x[0])*(w-2*p), sy=y=>h-p-(y-o.y[0])/(o.y[1]-o.y[0])*(h-2*p);
+  const id='cp'+(uid++);const cp=S('clipPath',{id:id},svg);S('rect',{x:p-3,y:p-3,width:w-2*p+6,height:h-2*p+6},cp);
+  const y0=Math.max(o.y[0],Math.min(o.y[1],0)),x0=Math.max(o.x[0],Math.min(o.x[1],0));
+  S('line',{x1:sx(o.x[0]),x2:sx(o.x[1]),y1:sy(y0),y2:sy(y0),class:'ax'},svg);
+  S('line',{x1:sx(x0),x2:sx(x0),y1:sy(o.y[0]),y2:sy(o.y[1]),class:'ax'},svg);
+  (o.xt||[]).forEach(t=>{S('line',{x1:sx(t),x2:sx(t),y1:sy(y0)-4,y2:sy(y0)+4,class:'ax'},svg);S('text',{x:sx(t),y:sy(y0)+21,'text-anchor':'middle',class:'tk'},svg,String(t).replace('-','−'))});
+  (o.yt||[]).forEach(t=>{S('line',{x1:sx(x0)-4,x2:sx(x0)+4,y1:sy(t),y2:sy(t),class:'ax'},svg);S('text',{x:sx(x0)-9,y:sy(t)+5,'text-anchor':'end',class:'tk'},svg,String(t).replace('-','−'))});
+  const g=S('g',{'clip-path':'url(#'+id+')'},svg);
+  const d=(fn,n)=>{n=n||260;let s='';for(let i=0;i<=n;i++){const x=o.x[0]+(o.x[1]-o.x[0])*i/n;s+=(i?'L':'M')+sx(x).toFixed(1)+' '+sy(fn(x)).toFixed(1)}return s};
+  return{svg,g,sx,sy,d,curve(fn,cls){return S('path',{d:d(fn),class:'cv '+(cls||'')},g)}};
+}
+function redraw(path){path.setAttribute('pathLength','1');path.classList.remove('draw');void path.getBoundingClientRect();path.classList.add('draw')}
+function Slider(parent,label,min,max,step,val,fn,wide,f){
+  const l=H('label','sl'+(wide?' wide':''),parent);H('span','',l,label);
+  const i=H('input','',l);i.type='range';i.min=min;i.max=max;i.step=step;i.value=val;
+  const o=H('output','',l);const show=()=>{o.textContent=f?f(+i.value):fmt(+i.value)};show();
+  i.addEventListener('input',()=>{show();fn(+i.value)});
+  return{el:i,set(v){i.value=v;show()},get v(){return +i.value}};
+}
+/* ---------- mini math ---------- */
+const SYM={partial:'∂',L:'ℒ',eta:'<i>η</i>',delta:'<i>δ</i>',nabla:'∇',odot:'⊙',leftarrow:'←',gets:'← ',to:'→',cdot:'·',in:'∈',R:'ℝ',times:'×',top:'⊤',ell:'<i>ℓ</i>',ldots:'…',quad:'&emsp;',one:'<b>1</b>',yhat:'<i>ŷ</i>',ReLU:'ReLU',softmax:'softmax',log:'log ',max:'max',lb:'{',rb:'}',sin:'sin',cos:'cos',phi:'<i>φ</i>',Phat:'<i>P\u0302</i>',phat:'<i>p\u0302</i>',Yhat:'<i>Ŷ</i>'};
+function M(s){let i=0;
+  const fr=(a,b)=>'<span class="fr"><span>'+a+'</span><span>'+b+'</span></span>';
+  function atom(){const c=s[i];
+    if(c==='{'){i++;const r=seq('}');i++;return r}
+    if(c==='\\'){let j=i+1;while(j<s.length&&/[a-zA-Z]/.test(s[j]))j++;const n=s.slice(i+1,j);i=j;
+      if(n==='frac'){const a=atom(),b=atom();return fr(a,b)}
+      if(n==='d')return fr('∂ℒ','∂'+atom());
+      if(n==='dd'){const a=atom(),b=atom();return fr('∂'+a,'∂'+b)}
+      if(n==='sum'||n==='prod'){const SG=n==='sum'?'∑':'∏';let lo='',hi='';for(;;){if(s[i]==='_'){i++;lo=atom()}else if(s[i]==='^'){i++;hi=atom()}else break}return '<span class="op"><span class="lim">'+hi+'</span><span class="sg">'+SG+'</span><span class="lim">'+lo+'</span></span>'}
+      if(n==='text'){i++;const e=s.indexOf('}',i),t=s.slice(i,e);i=e+1;return '<span class="tx">'+t+'</span>'}
+      if(n==='sqrt'){const c=atom();return c.indexOf('class="fr"')>=0?'<span class="sq tall"><span class="rad">√</span><span>'+c+'</span></span>':'<span class="sq">√<span>'+c+'</span></span>'}if(n==='hat')return '<i class="hat">'+atom()+'</i>';if(n==='tilde')return '<i class="hat tld">'+atom()+'</i>';if(n==='boxed')return '<span class="boxed">'+atom()+'</span>';
+      if(n==='under'){const a=atom(),b=atom();return '<span class="ub"><span>'+a+'</span><svg class="ubr" viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true"><path vector-effect="non-scaling-stroke" d="M1 1Q1 6 9 6L41 6Q50 6 50 11Q50 6 59 6L91 6Q99 6 99 1"/></svg><span class="ubl">'+b+'</span></span>'}
+      if(n==='bf')return '<b>'+atom()+'</b>';if(n==='g')return '<span class="gr">'+atom()+'</span>';
+      if(n==='f')return '<span class="fw">'+atom()+'</span>';
+      if(n==='big')return '<span class="bp">'+s[i++]+'</span>';
+      return SYM[n]!=null?SYM[n]:n}
+    i++;
+    if(/[a-zA-Z]/.test(c))return '<i>'+c+'</i>';
+    if(c==='-')return '−';if(c==="'")return '′';if(c==='<')return '&lt;';if(c==='>')return '&gt;';
+    return c}
+  function seq(end){let o='';while(i<s.length&&s[i]!==end){const c=s[i];
+    if(c==='_'){i++;o+='<sub>'+atom()+'</sub>'}else if(c==='^'){i++;o+='<sup>'+atom()+'</sup>'}else o+=atom()}return o}
+  return seq(null)}
+Object.assign(SYM,{theta:'<i>θ</i>',beta:'<i>β</i>',epsilon:'<i>ε</i>',sigma:'<i>σ</i>',lambda:'<i>λ</i>',gamma:'<i>γ</i>',phi:'<i>φ</i>',approx:'≈',le:'≤',ge:'≥',ll:'≪',gg:'≫',sim:'∼',N:'𝒩',U:'<i>U</i>',E:'𝔼',pm:'±',infty:'∞',mapsto:'↦',mid:'|',lb:'{',rb:'}',Rightarrow:'⇒',cdots:'⋯',tanh:'tanh'});
+Object.assign(SYM,{Delta:'Δ',sign:'sign',log:'log ',le:'≤',top:'⊤',alpha:'<i>α</i>',neq:'≠',langle:'⟨',rangle:'⟩',exp:'exp',argmin:'arg min',argmax:'arg max',Fc:'𝓕',ind:'𝟙',propto:'∝',ln:'ln '});
+document.querySelectorAll('[data-m]').forEach(e=>{e.innerHTML=M(e.dataset.m)});
+const RNG=seed=>{let s=seed|0;const r=()=>{s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};r.n=()=>Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(6.2831853*r());return r};
+const SUPD='⁰¹²³⁴⁵⁶⁷⁸⁹',sup=k=>(k<0?'⁻':'')+String(Math.abs(k)).split('').map(c=>SUPD[+c]).join(''),pw=k=>'10'+sup(k);
+const f2=v=>(Math.abs(v)<5e-3?0:v).toFixed(2).replace('-','−'),f3=v=>(Math.abs(v)<5e-4?0:v).toFixed(3).replace('-','−');
+
+/* ---------- sequence deck visuals ---------- */
+const V={};
+const svgEl=(host,w,h,label)=>S('svg',{viewBox:'0 0 '+w+' '+h,width:w,height:h,role:'img','aria-label':label},host);
+const AR=(p,x1,y1,x2,y2,c)=>S('line',{x1:x1,y1:y1,x2:x2,y2:y2,class:'ar '+(c||''),'marker-end':'url(#ah'+(c||'')+')'},p);
+const PA=(p,d,c,extra)=>S('path',Object.assign({d:d,class:'ar '+(c||''),'marker-end':'url(#ah'+(c||'')+')'},extra||{}),p);
+const BX=(p,x,y,w,h,c)=>S('rect',{x:x,y:y,width:w,height:h,rx:10,class:c||'bx'},p);
+const TX=(p,x,y,str,cls,anchor)=>S('text',{x:x,y:y,'text-anchor':anchor||'middle','dominant-baseline':'central',class:cls||'lab'},p,str);
+function SUB(p,x,y,base,sub,cls,anchor){const t=S('text',{x:x,y:y,'text-anchor':anchor||'middle','dominant-baseline':'central',class:cls||'mt'},p);
+  S('tspan',{},t,base);if(sub)S('tspan',{dy:8,style:'font-size:.66em;font-style:normal'},t,sub);return t}
+function HAT(p,x0,y,sub,cls){const t=S('text',{x:x0,y:y,'text-anchor':'middle','dominant-baseline':'central',class:cls||'mt'},p,'x');
+  if(sub)S('text',{x:x0+7,y:y+8,'text-anchor':'start','dominant-baseline':'central',class:cls||'mt',style:'font-size:16px;font-style:normal'},p,sub);
+  S('path',{d:'M'+(x0-4)+' '+(y-6)+'L'+(x0+1.5)+' '+(y-11)+'L'+(x0+7)+' '+(y-6),style:'fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;stroke:'+(/\ba\b/.test(cls||'')?'var(--amber)':'var(--ink)')},p);return t}
+function timers(){const ids=[];return{every(f,ms){ids.push(setInterval(f,ms))},after(f,ms){ids.push(setTimeout(f,ms))},clear(){ids.forEach(i=>{clearInterval(i);clearTimeout(i)});ids.length=0}}}
+const lin=(a,b,c,d)=>v=>c+(v-a)/(b-a)*(d-c);
+const pathOf=(pts)=>pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join('');
+const SUBD='₀₁₂₃₄₅₆₇₈₉',sb=k=>String(k).split('').map(c=>SUBD[+c]).join('');
+
+/* title: small unrolled chain with a travelling highlight */
+V.titleViz=el=>{
+  const svg=svgEl(el,470,310,'Small unrolled recurrent network reading words');
+  const xs=[90,235,380],tok=['To','be,','or'],out=['be','or','not'],cells=[];
+  AR(svg,10,150,43,150,'b');
+  xs.forEach((x,i)=>{
+    cells.push(BX(svg,x-45,122,90,56,'bxb'));SUB(svg,x,148,'h',String(i+1));
+    TX(svg,x,270,tok[i]);AR(svg,x,248,x,180);
+    TX(svg,x,36,out[i],'lab a');AR(svg,x,120,x,60,'a');
+    if(i<2)AR(svg,x+45,150,xs[i+1]-47,150,'b');
+  });
+  const T=timers();let k=0;
+  const tick=()=>{cells.forEach((c,i)=>c.setAttribute('class',i===k?'bxa':'bxb'));k=(k+1)%3};
+  return{enter(){tick();if(!RM)T.every(tick,1000)},leave(){T.clear()}};
+};
+
+/* language bars */
+V.lang=el=>({step(s){el.querySelectorAll('i').forEach(b=>{b.style.width=s>=1?b.dataset.w*100/60+'%':'0'})}});
+
+/* market */
+V.market=el=>{
+  const W=1000,Hh=330,svg=svgEl(el,W,Hh,'Synthetic price series with a forecast region');
+  const r=RNG(11),obs=[];
+  for(let t=0;t<100;t++){const base=t<68?20+.36*t:20+.36*68-.16*(t-68);obs.push(base+3.4*Math.sin(2*Math.PI*t/15)+r.n()*1.1)}
+  const fut=[];for(let t=99;t<=140;t++){const m=20+.36*68-.16*(t-68)+3.4*Math.sin(2*Math.PI*t/15);fut.push([t,m,1+.13*(t-99)])}
+  let lo=1e9,hi=-1e9;obs.forEach(v=>{lo=Math.min(lo,v);hi=Math.max(hi,v)});fut.forEach(f=>{lo=Math.min(lo,f[1]-f[2]);hi=Math.max(hi,f[1]+f[2])});
+  const sx=lin(0,140,30,W-30),sy=lin(lo-2,hi+2,Hh-40,20);
+  S('line',{x1:30,x2:W-30,y1:Hh-30,y2:Hh-30,class:'ax'},svg);TX(svg,W-30,Hh-12,'time','st','end');
+  S('rect',{x:sx(96.5),y:20,width:sx(99.5)-sx(96.5),height:Hh-55,rx:6,class:'win'},svg);
+  TX(svg,sx(98),Hh-48,'last three','st b');
+  const band=fut.map(f=>[sx(f[0]),sy(f[1]+f[2])]).concat(fut.slice().reverse().map(f=>[sx(f[0]),sy(f[1]-f[2])]));
+  S('path',{d:pathOf(band)+'Z',class:'band'},svg);
+  S('path',{d:pathOf(obs.map((v,t)=>[sx(t),sy(v)])),class:'cv'},svg);
+  S('path',{d:pathOf(fut.map(f=>[sx(f[0]),sy(f[1])])),class:'cv amber',style:'stroke-dasharray:9 7'},svg);
+  S('line',{x1:sx(99.5),x2:sx(99.5),y1:14,y2:Hh-30,class:'ax',style:'stroke-dasharray:4 5'},svg);
+  TX(svg,sx(20),30,'observed','st b','start');TX(svg,sx(110),30,'forecast?','st a','start');
+};
+
+/* periodic signal, generated by feedback */
+V.sine=el=>{
+  const W=1000,Hh=270,svg=svgEl(el,W,Hh,'Sine wave: observed points then generated points');
+  const now=22,N=58,sx=t=>30+t*16.6,sy=v=>130-100*v;
+  S('line',{x1:20,x2:W-20,y1:130,y2:130,class:'ax',style:'opacity:.5'},svg);
+  S('path',{d:pathOf(Array.from({length:now+1},(_,t)=>[sx(t),sy(Math.sin(.28*t))])),class:'cv',style:'stroke-width:2;opacity:.45'},svg);
+  for(let t=0;t<=now;t++)S('circle',{cx:sx(t),cy:sy(Math.sin(.28*t)),r:5.5,class:'dot'},svg);
+  S('line',{x1:sx(now+.5),x2:sx(now+.5),y1:10,y2:Hh-10,class:'ax',style:'stroke-dasharray:4 5'},svg);
+  TX(svg,sx(1),Hh-12,'observed','st b','start');TX(svg,sx(now+1.2),Hh-12,'generated: each prediction is fed back as the next input','st a','start');
+  const gen=[];for(let t=now+1;t<N;t++)gen.push(S('circle',{cx:sx(t),cy:sy(Math.sin(.28*t)),r:5.5,class:'dot a fd',style:'opacity:0'},svg));
+  const T=timers();
+  return{enter(){gen.forEach(g=>g.style.opacity=RM?1:0);if(RM)return;let i=0;T.after(()=>T.every(()=>{if(i<gen.length)gen[i++].style.opacity=1},110),400)},leave(){T.clear()}};
+};
+
+/* human activity sensors */
+V.activity=el=>{
+  const W=1000,Hh=330,svg=svgEl(el,W,Hh,'Three accelerometer channels: walking, then running, then an unknown next segment');
+  const r=RNG(5),sx=t=>60+t*3.0,ends=[140,230,300];
+  ['x','y','z'].forEach((c,k)=>{const y0=60+k*90,pts=[];
+    SUB(svg,30,y0,c,'','mt s');
+    for(let t=0;t<=230;t++){const run=t>=140,a=run?30:17,f=run?.36:.17;pts.push([sx(t),y0-a*Math.sin(f*t+k*1.3)*(k===1?.7:1)+r.n()*2.2])}
+    S('path',{d:pathOf(pts),class:'cv',style:'stroke-width:2.2'},svg)});
+  S('line',{x1:sx(140),x2:sx(140),y1:15,y2:280,class:'ax',style:'stroke-dasharray:4 5;opacity:.6'},svg);
+  S('rect',{x:sx(232),y:15,width:sx(300)-sx(232),height:265,rx:10,class:'bxd'},svg);
+  TX(svg,(sx(232)+sx(300))/2,148,'?','lab big a');
+  TX(svg,sx(70),306,'walking','st');TX(svg,sx(185),306,'running','st');TX(svg,(sx(232)+sx(300))/2,306,'next?','st a');
+};
+
+/* DNA */
+V.dna=el=>{
+  const seq='ATGGCCATTGTAATGGGCCGCTGA',W=1040,Hh=270,svg=svgEl(el,W,Hh,'DNA sequence with the next base unknown');
+  const bw=36,gap=5,x0=(W-(seq.length+1)*(bw+gap))/2;
+  seq.split('').forEach((c,i)=>{BX(svg,x0+i*(bw+gap),30,bw,50,'bx');TX(svg,x0+i*(bw+gap)+bw/2,56,c)});
+  const qx=x0+seq.length*(bw+gap);BX(svg,qx,30,bw,50,'bxd');TX(svg,qx+bw/2,56,'?','lab a');
+  const P=[['A',.2],['C',.1],['G',.55],['T',.15]],bx0=qx+bw/2-4*44+22;
+  P.forEach((p,i)=>{const x=bx0+i*44,h=p[1]*220;S('rect',{x:x-14,y:235-h,width:28,height:h,rx:4,style:'fill:var(--amber)'},svg);TX(svg,x,254,p[0],'st');});
+  S('path',{d:'M'+(qx+bw/2)+' 84 L'+(qx+bw/2)+' 110',class:'ar a'},svg);
+  TX(svg,bx0-36,190,'p(next base)','st a','end');
+};
+
+/* video frames */
+V.video=el=>{
+  const W=1040,Hh=270,svg=svgEl(el,W,Hh,'Five video frames of a ball in flight; the last is predicted');
+  const fw=170,fh=125,gap=32,x0=(W-(5*fw+4*gap))/2,y0=60,ball=[[30,95],[62,52],[94,34],[126,40],[156,70]];
+  for(let i=0;i<5;i++){const x=x0+i*(fw+gap),last=i===4;
+    BX(svg,x,y0,fw,fh,last?'bxd':'bx');S('line',{x1:x+10,x2:x+fw-10,y1:y0+fh-14,y2:y0+fh-14,class:'ax',style:'opacity:.5'},svg);
+    for(let j=0;j<i;j++)S('circle',{cx:x+ball[j][0],cy:y0+ball[j][1],r:4,style:'fill:var(--soft);opacity:.35'},svg);
+    S('circle',{cx:x+ball[i][0],cy:y0+ball[i][1],r:12,style:last?'fill:var(--amber-pale);stroke:var(--amber);stroke-width:2.4;stroke-dasharray:5 4':'fill:var(--blue)'},svg);
+    TX(svg,x+fw/2,y0+fh+26,['t − 3','t − 2','t − 1','t','t + 1?'][i],last?'st a':'st');
+  }
+  const xa=x0+3*(fw+gap)+fw/2,xb=x0+4*(fw+gap)+fw/2;
+  PA(svg,'M'+xa+' '+(y0-8)+' Q'+((xa+xb)/2)+' '+(y0-52)+' '+xb+' '+(y0-8),'a');TX(svg,(xa+xb)/2,y0-46,'action','st a');
+};
+
+/* sliding window */
+V.window=el=>{
+  const seq=[2,4,6,8,10,12],svg=svgEl(el,700,130,'Sliding window over the sequence 2, 4, 6, 8, 10, 12');
+  el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.gap='18px';
+  const bw=80,gap=24,x0=(700-(6*bw+5*gap))/2;
+  const win=S('rect',{y:14,height:86,rx:12,width:3*bw+2*gap+16,class:'win fd',style:'transition:x .5s ease'},svg);
+  const boxes=seq.map((v,i)=>{const b=BX(svg,x0+i*(bw+gap),24,bw,66,'bx');TX(svg,x0+i*(bw+gap)+bw/2,58,String(v),'lab big');return b});
+  const tb=H('table','tt',el);tb.innerHTML='<thead><tr><th>Input: three values</th><th></th><th>Target: next value</th></tr></thead>';
+  const body=H('tbody','',tb),rows=[[2,4,6,8],[4,6,8,10],[6,8,10,12]].map(r=>H('tr','',body,'<td>('+r.slice(0,3).join(', ')+')</td><td>→</td><td>'+r[3]+'</td>'));
+  const T=timers();let k=0;
+  const show=()=>{win.setAttribute('x',x0+k*(bw+gap)-8);boxes.forEach((b,i)=>b.setAttribute('class',i===k+3?'bxa':(i>=k&&i<k+3?'bxb':'bx')));rows.forEach((r,i)=>r.classList.toggle('hl',i===k));k=(k+1)%3};
+  return{enter(){k=0;show();if(!RM)T.every(show,1500)},leave(){T.clear()}};
+};
+
+/* MLP on a window */
+V.mlp=el=>{
+  const svg=svgEl(el,760,350,'MLP with three inputs, one hidden layer, one output');
+  const I=[[180,95],[180,175],[180,255]],Hd=[55,115,175,235,295].map(y=>[400,y]),O=[620,175];
+  I.forEach(a=>Hd.forEach(b=>S('line',{x1:a[0],y1:a[1],x2:b[0],y2:b[1],style:'stroke:var(--line);stroke-width:1.6'},svg)));
+  Hd.forEach(b=>S('line',{x1:b[0],y1:b[1],x2:O[0],y2:O[1],style:'stroke:var(--line);stroke-width:1.6'},svg));
+  I.forEach((a,i)=>{S('circle',{cx:a[0],cy:a[1],r:24,class:'node',style:'fill:var(--panel)'},svg);SUB(svg,a[0]-40,a[1],'x',['t−2','t−1','t'][i],'mt','end')});
+  Hd.forEach(b=>S('circle',{cx:b[0],cy:b[1],r:17,class:'node'},svg));
+  S('circle',{cx:O[0],cy:O[1],r:26,class:'node',style:'fill:var(--amber-pale);stroke:var(--amber)'},svg);
+  HAT(svg,O[0]+50,O[1],'t+1','mt a');
+  SUB(svg,400,334,'MLP  f','θ','mt');
+};
+
+/* forecasting vs autoregressive generation */
+V.autoreg=el=>{
+  const svg=svgEl(el,1000,250,'One-step forecast versus feeding predictions back');
+  const bw=70,gap=16,x0=250;
+  TX(svg,0,60,'One-step forecasting','lab','start');
+  [2,4,6].forEach((v,i)=>{BX(svg,x0+i*(bw+gap),32,bw,56,'bxb');TX(svg,x0+i*(bw+gap)+bw/2,60,String(v),'lab big')});
+  const fx=x0+3*(bw+gap)+40;AR(svg,x0+3*(bw+gap)-gap+4,60,fx-4,60,'a');TX(svg,fx-38,40,'f','mt s');
+  BX(svg,fx,32,bw,56,'bxd');TX(svg,fx+bw/2,60,'8','lab big a');
+  TX(svg,0,180,'Autoregressive generation','lab','start');
+  const vals=[2,4,6,8,10,12,14],els=vals.map((v,i)=>{const g=S('g',{class:'fd'},svg);const r=BX(g,x0+i*(bw+gap),152,bw,56,i<3?'bxb':'bxa');TX(g,x0+i*(bw+gap)+bw/2,180,String(v),i<3?'lab big':'lab big a');return{g:g,r:r}});
+  const win=S('rect',{y:142,height:76,rx:12,width:3*bw+2*gap+14,class:'win fd',style:'fill:none;transition:x .5s ease'},svg);
+  svg.insertBefore(win,els[0].g);
+  const T=timers();let k=0;
+  const show=()=>{win.setAttribute('x',x0+k*(bw+gap)-7);els.forEach((e,i)=>{e.g.style.opacity=i<3+k?1:(i===3+k?1:0);e.r.setAttribute('class',i<3?'bxb':(i===3+k?'bxd':'bxa'))});k=(k+1)%4};
+  return{enter(){k=0;show();if(!RM)T.every(show,1300)},leave(){T.clear()}};
+};
+
+/* two series that share their last three readings */
+V.twoSeries=el=>{
+  const svg=svgEl(el,500,250,'Two series with different trends but identical last three readings');
+  const r=RNG(3),last=[40,41,42],A=[],B=[];
+  for(let t=0;t<18;t++){A.push(8+1.75*t+r.n()*1.2);B.push(76-2*t+r.n()*1.2)}
+  const sx=t=>30+t*22,sy=lin(0,85,235,10);
+  S('rect',{x:sx(17.5),y:12,width:sx(20.5)-sx(17.5),height:222,rx:6,class:'win'},svg);
+  S('line',{x1:20,x2:490,y1:236,y2:236,class:'ax'},svg);
+  S('path',{d:pathOf(A.concat(last).map((v,t)=>[sx(t),sy(v)])),class:'cv'},svg);
+  S('path',{d:pathOf(B.concat(last).map((v,t)=>[sx(t),sy(v)])),class:'cv amber'},svg);
+  TX(svg,sx(0)-14,sy(A[0]),'A','lab b','end');TX(svg,sx(0)-14,sy(B[0]),'B','lab a','end');
+};
+
+/* black box */
+V.blackbox=el=>{
+  const svg=svgEl(el,1000,340,'An RNN box reads tokens one at a time and outputs guesses');
+  BX(svg,400,120,200,100,'bxb');TX(svg,500,170,'RNN','lab big');
+  AR(svg,500,272,500,224);AR(svg,500,118,500,74,'a');
+  const inp=TX(svg,500,302,'','lab big'),out=TX(svg,500,46,'','lab big a');inp.classList.add('fd');out.classList.add('fd');
+  TX(svg,40,135,'read so far','st','start');const seen=TX(svg,40,175,'','lab','start');
+  TX(svg,680,135,'guesses so far','st','start');const gs=TX(svg,680,175,'','lab a','start');
+  const tok=['To','be,','or','not','to'],pr=['be','or','not','to','be'];
+  const T=timers();let i=0;
+  const step=()=>{if(i>=tok.length){i=0;seen.textContent='';gs.textContent=''}
+    inp.style.opacity=0;out.style.opacity=0;const j=i;
+    T.after(()=>{inp.textContent=tok[j];inp.style.opacity=1;seen.textContent=tok.slice(0,j+1).join(' ')},250);
+    T.after(()=>{out.textContent=pr[j];out.style.opacity=1;gs.textContent=pr.slice(0,j+1).join(' ')},800);
+    i++};
+  return{enter(){T.clear();i=0;seen.textContent='';gs.textContent='';
+    if(RM){tok.forEach(()=>{});inp.textContent=tok[4];out.textContent=pr[4];inp.style.opacity=1;out.style.opacity=1;seen.textContent=tok.join(' ');gs.textContent=pr.join(' ');return}
+    step();T.every(step,1700)},leave(){T.clear()}};
+};
+
+/* hidden-state loop */
+V.loop=el=>{
+  const svg=svgEl(el,900,330,'RNN box whose state loops back into itself');
+  BX(svg,330,130,200,96,'bxb');TX(svg,430,160,'update','st');SUB(svg,430,192,'F','θ','mt');
+  const id='lp'+(uid++);
+  const p=PA(svg,'M480 128 C480 30 380 30 380 126','b',{id:id,style:'stroke-width:3'});
+  TX(svg,430,22,'hidden state','st b');
+  SUB(svg,640,178,'ŷ','t','mt a','start');AR(svg,532,178,628,178,'a');
+  SUB(svg,430,306,'x','t','mt');AR(svg,430,286,430,230);
+  if(!RM){const c=S('circle',{r:7,class:'dot'},svg);const m=S('animateMotion',{dur:'1.8s',repeatCount:'indefinite'},c);S('mpath',{href:'#'+id},m)}
+};
+
+/* unroll */
+V.unroll=el=>{
+  const svg=svgEl(el,1060,320,'RNN unrolled across four time steps');
+  BX(svg,20,135,74,56,'bx');SUB(svg,57,161,'h','0');
+  const xs=[220,440,660,880],tok=['To','be,','or','not'],pr=['be','or','not','to'],gs=[];
+  xs.forEach((cx,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);
+    AR(g,i?xs[i-1]+62:96,163,cx-64,163,'b');
+    BX(g,cx-60,135,120,56,'bxb');SUB(g,cx,161,'h',String(i+1));
+    TX(g,cx,285,tok[i]);AR(g,cx,262,cx,195);
+    TX(g,cx,42,pr[i],'lab a');AR(g,cx,133,cx,66,'a')});
+  const T=timers();
+  return{enter(){gs.forEach(g=>g.style.opacity=RM?1:.08);if(!RM)gs.forEach((g,i)=>T.after(()=>g.style.opacity=1,300+i*550))},leave(){T.clear()}};
+};
+
+/* inside one step */
+V.cell=el=>{
+  el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.gap='14px';
+  const svg=svgEl(el,1090,330,'Computation inside one RNN step');
+  const g=[0,1,2,3].map(()=>S('g',{class:'fd'},svg));
+  BX(g[0],20,70,130,56,'bx');SUB(g[0],85,96,'h','t−1');
+  BX(g[0],20,220,130,56,'bx');SUB(g[0],85,246,'x','t');
+  AR(g[1],152,98,226,98);AR(g[1],152,248,226,248);
+  BX(g[1],230,70,150,56,'bxb');SUB(g[1],305,96,'× W','hh');
+  BX(g[1],230,220,150,56,'bxb');SUB(g[1],305,246,'× W','xh');
+  S('circle',{cx:480,cy:173,r:28,class:'bxb'},g[1]);TX(g[1],480,171,'+','lab big');
+  AR(g[1],380,104,456,158);AR(g[1],380,242,456,190);
+  SUB(g[1],480,36,'b','h');AR(g[1],480,54,480,141);
+  AR(g[2],510,173,586,173);SUB(g[2],548,148,'a','t');
+  BX(g[2],590,145,120,56,'bxb');TX(g[2],650,171,'tanh','mt');
+  AR(g[2],712,173,766,173,'b');
+  BX(g[2],770,145,110,56,'bxb');SUB(g[2],825,171,'h','t','mt b');
+  AR(g[3],825,143,825,98);
+  BX(g[3],740,40,170,56,'bxb');{const t=S('text',{x:825,y:66,'text-anchor':'middle','dominant-baseline':'central',class:'mt'},g[3]);S('tspan',{},t,'× W');S('tspan',{dy:8,style:'font-size:.66em;font-style:normal'},t,'hy');S('tspan',{dy:-8},t,' + b');S('tspan',{dy:8,style:'font-size:.66em;font-style:normal'},t,'y')}
+  AR(g[3],912,68,968,68,'a');BX(g[3],972,40,100,56,'bxa');SUB(g[3],1022,66,'ŷ','t','mt a');
+  AR(g[3],882,173,1060,173,'b');TX(g[3],975,205,'to step t + 1','st b');
+  const mm=s=>'<span class="math">'+M(s)+'</span>';
+  const capsEl=H('div','caps',el),C=[
+    'Two things arrive: the current input '+mm('x_t')+' and the previous state '+mm('h_{t-1}')+'.',
+    'Each is multiplied by its own weight matrix, then summed with a bias: '+mm('a_t = W_{xh} x_t + W_{hh} h_{t-1} + b_h'),
+    mm('\\tanh')+' squashes every entry into (−1, 1); the result is the new state '+mm('h_t')+'.',
+    'A linear readout predicts the next element, '+mm('\\hat{y}_t = W_{hy} h_t + b_y')+', and '+mm('h_t')+' moves on to the next step.'
+  ].map(c=>H('p','',capsEl,c));
+  const pips=H('div','pips',el),pp=C.map(()=>H('i','',pips));
+  return{step(s){g.forEach((x,i)=>x.style.opacity=i<=s?1:.1);C.forEach((c,i)=>c.classList.toggle('on',i===s));pp.forEach((p,i)=>p.classList.toggle('on',i<=s))}};
+};
+
+/* memory decay with slider */
+V.decay=el=>{
+  el.style.display='flex';el.style.flexDirection='column';el.style.gap='10px';el.style.alignItems='center';
+  const svg=svgEl(el,520,260,'Weight given to each past input at step ten');
+  TX(svg,260,14,'weight on each input at step t = 10','st');
+  const bars=[],labs=[];
+  for(let k=1;k<=10;k++){const x=30+(k-1)*48;bars.push(S('rect',{x:x,width:34,rx:4,y:220,height:0},svg));SUB(svg,x+17,240,'x',String(k),'mt s')}
+  const ro=H('p','soft small',el);ro.style.minHeight='32px';
+  const draw=w=>{const v=[];for(let k=1;k<=10;k++)v.push(Math.pow(w,10-k));const mx=Math.max.apply(null,v)||1;
+    bars.forEach((b,i)=>{const h=Math.max(1,v[i]/mx*180);b.setAttribute('y',220-h);b.setAttribute('height',h);b.style.fill=w>1?'var(--amber)':'var(--blue)'});
+    const o=Math.pow(w,9);ro.innerHTML='weight on <i>x</i><sub>1</sub>: <i>w</i><sup>9</sup> = <b>'+(o<1e-3&&o>0?o.toExponential(1):o.toFixed(3))+'</b> &nbsp;'+(w<1?'(old inputs decay)':w>1?'(old inputs grow)':'(nothing fades)')};
+  const sl=Slider(el,'w',0,1.2,.01,.5,draw,false,v=>v.toFixed(2));sl.el.parentNode.style.width='420px';
+  draw(.5);return{enter(){sl.set(.5);draw(.5)}};
+};
+
+/* teacher forcing vs autoregressive */
+V.tf=el=>{
+  const svg=svgEl(el,1100,340,'Teacher forcing versus autoregressive generation');
+  const panel=(ox,gen)=>{
+    TX(svg,ox+250,16,gen?'Generation: autoregressive':'Training: teacher forcing','lab'+(gen?' a':' b'));
+    const xs=[0,1,2].map(i=>ox+110+i*160);
+    AR(svg,ox+20,175,xs[0]-47,175,'b');
+    xs.forEach((cx,i)=>{BX(svg,cx-45,147,90,56,'bxb');SUB(svg,cx,173,'h',String(i+1));
+      if(i<2)AR(svg,cx+45,175,xs[i+1]-47,175,'b');
+      const isPred=gen&&i>0;if(isPred)HAT(svg,cx-5,300,String(i+1),'mt a');else SUB(svg,cx,300,'x',String(i+1),'mt');AR(svg,cx,280,cx,207,isPred?'a':'');
+      HAT(svg,cx-5,72,String(i+2),'mt a');AR(svg,cx,145,cx,94,'a');
+      if(gen&&i<2)PA(svg,'M'+(cx+22)+' 66 C'+(cx+80)+' 66 '+(cx+80)+' 300 '+(xs[i+1]-26)+' 300','a',{style:'stroke-dasharray:6 5'});
+      if(!gen)TX(svg,cx,44,'vs. x'+sb(i+2),'st');
+    });
+    TX(svg,ox+270,334,gen?'feed the generated element back':'feed the true previous element; compute the loss','st');
+  };
+  panel(0,false);panel(560,true);
+};
+
+/* forward / backward through time */
+V.bptt=el=>{
+  const svg=svgEl(el,900,300,'Forward pass through three steps and gradients flowing back');
+  const xs=[230,460,690];BX(svg,40,126,70,56,'bx');SUB(svg,75,152,'h','0');
+  const bk=S('g',{class:'fd'},svg);
+  xs.forEach((cx,i)=>{BX(svg,cx-55,126,110,56,'bxb');SUB(svg,cx,152,'h',String(i+1));
+    AR(svg,i?xs[i-1]+57:112,142,cx-59,142,'b');
+    SUB(svg,cx,268,'x',String(i+1),'mt');AR(svg,cx,248,cx,186);
+    BX(svg,cx-32,18,64,46,'bxa');SUB(svg,cx,40,'ℓ',String(i+1),'mt a');AR(svg,cx-12,124,cx-12,68,'a');
+    S('line',{x1:cx+12,y1:68,x2:cx+12,y2:122,class:'ar a bk','marker-end':'url(#aha)'},bk);
+    if(i)S('line',{x1:cx-59,y1:170,x2:xs[i-1]+59,y2:170,class:'ar a bk','marker-end':'url(#aha)'},bk)});
+  TX(svg,820,142,'forward','st b','start');TX(svg,820,170,'backward','st a','start');
+  return{step(s){bk.style.opacity=s>=1?1:.08}};
+};
+
+/* vanishing / exploding products */
+V.vanish=el=>{
+  el.style.display='flex';el.style.flexDirection='column';el.style.gap='8px';el.style.alignItems='center';
+  const svg=svgEl(el,600,280,'Size of a product of repeated factors versus number of steps');
+  const c=135,bars=[];
+  S('line',{x1:50,x2:590,y1:c,y2:c,class:'ax'},svg);
+  TX(svg,42,c,'1','st','end');TX(svg,42,30,'10⁴','st','end');TX(svg,42,240,'10⁻⁴','st','end');
+  for(let k=1;k<=24;k++)bars.push(S('rect',{x:56+(k-1)*22.5,width:16,rx:3},svg));
+  TX(svg,320,268,'steps back, t − s','st');
+  const ro=H('p','soft small',el);ro.style.minHeight='32px';
+  const draw=rho=>{bars.forEach((b,i)=>{let l=(i+1)*Math.log10(rho);l=Math.max(-4,Math.min(4,l));const h=Math.abs(l)/4*105;
+      b.setAttribute('y',l>=0?c-h:c);b.setAttribute('height',Math.max(1,h));b.style.fill=l>=0?'var(--amber)':'var(--blue)'});
+    const v=Math.pow(rho,24),e=Math.floor(Math.log10(v)),m=v/Math.pow(10,e);
+    ro.innerHTML='after 24 steps: <i>ρ</i><sup>24</sup> ≈ <b>'+(Math.abs(e)<3?v.toFixed(2):m.toFixed(1)+' × '+pw(e))+'</b>'};
+  const sl=Slider(el,'ρ',.5,1.5,.01,.8,draw,false,v=>v.toFixed(2));sl.el.parentNode.style.width='440px';
+  const lab=H('p','soft',el,'ρ: typical size of one factor ∂h<sub>k</sub>/∂h<sub>k−1</sub>');lab.style.fontSize='16px';
+  draw(.8);return{enter(){sl.set(.8);draw(.8)}};
+};
+
+/* caption stack helper */
+function capStack(el,list,cls){const box=H('div',cls||'bp-caps',el);const ps=list.map(c=>H('p','',box,c));const pips=H('div','pips',el),pp=list.map(()=>H('i','',pips));
+  return s=>{ps.forEach((p,i)=>p.classList.toggle('on',i===s));pp.forEach((p,i)=>p.classList.toggle('on',i<=s))}}
+const MM=s=>'<span class="math">'+M(s)+'</span>';
+const vcol=el=>{el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.gap='10px'};
+
+/* BPTT stepper */
+V.bpttStep=el=>{
+  vcol(el);
+  const svg=svgEl(el,1090,330,'Unrolled RNN: forward pass, losses, then gradients flowing backward');
+  const xs=[200,410,620,830],cy=168;
+  BX(svg,40,140,74,56,'bx');SUB(svg,77,166,'h','0');
+  const F=S('g',{},svg),L=[],D=[],G=[],DL=[];
+  xs.forEach((cx,i)=>{
+    AR(F,i?xs[i-1]+57:116,158,cx-59,158,'b');
+    BX(F,cx-55,140,110,56,'bxb');SUB(F,cx,166,'h',String(i+1));
+    SUB(F,cx,302,'x',String(i+1));AR(F,cx,282,cx,200);
+    const l=S('g',{class:'fd'},svg);L.push(l);
+    AR(l,cx-14,138,cx-14,72,'a');BX(l,cx-34,22,68,46,'bxa');SUB(l,cx,44,'ℓ',String(i+1),'mt a');
+    const d=S('g',{class:'fd'},svg);D.push(d);
+    S('line',{x1:cx+14,y1:72,x2:cx+14,y2:136,class:'ar a bk','marker-end':'url(#aha)'},d);
+    if(i<3)S('line',{x1:xs[i+1]-57,y1:182,x2:cx+59,y2:182,class:'ar a bk','marker-end':'url(#aha)'},d);
+    DL.push(SUB(d,cx+44,228,'δ',String(i+1),'mt a','start'));
+    const g=S('g',{class:'fd'},svg);G.push(g);
+    BX(g,cx-98,234,66,40,'bxa');SUB(g,cx-65,252,'g',String(i+1),'mt a');
+  });
+  const cap=capStack(el,[
+    '<b>Forward:</b>&nbsp;run left to right, storing every '+MM('h_t')+'.',
+    'Compute a loss at every step: '+MM('\\L = \\sum_t \\ell_t')+'.',
+    'Start at the end. Only '+MM('\\ell_4')+' reaches '+MM('h_4')+': '+MM('\\delta_4 = (W_{hy}^\\top e_4) \\odot (1 - h_4^2)'),
+    MM('\\delta_3')+' adds its own error to what flows back from step 4: '+MM('\\delta_3 = (W_{hy}^\\top e_3 + W_{hh}^\\top \\delta_4) \\odot (1 - h_3^2)'),
+    'Repeat: '+MM('\\delta_2')+' collects '+MM('\\ell_2')+' plus everything from steps 3 and 4.',
+    MM('\\delta_1')+' depends on <b>every</b> later loss: the longest chain of products.',
+    'Each copy of '+MM('W_{hh}')+' gets its own gradient '+MM('g_t = \\delta_t h_{t-1}^\\top')+'. Different values, same matrix.'
+  ]);
+  return{step(s){L.forEach(l=>l.style.opacity=s>=1?1:.08);
+    D.forEach((d,i)=>{const on=s>=2+(3-i);d.style.opacity=on?1:.06;DL[i].style.fontWeight=(s===2+(3-i))?'700':'400'});
+    G.forEach(g=>g.style.opacity=s>=6?1:.06);cap(s)}};
+};
+
+/* per-step gradients and their average */
+V.gradAvg=el=>{
+  const svg=svgEl(el,470,230,'Bar chart of per-step gradients, their sum and their average');
+  const z=118,k=88/1.1,vals=[-.531,-.094,1.031],sum=.406,avg=.135;
+  S('line',{x1:10,x2:460,y1:z,y2:z,class:'ax'},svg);
+  const bar=(g,x,v,fill,lab)=>{const h=Math.abs(v)*k;S('rect',{x:x,y:v>=0?z-h:z,width:46,height:Math.max(2,h),rx:4,style:'fill:'+fill},g);
+    TX(g,x+23,v>=0?z-h-14:z+h+14,(v<0?'−':'')+Math.abs(v).toFixed(3),'st');TX(g,x+23,218,lab,'lab')};
+  const gG=S('g',{class:'fd'},svg),gS=S('g',{class:'fd'},svg),gA=S('g',{class:'fd'},svg);
+  vals.forEach((v,i)=>bar(gG,30+i*70,v,'var(--blue)','g'+sb(i+1)));
+  S('line',{x1:240,x2:240,y1:10,y2:200,class:'ax',style:'stroke-dasharray:4 5;opacity:.5'},gS);
+  bar(gS,270,sum,'var(--soft)','sum');bar(gA,370,avg,'var(--amber)','average');
+  return{step(s){gG.style.opacity=s>=1?1:.08;gS.style.opacity=s>=2?1:.06;gA.style.opacity=s>=3?1:.06}};
+};
+
+/* text -> ids -> one-hot -> embedding */
+V.encode=el=>{
+  const svg=svgEl(el,1100,430,'Tokens mapped to ids, one-hot vectors and embeddings');
+  const tok=['to','be','or','not','to','be'],idx={not:1,be:2,or:3,to:4},xs=tok.map((_,i)=>330+i*128);
+  const r=RNG(4),E=[0,1,2,3,4].map(()=>[0,1,2,3].map(()=>Math.max(-1,Math.min(1,r.n()*.6))));
+  const rows=[S('g',{},svg),S('g',{class:'fd'},svg),S('g',{class:'fd'},svg),S('g',{class:'fd'},svg)];
+  [['text → tokens',50],['token ids',120],['one-hot (5 dims)',210],['embedding  E[id]',350]].forEach((l,i)=>TX(rows[i],20,l[1],l[0],'lab','start'));
+  tok.forEach((t,i)=>{const x=xs[i],id=idx[t];
+    BX(rows[0],x-46,26,92,48,'bx');TX(rows[0],x,50,t,'lab');
+    TX(rows[1],x,120,String(id),'lab big');
+    for(let j=0;j<5;j++)S('rect',{x:x-11,y:158+j*21,width:22,height:18,rx:3,style:j===id?'fill:var(--blue);stroke:var(--blue)':'fill:var(--panel);stroke:var(--line);stroke-width:1.5'},rows[2]);
+    for(let j=0;j<4;j++){const v=E[id][j];S('rect',{x:x-11,y:308+j*22,width:22,height:19,rx:3,style:'fill:'+(v>=0?'var(--blue)':'var(--amber)')+';fill-opacity:'+(.15+.85*Math.abs(v)).toFixed(2)+';stroke:var(--line);stroke-width:1'},rows[3])}
+  });
+  TX(rows[3],330,414,'a learned lookup table: one embedding row per id','st','start');
+  return{step(s){rows.forEach((g,i)=>{if(i)g.style.opacity=s>=i?1:.06})}};
+};
+
+/* one training iteration */
+V.pipeline=el=>{
+  vcol(el);
+  const svg=svgEl(el,1100,320,'Training loop: forward through embedding, RNN, softmax and loss, then backward and update');
+  const fl=['token batch','embedding','RNN, T steps','linear + softmax','loss ℒ'],fb=[],bb=[];
+  fl.forEach((t,i)=>{const x=20+i*221;if(i)AR(svg,x-44,92,x-3,92,'b');fb.push(BX(svg,x,62,175,60,'bx'));TX(svg,x+87,92,t,'lab')});
+  const bl=[['BPTT: ∂ℒ/∂θ',879],['average gradients',633],['update θ',387]];
+  bl.forEach((b,i)=>{bb.push(BX(svg,b[1],212,200,60,'bx'));TX(svg,b[1]+100,242,b[0],'lab')});
+  AR(svg,991,124,991,208,'a');AR(svg,877,242,835,242,'a');AR(svg,631,242,589,242,'a');
+  PA(svg,'M385 242 L107 242 L107 126','',{});TX(svg,240,262,'next batch, new weights','st','middle');
+  TX(svg,550,40,'forward','st b');TX(svg,550,296,'backward','st a');
+  const cap=capStack(el,[
+    'Sample a batch of sequences; each target is the input shifted by one token.',
+    'Map every token id to a vector (one-hot or a learned embedding).',
+    'Run the recurrence left to right: '+MM('h_t = \\tanh(W_{xh} x_t + W_{hh} h_{t-1} + b_h)'),
+    'Turn each '+MM('h_t')+' into scores over the vocabulary; softmax gives '+MM('p_\\theta(x_{t+1} \\mid x_1, \\ldots, x_t)'),
+    'Cross-entropy at every position, averaged: '+MM('\\L = \\frac{1}{T} \\sum_t \\ell_t'),
+    'Backpropagate through time: each step’s copy of the weights gets a gradient; they are averaged.',
+    'Update every parameter once with the averaged gradient, then take the next batch.'
+  ]);
+  return{step(s){fb.forEach((b,i)=>b.setAttribute('class',i===s?'bxb':'bx'));
+    bb.forEach((b,i)=>b.setAttribute('class',(s===5&&i<2)||(s===6&&i===2)?'bxa':'bx'));cap(s)}};
+};
+
+/* long-range dependency sentence */
+const SENT=['The','keys','to','the','cabinet','that','my','grandmother','bought','years','ago'];
+function sentence(svg,y,opts){const ws=SENT.map(t=>24+t.length*11.5),gap=8,tot=ws.reduce((a,b)=>a+b,0)+gap*SENT.length+70;
+  let x=opts&&opts.x0!=null?opts.x0:(1100-tot)/2;const out=[];
+  SENT.forEach((t,i)=>{const r=BX(svg,x,y,ws[i],48,opts&&opts.cls?opts.cls(i):'bx');TX(svg,x+ws[i]/2,y+24,t,i===1?'lab a':'lab');out.push({r:r,cx:x+ws[i]/2});x+=ws[i]+gap});
+  const q=BX(svg,x,y,70,48,'bxd');TX(svg,x+35,y+24,'?','lab big a');out.push({r:q,cx:x+35});return out}
+V.longdep=el=>{
+  const svg=svgEl(el,1100,250,'Sentence where the verb depends on a word ten steps back');
+  const P=sentence(svg,130,{cls:i=>i===1?'bxa':'bx'});
+  const a=P[1].cx,b=P[11].cx;
+  PA(svg,'M'+a+' 126 Q'+((a+b)/2)+' 0 '+b+' 124','a',{style:'stroke-dasharray:7 6;stroke-width:2.4'});
+  TX(svg,(a+b)/2,36,'10 steps back','st a');
+  TX(svg,b,206,'are or is?','lab a');TX(svg,P[4].cx,206,'nearby noun (singular)','st');
+};
+V.fadeSent=el=>{
+  vcol(el);
+  const svg=svgEl(el,1100,110,'Sentence shaded by the gradient that reaches each word');
+  const P=sentence(svg,30);
+  const shade=P.slice(0,11).map(p=>{const s=S('rect',{x:+p.r.getAttribute('x'),y:30,width:+p.r.getAttribute('width'),height:48,rx:10,style:'fill:var(--amber);pointer-events:none'},svg);svg.insertBefore(s,p.r.nextSibling);return s});
+  const trio=H('div','trio',el);
+  const draw=rho=>{shade.forEach((s,i)=>s.style.fillOpacity=(.85*Math.pow(rho,11-i)).toFixed(3));
+    const f=n=>{const v=Math.pow(rho,n);if(v>=.01&&v<1e3)return v.toFixed(v<1?3:1);const e=Math.floor(Math.log10(v));return (v/Math.pow(10,e)).toFixed(1)+' × '+pw(e)};
+    trio.innerHTML=[10,50,100].map(n=>'<span class="soft">'+n+' steps back: <b style="color:var(--ink)">'+f(n)+'</b></span>').join('')};
+  const sl=Slider(el,'ρ',.3,1.2,.01,.7,draw,false,v=>v.toFixed(2));sl.el.parentNode.style.width='460px';
+  draw(.7);return{enter(){sl.set(.7);draw(.7)}};
+};
+
+/* ---------- worked BPTT example ---------- */
+const fx=n=>{let r=Math.round(n*1000)/1000;if(r===0)r=0;return String(r).replace('-','−')};
+const mxc=(v,c)=>'<span class="mx sm '+(c||'')+'" style="grid-template-columns:auto"><span>'+fx(v[0])+'</span><span>'+fx(v[1])+'</span></span>';
+const mxr=(v,c)=>'<span class="mx sm '+(c||'')+'" style="grid-template-columns:auto auto"><span>'+fx(v[0])+'</span><span>'+fx(v[1])+'</span></span>';
+const mxm=(m,c)=>'<span class="mx sm '+(c||'')+'" style="grid-template-columns:auto auto">'+[m[0][0],m[0][1],m[1][0],m[1][1]].map(v=>'<span>'+fx(v)+'</span>').join('')+'</span>';
+const EX=(()=>{const Whh=[[.5,-.3],[.2,.4]],Wxh=[1,-.5],Why=[1,-1],x=[0,1,.5,-1],y=[0,.5,-1,0];
+  const h=[[0,0]],a=[0],wx=[0],wh=[0],yh=[0],e=[0],l=[0];
+  for(let t=1;t<=3;t++){wx[t]=[Wxh[0]*x[t],Wxh[1]*x[t]];const p=h[t-1];wh[t]=[Whh[0][0]*p[0]+Whh[0][1]*p[1],Whh[1][0]*p[0]+Whh[1][1]*p[1]];
+    a[t]=[wx[t][0]+wh[t][0],wx[t][1]+wh[t][1]];h[t]=a[t].map(Math.tanh);yh[t]=Why[0]*h[t][0]+Why[1]*h[t][1];e[t]=yh[t]-y[t];l[t]=.5*e[t]*e[t]}
+  const d=[],loc=[],fut=[],der=[];d[4]=[0,0];
+  for(let t=3;t>=1;t--){loc[t]=[Why[0]*e[t],Why[1]*e[t]];const q=d[t+1];fut[t]=[Whh[0][0]*q[0]+Whh[1][0]*q[1],Whh[0][1]*q[0]+Whh[1][1]*q[1]];
+    der[t]=h[t].map(v=>1-v*v);d[t]=[(loc[t][0]+fut[t][0])*der[t][0],(loc[t][1]+fut[t][1])*der[t][1]]}
+  const ghh=[],gxh=[];for(let t=1;t<=3;t++){ghh[t]=[[d[t][0]*h[t-1][0],d[t][0]*h[t-1][1]],[d[t][1]*h[t-1][0],d[t][1]*h[t-1][1]]];gxh[t]=[d[t][0]*x[t],d[t][1]*x[t]]}
+  const avgH=[[0,0],[0,0]],avgX=[0,0];for(let t=1;t<=3;t++){for(let i=0;i<2;i++){avgX[i]+=gxh[t][i]/3;for(let j=0;j<2;j++)avgH[i][j]+=ghh[t][i][j]/3}}
+  const newH=Whh.map((r,i)=>r.map((v,j)=>v-.1*avgH[i][j])),newX=Wxh.map((v,i)=>v-.1*avgX[i]);
+  const gWhy=[0,0];for(let t=1;t<=3;t++){gWhy[0]+=e[t]*h[t][0]/3;gWhy[1]+=e[t]*h[t][1]/3}
+  return{Whh,Wxh,Why,x,y,h,a,wx,wh,yh,e,l,d,loc,fut,der,ghh,gxh,avgH,avgX,newH,newX,gWhy}})();
+
+function exDiagram(el){
+  const svg=svgEl(el,1060,375,'Unrolled RNN with two hidden nodes per step');
+  const cx=[110,400,690,980],ys=[148,240],r=35,E=[],B=[],hv=[],yv=[],ev=[],lv=[],dv=[];
+  const node=(x,y,rr,c)=>S('circle',{cx:x,cy:y,r:rr,style:c},svg);
+  const val=(x,y,c)=>S('text',{x:x,y:y,'text-anchor':'middle','dominant-baseline':'central',class:'st',style:'font-size:15px;fill:var('+(c||'--ink')+')'},svg,'');
+  const edge=(g,d)=>S('path',{d:d,class:'ar','marker-end':'url(#ah)'},g);
+  for(let t=1;t<=3;t++){const g=S('g',{},svg);E[t]=g;const c=cx[t],p=cx[t-1];
+    ys.forEach(a=>ys.forEach(b=>edge(g,'M'+(p+r)+' '+a+'L'+(c-r-3)+' '+b)));
+    edge(g,'M'+c+' 315L'+c+' 278');edge(g,'M'+(c+15)+' 322C'+(c+70)+' 300 '+(c+70)+' 180 '+(c+34)+' 160');
+    edge(g,'M'+c+' 113L'+c+' 75');edge(g,'M'+(c-34)+' 230C'+(c-74)+' 200 '+(c-74)+' 82 '+(c-23)+' 58');
+    const b=S('g',{class:'fd'},svg);B[t]=b;
+    S('line',{x1:c+12,y1:74,x2:c+12,y2:112,class:'ar a bk','marker-end':'url(#aha)'},b);
+    if(t<3)ys.forEach(a=>ys.forEach(q=>S('line',{x1:cx[t+1]-r,y1:a,x2:c+r+3,y2:q,class:'ar a bk','marker-end':'url(#aha)'},b)));
+  }
+  cx.forEach((c,t)=>{
+    ys.forEach((y,k)=>node(c,y,r,'fill:'+(t?'var(--blue-pale)':'var(--panel)')+';stroke:'+(t?'var(--blue)':'var(--line)')+';stroke-width:2.2'));
+    hv[t]=ys.map(y=>val(c,y));
+    if(!t){hv[0].forEach(v=>v.textContent='0');TX(svg,c-40,195,'h₀','st','end');return}
+    TX(svg,c,372,'t = '+t,'st b');
+    node(c,335,20,'fill:var(--panel);stroke:var(--soft);stroke-width:2');val(c,335).textContent=fx(EX.x[t]);TX(svg,c-28,335,'x'+sb(t),'st','end');
+    node(c,48,25,'fill:var(--amber-pale);stroke:var(--amber);stroke-width:2.2');yv[t]=val(c,48);TX(svg,c-31,40,'ŷ'+sb(t),'st a','end');
+    TX(svg,c+34,30,'y'+sb(t)+' = '+fx(EX.y[t]),'st','start');ev[t]=TX(svg,c+34,52,'','st a','start');lv[t]=TX(svg,c+34,74,'','st a','start');
+    dv[t]=ys.map(y=>S('text',{x:c,y:y+11,'text-anchor':'middle','dominant-baseline':'central',class:'st a',style:'font-size:14px;font-weight:600'},svg,''));
+  });
+  SUB(svg,(cx[0]+cx[1])/2,282,'W','hh','mt s');SUB(svg,cx[1]+80,300,'W','xh','mt s','start');SUB(svg,cx[1]+18,98,'W','hy','mt s','start');
+  const setE=(t,c)=>E[t].querySelectorAll('path').forEach(p=>{p.setAttribute('class','ar '+(c||''));p.setAttribute('marker-end','url(#ah'+(c||'')+')')});
+  return{fwd(s){for(let t=1;t<=3;t++){const on=t<=s+1;hv[t].forEach((v,k)=>{v.textContent=on?fx(EX.h[t][k]):'';v.setAttribute('y',ys[k])});yv[t].textContent=on?fx(EX.yh[t]):'';
+      ev[t].textContent=on?'e = '+fx(EX.e[t]):'';lv[t].textContent=s>=3?'ℓ = '+fx(EX.l[t]):'';setE(t,t===s+1?'b':'');B[t].style.opacity=0;dv[t].forEach(v=>v.textContent='')}},
+    bwd(s){for(let t=1;t<=3;t++){const on0=t>=3-s;hv[t].forEach((v,k)=>{v.textContent=fx(EX.h[t][k]);v.setAttribute('y',on0?ys[k]-9:ys[k])});yv[t].textContent=fx(EX.yh[t]);ev[t].textContent='e = '+fx(EX.e[t]);lv[t].textContent='';
+      setE(t,'');const on=t>=3-s;dv[t].forEach((v,k)=>v.textContent=on?'δ '+fx(EX.d[t][k]):'');B[t].style.opacity=t===3-s?1:0}}};
+}
+function exCaps(el,list){const box=H('div','ex-caps',el);const ps=list.map(c=>H('p','',box,c));const pips=H('div','pips',el),pp=list.map(()=>H('i','',pips));
+  return s=>{ps.forEach((p,i)=>p.classList.toggle('on',i===s));pp.forEach((p,i)=>p.classList.toggle('on',i<=s))}}
+const L1=h=>'<span class="exl">'+h+'</span>';
+V.exFwd=el=>{vcol(el);el.style.gap='4px';const D=exDiagram(el);const X=EX;
+  const caps=[1,2,3].map(t=>L1(MM('a_'+t+' = W_{xh} x_'+t+' + W_{hh} h_'+(t-1))+' = '+mxc(X.wx[t])+' + '+mxc(X.wh[t])+' = '+mxc(X.a[t]))+
+    L1(MM('h_'+t+' = \\tanh(a_'+t+')')+' = '+mxc(X.h[t],'b')+'&emsp;'+MM('\\hat{y}_'+t+' = W_{hy} h_'+t)+' = '+fx(X.yh[t])+'&emsp;'+MM('e_'+t+' = \\hat{y}_'+t+' - y_'+t)+' = '+fx(X.e[t])));
+  caps.push(L1('Losses '+MM('\\ell_t')+' = '+fx(X.l[1])+', '+fx(X.l[2])+', '+fx(X.l[3]))+L1('<span class="soft">Keep every '+MM('h_t')+': the backward pass needs them.</span>'));
+  const cap=exCaps(el,caps);return{step(s){D.fwd(s);cap(s)}}};
+V.exBwd=el=>{vcol(el);el.style.gap='4px';const D=exDiagram(el);const X=EX;
+  const caps=[3,2,1].map(t=>L1(MM('\\delta_'+t+' = (W_{hy}^\\top e_'+t+' + W_{hh}^\\top \\delta_'+(t+1)+') \\odot (1 - h_'+t+'^2)')+(t===3?'&emsp;<span class="soft">(δ₄ = 0: nothing comes back from the future)</span>':''))+
+    L1('= ( '+mxc(X.loc[t])+' + '+mxc(X.fut[t])+' ) ⊙ '+mxc(X.der[t])+' = '+mxc(X.d[t],'a')));
+  const cap=exCaps(el,caps);return{step(s){D.bwd(s);cap(s)}}};
+V.exGrads=el=>{const X=EX,box=H('div','gcols',el),cols=[];
+  for(let t=1;t<=3;t++){const c=H('div','gcol',box);cols.push(c);
+    H('h4','',c,'t = '+t);
+    H('div','exl',c,MM('g^{hh}_'+t+' = \\delta_'+t+' h_'+(t-1)+'^\\top'));
+    H('div','exl',c,mxc(X.d[t],'a')+mxr(X.h[t-1],'b')+' = '+mxm(X.ghh[t],'a'));
+    H('div','exl',c,MM('g^{xh}_'+t+' = \\delta_'+t+' x_'+t)+' = '+mxc(X.gxh[t],'a'));
+    if(t===1)H('p','soft',c,'h₀ = 0, so step 1 adds nothing to W_hh').style.fontSize='16px';
+  }
+  return{step(s){cols.forEach((c,i)=>c.style.opacity=i<=s?1:.08)}}};
+V.exAvg=el=>{const X=EX,box=H('div','arows',el);
+  const r1=H('div','',box),r2=H('div','fd',box),r3=H('p','soft small fd',box);[r1,r2].forEach(r=>{r.style.display='flex';r.style.flexDirection='column';r.style.gap='14px';r.style.alignItems='center'});
+  H('div','exl',r1,MM('\\nabla W_{hh} = \\frac{1}{3}(g^{hh}_1 + g^{hh}_2 + g^{hh}_3)')+' = '+MM('\\frac{1}{3}')+'( '+mxm(X.ghh[1])+' + '+mxm(X.ghh[2])+' + '+mxm(X.ghh[3])+' ) = '+mxm(X.avgH,'a'));
+  H('div','exl',r1,MM('\\nabla W_{xh} = \\frac{1}{3}(g^{xh}_1 + g^{xh}_2 + g^{xh}_3)')+' = '+MM('\\frac{1}{3}')+'( '+mxc(X.gxh[1])+' + '+mxc(X.gxh[2])+' + '+mxc(X.gxh[3])+' ) = '+mxc(X.avgX,'a'));
+  H('div','exl',r2,MM('W_{hh} \\gets W_{hh} - \\eta \\nabla W_{hh}')+' = '+mxm(X.Whh)+' − 0.1 '+mxm(X.avgH,'a')+' = '+mxm(X.newH,'b'));
+  H('div','exl',r2,MM('W_{xh} \\gets W_{xh} - \\eta \\nabla W_{xh}')+' = '+mxc(X.Wxh)+' − 0.1 '+mxc(X.avgX,'a')+' = '+mxc(X.newX,'b'));
+  r3.innerHTML='Learning rate η = 0.1. '+MM('W_{hy}')+' gets the same treatment: '+MM('\\nabla W_{hy} = \\frac{1}{3} \\sum_t e_t h_t^\\top')+' = '+mxr(X.gWhy,'a')+'. Values rounded to 3 decimals.';
+  r3.style.maxWidth='1000px';
+  return{step(s){r2.style.opacity=s>=1?1:.06;r3.style.opacity=s>=2?1:.06}}};
+
+/* ---------- data: chunk, pad, shift ---------- */
+V.chunk=el=>{
+  const svg=svgEl(el,1100,400,'Token stream cut into sequences, padded, and shifted into inputs and targets');
+  const words=['to','be','or','not','to','be','that','is','the','question','whether','tis','nobler','in','the','mind'],
+    vid={to:1,be:2,or:3,not:4,that:5,is:6,the:7,question:8,whether:9,tis:10,nobler:11,in:12,mind:13},ids=words.map(w=>vid[w]);
+  const bw=52,gap=8,x0=(1100-18*(bw+gap))/2,G=[0,1,2,3].map(i=>S('g',{class:i?'fd':''},svg));
+  TX(G[0],x0,18,'token ids of the whole text','st','start');
+  ids.forEach((v,i)=>{const x=x0+i*(bw+gap);TX(G[0],x+bw/2,44,words[i],'st').style.fontSize='13px';BX(G[0],x,58,bw,40,'bx');TX(G[0],x+bw/2,78,String(v),'lab')});
+  [16,17].forEach(i=>{const x=x0+i*(bw+gap);BX(G[2],x,58,bw,40,'bxd');TX(G[2],x+bw/2,78,'0','lab a');TX(G[2],x+bw/2,44,'PAD','st a')});
+  [0,1,2].forEach(k=>{const a=x0+k*6*(bw+gap),b=a+6*(bw+gap)-gap;S('path',{d:'M'+a+' 106 L'+a+' 114 L'+b+' 114 L'+b+' 106',class:'ar b',style:'stroke-width:2.4'},G[1]);
+    TX(G[1],(a+b)/2,134,'sequence '+(k+1)+'  (T + 1 = 6 ids)','st b')});
+  const seqs=[0,1,2].map(k=>ids.concat([0,0]).slice(6*k,6*k+6)),cw=50,ch=36;
+  const grid=(ox,lab,off)=>{TX(G[3],ox,180,lab,'lab','start');seqs.forEach((s,i)=>s.slice(off,off+5).forEach((v,j)=>{const x=ox+j*(cw+6),y=200+i*(ch+8);
+      BX(G[3],x,y,cw,ch,v?'bxb':'bxd');TX(G[3],x+cw/2,y+ch/2,String(v),v?'lab':'lab a')}))};
+  grid(150,'inputs  X = seq[:−1]',0);grid(650,'targets  Y = seq[1:]',1);
+  TX(G[3],560,265,'→','lab big');TX(G[3],650+5*56+14,354,'0 targets: ignored','st a','start');
+  return{step(s){G.forEach((g,i)=>{if(i)g.style.opacity=s>=i?1:.05})}};
+};
+
+/* ---------- training over epochs ---------- */
+V.epochs=el=>{
+  const svg=svgEl(el,1100,350,'Sequences passed one by one through the RNN, with the loss falling over epochs');
+  const seqs=[[1,2,3,4,1],[5,6,7,8,9],[11,12,7,13,0]];
+  TX(svg,30,40,'training sequences','st','start');
+  const hl=S('rect',{x:22,width:250,height:46,rx:10,y:0,style:'fill:var(--blue-pale);opacity:0;transition:y .3s'},svg);
+  seqs.forEach((s,i)=>s.forEach((v,j)=>{const x=30+j*48,y=72+i*70;BX(svg,x,y,42,34,v?'bx':'bxd');TX(svg,x+21,y+17,String(v),v?'lab':'lab a')}));
+  const cells=[0,1,2,3,4].map(i=>{const x=360+i*66;if(i)AR(svg,x-20,170,x-3,170,'b');return BX(svg,x,150,46,40,'bx')});
+  TX(svg,505,240,'RNN unrolled over T = 5','st');const phase=TX(svg,505,112,'','lab');
+  const px0=760,px1=1075,py0=300,py1=70;S('line',{x1:px0,x2:px1,y1:py0,y2:py0,class:'ax'},svg);S('line',{x1:px0,x2:px0,y1:py0,y2:py1,class:'ax'},svg);
+  TX(svg,px0,py1-14,'loss','st','start');TX(svg,px1,py0+20,'updates','st','end');const ep=TX(svg,px1,py1-14,'','lab b','end');
+  const curve=S('path',{class:'cv',style:'stroke-width:2.6'},svg),dots=S('g',{},svg);
+  const r=RNG(9),EP=5,N=EP*3,loss=Array.from({length:N},(_,k)=>2.3*Math.exp(-k/4.5)+.35+r.n()*.07);
+  const sx=k=>px0+12+k*(px1-px0-24)/(N-1),sy=v=>py0-(v/2.8)*(py0-py1);
+  const T=timers();
+  function run(){T.clear();curve.setAttribute('d','');dots.innerHTML='';let k=0;
+    const order=()=>{const o=[0,1,2];for(let i=2;i>0;i--){const j=Math.floor(r()*(i+1));[o[i],o[j]]=[o[j],o[i]]}return o};
+    let ord=order();
+    const one=()=>{if(k>=N){T.after(run,2500);return}const e=Math.floor(k/3),row=ord[k%3];
+      ep.textContent='epoch '+(e+1)+' / '+EP;hl.setAttribute('y',64+row*70);hl.style.opacity=1;
+      phase.textContent='forward';phase.setAttribute('class','lab b');
+      cells.forEach((c,i)=>T.after(()=>c.setAttribute('class','bxb'),i*110));
+      T.after(()=>{phase.textContent='loss, then BPTT';phase.setAttribute('class','lab a');cells.forEach((c,i)=>T.after(()=>c.setAttribute('class','bxa'),(4-i)*110))},650);
+      T.after(()=>{phase.textContent='update shared weights';phase.setAttribute('class','lab');cells.forEach(c=>c.setAttribute('class','bx'));
+        S('circle',{cx:sx(k),cy:sy(loss[k]),r:4.5,class:'dot'},dots);curve.setAttribute('d',pathOf(loss.slice(0,k+1).map((v,i)=>[sx(i),sy(v)])));
+        k++;if(k%3===0)ord=order();T.after(one,450)},1350)};
+    one()}
+  return{enter(){if(RM){curve.setAttribute('d',pathOf(loss.map((v,i)=>[sx(i),sy(v)])));ep.textContent=EP+' epochs';return}run()},leave(){T.clear()}};
+};
+
+/* ---------- autoregressive generation ---------- */
+V.genFeed=el=>{
+  const svg=svgEl(el,1100,340,'Generated tokens fed back as the next inputs');
+  const out=['be','or','not','to','be','that'],xs=out.map((_,i)=>110+i*176),gs=[];
+  AR(svg,10,175,xs[0]-47,175,'b');
+  xs.forEach((cx,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);
+    if(i)AR(g,xs[i-1]+45,175,cx-47,175,'b');
+    BX(g,cx-45,147,90,56,'bxb');SUB(g,cx,173,'h',String(i+1));
+    TX(g,cx,300,i?out[i-1]:'to',i?'lab a':'lab');AR(g,cx,280,cx,207,i?'a':'');
+    TX(g,cx,58,out[i],'lab a');AR(g,cx,145,cx,82,'a');
+    if(i<out.length-1)PA(g,'M'+(cx+26)+' 58 C'+(cx+95)+' 58 '+(cx+95)+' 300 '+(xs[i+1]-30)+' 300','a',{style:'stroke-dasharray:6 5'});
+  });
+  TX(svg,xs[0],328,'prompt','st');TX(svg,xs[2],22,'sampled from p(· | h_t)','st a');
+  const T=timers();
+  return{enter(){T.clear();gs.forEach(g=>g.style.opacity=RM?1:.06);if(!RM)gs.forEach((g,i)=>T.after(()=>g.style.opacity=1,300+i*650))},leave(){T.clear()}};
+};
+V.derail=el=>{
+  const svg=svgEl(el,1100,230,'Reference text and a generation that goes wrong after one bad token');
+  const ref=['to','be,','or','not','to','be:','that','is','the','question'],gen=['to','be,','or','and','the','king','is','dead,','long','live'];
+  const row=(toks,y,mark)=>{let x=150;return toks.map((t,i)=>{const w=24+t.length*12.5,g=S('g',{class:'fd'},svg);
+    BX(g,x,y,w,46,!mark?'bx':i<3?'bx':i===3?'bxa':'bx');
+    if(mark&&i===3)g.lastChild.setAttribute('style','stroke:var(--bad);fill:var(--panel);stroke-width:3');
+    if(mark&&i>3)g.lastChild.setAttribute('style','fill:var(--amber-pale);stroke:var(--amber);stroke-width:1.5;stroke-dasharray:5 4');
+    TX(g,x+w/2,y+23,t,mark&&i===3?'lab':'lab');x+=w+8;return {g:g,cx:x-w/2-8}})};
+  TX(svg,20,48,'expected','st','start');TX(svg,20,138,'generated','st','start');
+  row(ref,25);const G=row(gen,115,true);
+  TX(svg,G[3].cx,190,'one unlucky sample','st','middle').style.fill='var(--bad)';
+  TX(svg,G[7].cx,190,'everything after builds on the mistake','st a');
+  const T=timers();
+  return{enter(){T.clear();G.forEach(g=>g.g.style.opacity=RM?1:.05);if(!RM)G.forEach((g,i)=>T.after(()=>g.g.style.opacity=1,300+i*380))},leave(){T.clear()}};
+};
+V.drift=el=>{
+  vcol(el);
+  const svg=svgEl(el,1000,280,'True sine wave versus autoregressive generation from a slightly wrong model');
+  const w=.28,N=72,seed=10,sx=t=>30+t*13.4,sy=v=>140-95*Math.max(-1.45,Math.min(1.45,v));
+  S('line',{x1:20,x2:990,y1:140,y2:140,class:'ax',style:'opacity:.5'},svg);
+  S('path',{d:pathOf(Array.from({length:N},(_,t)=>[sx(t),sy(Math.sin(w*t))])),class:'cv thin'},svg);
+  for(let t=0;t<seed;t++)S('circle',{cx:sx(t),cy:sy(Math.sin(w*t)),r:4.5,class:'dot'},svg);
+  S('line',{x1:sx(seed-.5),x2:sx(seed-.5),y1:20,y2:270,class:'ax',style:'stroke-dasharray:4 5'},svg);
+  TX(svg,sx(0),262,'given','st b','start');TX(svg,sx(seed),262,'generated from its own outputs','st a','start');TX(svg,990,22,'dashed: true signal','st','end');
+  const gp=S('path',{class:'cv amber',style:'stroke-width:3'},svg);
+  const ro=H('div','trio',el);
+  const draw=eps=>{const c=2*Math.cos(w)*(1+eps),g=[];for(let t=0;t<seed;t++)g.push(Math.sin(w*t));
+    for(let t=seed;t<N;t++)g.push(c*g[t-1]-g[t-2]);
+    gp.setAttribute('d',pathOf(g.slice(seed-1).map((v,i)=>[sx(i+seed-1),sy(v)])));
+    let one=0;for(let t=2;t<N;t++)one=Math.max(one,Math.abs(c*Math.sin(w*(t-1))-Math.sin(w*(t-2))-Math.sin(w*t)));
+    const end=Math.abs(g[N-1]-Math.sin(w*(N-1)));let mx=0;for(let t=seed;t<N;t++)mx=Math.max(mx,Math.abs(g[t]-Math.sin(w*t)));
+    ro.innerHTML='<span class="soft">largest one-step error (true inputs): <b style="color:var(--blue)">'+one.toFixed(3)+'</b></span><span class="soft">largest error while generating: <b style="color:var(--amber)">'+(mx>99?mx.toExponential(1):mx.toFixed(2))+'</b></span>'};
+  const sl=Slider(el,'model error',0,.05,.001,.02,draw,true,v=>(v*100).toFixed(1)+'%');sl.el.parentNode.style.width='520px';
+  draw(.02);return{enter(){sl.set(.02);draw(.02)}};
+};
+
+/* ---------- LSTM ---------- */
+function TL(p,x0,y,base,sub,cls,anchor){const t=SUB(p,x0,y,base,sub,cls,anchor);
+  const bx=anchor==='start'?x0+6:anchor==='end'?x0-14:x0-4;
+  S('path',{d:'M'+(bx-5)+' '+(y-9)+' q3 -4 6 0 t6 0',style:'fill:none;stroke-width:1.6;stroke:'+(/\ba\b/.test(cls||'')?'var(--amber)':'var(--ink)')},p);return t}
+V.resid=el=>{
+  vcol(el);
+  const svg=svgEl(el,1080,210,'Plain RNN step versus residual step with a skip connection');
+  TX(svg,250,18,'plain RNN step','lab');
+  SUB(svg,55,120,'h','t−1','mt','middle');AR(svg,90,120,148,120);BX(svg,150,92,200,56,'bxb');TX(svg,250,120,'tanh( · )','mt');
+  AR(svg,352,120,410,120,'b');SUB(svg,440,120,'h','t','mt b');
+  TX(svg,810,18,'residual step on a memory c','lab');
+  SUB(svg,595,140,'c','t−1','mt');S('line',{x1:630,y1:140,x2:660,y2:140,class:'ar'},svg);
+  PA(svg,'M660 140 L660 60 L900 60 L900 122','a',{style:'stroke-width:3'});
+  AR(svg,660,140,698,140);BX(svg,700,112,140,56,'bxb');SUB(svg,770,138,'F','θ');
+  AR(svg,842,140,882,140);S('circle',{cx:900,cy:140,r:17,class:'bx'},svg);TX(svg,900,139,'+','lab big');
+  AR(svg,918,140,975,140,'b');SUB(svg,1005,140,'c','t','mt b');
+  TX(svg,780,44,'identity path: the gradient passes unchanged','st a');
+  const row=H('div','row',el);row.style.gap='120px';
+  H('div','math sm',row,M('\\frac{\\partial h_t}{\\partial h_{t-1}} = \\text{diag}(\\tanh\') W_{hh}'));
+  H('div','math sm',row,M('c_t = c_{t-1} + F(c_{t-1}, x_t),\\quad \\frac{\\partial c_t}{\\partial c_{t-1}} = I + \\frac{\\partial F}{\\partial c_{t-1}}'));
+};
+V.highway=el=>{
+  vcol(el);
+  const svg=svgEl(el,940,200,'Gradient size over 30 steps for an RNN and for an LSTM cell path');
+  const rho=.7,bA=[],bB=[];
+  TX(svg,0,50,'vanilla RNN, ρ = 0.7','st b','start');TX(svg,0,140,'LSTM cell path, f','st a','start');
+  for(let k=1;k<=30;k++){const x=190+(k-1)*24;
+    const h=70*Math.pow(rho,k);S('rect',{x:x,y:90-h,width:16,height:Math.max(1,h),rx:2,style:'fill:var(--blue)'},svg);
+    bB.push(S('rect',{x:x,width:16,rx:2,style:'fill:var(--amber)'},svg))}
+  S('line',{x1:186,x2:910,y1:90,y2:90,class:'ax'},svg);S('line',{x1:186,x2:910,y1:180,y2:180,class:'ax'},svg);
+  TX(svg,910,196,'steps back →','st','end');
+  const ro=H('div','trio',el);
+  const draw=f=>{bB.forEach((b,i)=>{const h=70*Math.pow(f,i+1);b.setAttribute('y',180-h);b.setAttribute('height',Math.max(1,h))});
+    const g=v=>{if(v>=1e-3)return v.toFixed(3);const e=Math.floor(Math.log10(v));return (v/Math.pow(10,e)).toFixed(1)+' × '+pw(e)};
+    ro.innerHTML='<span class="soft">after 30 steps: RNN <b style="color:var(--blue)">'+g(Math.pow(rho,30))+'</b></span><span class="soft">LSTM cell path <b style="color:var(--amber)">'+g(Math.pow(f,30))+'</b></span>'};
+  const sl=Slider(el,'forget gate f',.5,1,.01,.97,draw,true,v=>v.toFixed(2));sl.el.parentNode.style.width='520px';
+  draw(.97);return{enter(){sl.set(.97);draw(.97)}};
+};
+V.lstmCell=el=>{
+  vcol(el);el.style.gap='4px';
+  const svg=svgEl(el,1000,370,'LSTM cell with forget, input and output gates');
+  const g=[0,1,2,3].map(()=>S('g',{class:'fd'},svg));
+  const op=(p,x,y,s)=>{S('circle',{cx:x,cy:y,r:16,class:'bx',style:'stroke:var(--ink);stroke-width:2'},p);TX(p,x,y-1,s,'lab')};
+  const gate=(p,x,lab,c)=>{BX(p,x-35,200,70,44,c);TX(p,x,222,lab,lab==='σ'?'mt':'mt a');AR(p,x,298,x,247)};
+  // stage 0
+  SUB(g[0],40,44,'c','t−1','mt b','start');S('line',{x1:40,y1:70,x2:312,y2:70,class:'ar b',style:'stroke-width:4'},g[0]);
+  SUB(g[0],40,276,'h','t−1','mt','start');S('line',{x1:40,y1:300,x2:690,y2:300,class:'ar',style:'stroke-width:2.4'},g[0]);
+  SUB(g[0],150,354,'x','t','mt');AR(g[0],150,338,150,303);
+  // stage 1: forget
+  gate(g[1],330,'σ','bxb');AR(g[1],330,198,330,89);op(g[1],330,70,'×');SUB(g[1],318,150,'f','t','mt','end');
+  S('line',{x1:346,y1:70,x2:472,y2:70,class:'ar b',style:'stroke-width:4'},g[1]);
+  // stage 2: input + candidate
+  gate(g[2],440,'σ','bxb');gate(g[2],540,'tanh','bxa');
+  AR(g[2],448,198,480,154);AR(g[2],532,198,500,154);op(g[2],490,140,'×');AR(g[2],490,123,490,89);op(g[2],490,70,'+');
+  SUB(g[2],430,170,'i','t','mt','end');TL(g[2],552,172,'c','t','mt a','start');
+  S('line',{x1:506,y1:70,x2:930,y2:70,class:'ar b','marker-end':'url(#ahb)',style:'stroke-width:4'},g[2]);SUB(g[2],950,70,'c','t','mt b','start');
+  // stage 3: output
+  gate(g[3],680,'σ','bxb');SUB(g[3],680,186,'o','t','mt');
+  AR(g[3],780,72,780,106);BX(g[3],745,108,70,40,'bxa');TX(g[3],780,128,'tanh','mt a');AR(g[3],780,150,780,197);
+  AR(g[3],717,222,762,216);op(g[3],780,215,'×');
+  S('path',{d:'M780 231 L780 300 L930 300',class:'ar b','marker-end':'url(#ahb)',style:'stroke-width:3'},g[3]);SUB(g[3],950,300,'h','t','mt b','start');
+  TX(g[3],600,40,'cell state: the additive “highway”','st b');
+  const cap=exCaps(el,[
+    L1('Inputs: the cell state '+MM('c_{t-1}')+', the hidden state '+MM('h_{t-1}')+' and the input '+MM('x_t')+'.'),
+    L1('<b>Forget gate</b>&nbsp;'+MM('f_t = \\sigma(W_f [h_{t-1}, x_t] + b_f)')+' in (0, 1): how much of each entry of '+MM('c_{t-1}')+' to keep.'),
+    L1('<b>Input gate</b>&nbsp;'+MM('i_t')+' and <b>candidate</b>&nbsp;'+MM('\\tilde{c}_t')+' decide what to write:')+L1(MM('c_t = f_t \\odot c_{t-1} + i_t \\odot \\tilde{c}_t')+'&ensp;an <span class="imp">additive</span> update.'),
+    L1('<b>Output gate</b>&nbsp;'+MM('o_t')+' decides what to reveal: '+MM('h_t = o_t \\odot \\tanh(c_t)'))
+  ]);
+  return{step(s){g.forEach((x,i)=>x.style.opacity=i<=s?1:.08);cap(s)}};
+};
+V.lstmMem=el=>{
+  const svg=svgEl(el,1100,400,'Gate and cell values of one LSTM unit across a sentence');
+  const P=sentence(svg,8,{x0:95,cls:i=>i===1?'bxa':'bx'});
+  const I=[.1,.95,.05,.05,.1,.05,.05,.1,.05,.1,.05,.05],F=[.2,.5,.97,.97,.96,.97,.97,.95,.97,.96,.97,.97],O=[.1,.1,.05,.05,.1,.05,.05,.05,.1,.05,.05,.95];
+  let c=0;const C=I.map((iv,k)=>c=F[k]*c+iv*(k===1?1:0));
+  const rows=[['i','t',I,108,'var(--blue)'],['f','t',F,180,'var(--blue)'],['c','t',C,252,'var(--amber)'],['o','t',O,324,'var(--blue)']];
+  rows.forEach(r=>{SUB(svg,20,r[3]-22,r[0],r[1],r[4]==='var(--amber)'?'mt a':'mt','start');S('line',{x1:90,x2:1095,y1:r[3],y2:r[3],class:'ax',style:'opacity:.5'},svg)});
+  const cols=P.map((p,k)=>{const g=S('g',{class:'fd'},svg);rows.forEach(r=>{const h=Math.max(1.5,r[2][k]*50);S('rect',{x:p.cx-13,y:r[3]-h,width:26,height:h,rx:3,style:'fill:'+r[4]},g)});return g});
+  TX(cols[11],P[11].cx,356,'h = o ⊙ tanh(c)','st a');TX(cols[11],P[11].cx,382,'→ “are”','lab a');
+  TX(cols[1],P[1].cx,356,'write','st a');
+  const T=timers();
+  return{enter(){T.clear();cols.forEach(g=>g.style.opacity=RM?1:.06);if(!RM)cols.forEach((g,i)=>T.after(()=>g.style.opacity=1,250+i*330))},leave(){T.clear()}};
+};
+V.glyph=el=>{
+  const k=el.dataset.k,svg=svgEl(el,460,84,'');
+  const box=(x,y,c)=>BX(svg,x,y,40,26,c||'bxb');
+  if(k==='gru'){AR(svg,60,42,148,42,'b');BX(svg,150,12,160,60,'bxb');AR(svg,312,42,400,42,'b');
+    [['z',205],['r',255]].forEach(q=>{S('circle',{cx:q[1],cy:42,r:15,class:'bxa'},svg);TX(svg,q[1],41,q[0],'mt a')})}
+  if(k==='bi'){for(let i=0;i<5;i++){box(40+i*80,6);box(40+i*80,52,'bxa');if(i){AR(svg,i*80,19,38+i*80,19,'b');AR(svg,42+i*80,65,i*80+4,65,'a')}}}
+  if(k==='deep'){for(let i=0;i<5;i++){box(40+i*80,52);box(40+i*80,6);AR(svg,60+i*80,50,60+i*80,34,'b');if(i){AR(svg,i*80,65,38+i*80,65,'b');AR(svg,i*80,19,38+i*80,19,'b')}}}
+  if(k==='encdec'){for(let i=0;i<3;i++){box(20+i*70,30);if(i)AR(svg,i*70-10,43,18+i*70,43,'b')}
+    AR(svg,190,43,248,43,'a');for(let i=0;i<3;i++){box(250+i*70,30,'bxa');if(i)AR(svg,220+i*70,43,248+i*70,43,'a')}
+    TX(svg,90,12,'encoder','st b');TX(svg,320,12,'decoder','st a')}
+};
+
+/* tanh and its derivative */
+V.tanhPlot=el=>{
+  vcol(el);
+  const svg=svgEl(el,560,330,'tanh and its derivative');
+  const sx=a=>40+(a+4)/8*500,sy=v=>170-v*120;
+  S('line',{x1:30,x2:550,y1:sy(0),y2:sy(0),class:'ax'},svg);S('line',{x1:sx(0),x2:sx(0),y1:30,y2:310,class:'ax'},svg);
+  TX(svg,550,sy(0)+16,'a','mt s','end');TX(svg,sx(0)+8,sy(1),'1','st','start');TX(svg,sx(0)+8,sy(-1),'−1','st','start');
+  const pts=f=>{const p=[];for(let a=-4;a<=4.001;a+=.05)p.push([sx(a),sy(f(a))]);return pathOf(p)};
+  S('path',{d:pts(Math.tanh),class:'cv'},svg);S('path',{d:pts(a=>1-Math.tanh(a)**2),class:'cv amber'},svg);
+  TX(svg,sx(2.6),sy(1)-16,'tanh(a)','lab b');TX(svg,sx(-2.4),sy(.35),'1 − tanh²(a)','lab a');
+  const tan=S('line',{class:'ar b',style:'stroke-dasharray:6 5'},svg),
+    p1=S('circle',{r:7,class:'dot'},svg),p2=S('circle',{r:7,class:'dot a'},svg),vl=S('line',{class:'ax',style:'stroke-dasharray:3 4'},svg);
+  const ro=H('p','soft small',el);
+  const draw=a=>{const h=Math.tanh(a),d=1-h*h;
+    p1.setAttribute('cx',sx(a));p1.setAttribute('cy',sy(h));p2.setAttribute('cx',sx(a));p2.setAttribute('cy',sy(d));
+    vl.setAttribute('x1',sx(a));vl.setAttribute('x2',sx(a));vl.setAttribute('y1',30);vl.setAttribute('y2',310);
+    const dx=1.1;tan.setAttribute('x1',sx(a-dx));tan.setAttribute('y1',sy(h-d*dx));tan.setAttribute('x2',sx(a+dx));tan.setAttribute('y2',sy(h+d*dx));
+    ro.innerHTML='a = '+a.toFixed(2)+'&emsp;h = tanh(a) = <b style="color:var(--blue)">'+h.toFixed(3)+'</b>&emsp;slope 1 − h² = <b style="color:var(--amber)">'+d.toFixed(3)+'</b>'};
+  const sl=Slider(el,'a',-4,4,.01,1,draw,false,v=>v.toFixed(2));sl.el.parentNode.style.width='460px';
+  draw(1);return{enter(){sl.set(1);draw(1)}};
+};
+
+/* the two routes that make up delta */
+V.deltaRoutes=el=>{
+  const svg=svgEl(el,1000,230,'A pre-activation affects the loss through the current output and through later steps');
+  const circ=(x,y,c)=>S('circle',{cx:x,cy:y,r:30,class:c},svg);
+  circ(90,160,'bxb');SUB(svg,90,160,'a','t,j');AR(svg,122,160,178,160,'b');
+  BX(svg,180,136,100,48,'bxb');TX(svg,230,160,'tanh','mt');TX(svg,230,202,'slope 1 − h²','st');AR(svg,282,160,338,160,'b');
+  circ(370,160,'bxb');SUB(svg,370,160,'h','t,j');
+  AR(svg,394,140,520,70,'b');SUB(svg,440,90,'W','hy','mt s','end');
+  circ(550,60,'bxa');SUB(svg,550,60,'ŷ','t','mt a');AR(svg,582,60,648,60,'a');BX(svg,650,38,90,44,'bxa');SUB(svg,695,60,'ℓ','t','mt a');
+  TX(svg,770,60,'now','lab a','start');
+  AR(svg,402,160,538,160,'b');SUB(svg,470,140,'W','hh','mt s');
+  circ(570,160,'bxb');SUB(svg,570,160,'a','t+1');AR(svg,602,160,648,160,'b');TX(svg,680,160,'···','lab');AR(svg,712,160,758,160,'b');
+  BX(svg,760,136,170,48,'bxa');TX(svg,845,160,'ℓₜ₊₁, ℓₜ₊₂, …','mt a');TX(svg,845,205,'later','lab a');
+  TX(svg,90,214,'δ collects both routes','st a');
+};
+
+/* ---------- task types ---------- */
+V.taskTypes=el=>{
+  const svg=svgEl(el,1100,300,'Three ways to use an RNN: next-step, sequence to label, sequence to sequence');
+  const cell=(x,c)=>BX(svg,x-22,130,44,40,c||'bxb');
+  const panel=(ox,title,cls)=>TX(svg,ox,18,title,'lab '+(cls||''));
+  // next step
+  panel(170,'next step (many → many)');[0,1,2,3].forEach(i=>{const x=60+i*72;cell(x);AR(svg,x,232,x,174);TX(svg,x,250,'x'+sb(i+1),'mt');AR(svg,x,128,x,84,'a');HAT(svg,x-5,66,String(i+2),'mt a');if(i)AR(svg,x-50,150,x-25,150,'b')});
+  // seq -> label
+  panel(540,'sequence → label (many → one)');[0,1,2,3].forEach(i=>{const x=430+i*72;cell(x);AR(svg,x,232,x,174);TX(svg,x,250,['the','movie','was','great'][i],'st');if(i)AR(svg,x-50,150,x-25,150,'b')});
+  AR(svg,646,128,646,84,'a');BX(svg,606,40,80,40,'bxa');TX(svg,646,60,'positive','st a');
+  // seq2seq
+  panel(920,'sequence → sequence');[0,1,2].forEach(i=>{const x=790+i*52;BX(svg,x-20,130,40,40,'bxb');AR(svg,x,232,x,174);if(i)AR(svg,x-34,150,x-23,150,'b')});
+  [0,1,2].forEach(i=>{const x=968+i*54;BX(svg,x-18,130,36,40,'bxa');AR(svg,x,128,x,84,'a');if(i)AR(svg,x-30,150,x-21,150,'a')});
+  AR(svg,892,150,948,150,'a');TX(svg,842,250,'input','st b');TX(svg,1022,66,'output','st a');TX(svg,920,136,'c','mt a');
+  [['many → many: predict at every step',170],['one prediction for the sequence',540],['encoder → decoder',920]].forEach(q=>TX(svg,q[1],290,q[0],'st'));
+};
+
+/* ---------- sentiment ---------- */
+V.sentiment=el=>{
+  const svg=svgEl(el,1100,260,'RNN reading a review, then classifying the final state');
+  const toks=['the','movie','was','not','good'],xs=toks.map((_,i)=>150+i*128),gs=[];
+  BX(svg,10,108,56,44,'bx');SUB(svg,38,130,'h','0');
+  xs.forEach((x,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);AR(g,i?xs[i-1]+46:68,130,x-48,130,'b');
+    BX(g,x-45,102,90,56,'bxb');SUB(g,x,130,'h',String(i+1));AR(g,x,224,x,162);TX(g,x,242,toks[i],'lab')});
+  const fin=S('g',{class:'fd'},svg);gs.push(fin);
+  AR(fin,xs[4]+47,130,780,130,'a');BX(fin,782,102,110,56,'bxa');TX(fin,837,122,'linear','st a');TX(fin,837,140,'+ softmax','st a');
+  AR(fin,894,130,918,130,'a');
+  [['positive',.13],['negative',.87]].forEach((p,i)=>{const y=96+i*50;TX(fin,924,y,p[0],'st','start');
+    S('rect',{x:924,y:y+8,width:110*p[1],height:14,rx:3,style:'fill:'+(i?'var(--amber)':'var(--blue)')},fin);TX(fin,924+110*p[1]+6,y+15,p[1].toFixed(2),'st','start')});
+  TX(svg,xs[2],22,'only the last state is used','st a');
+  const T=timers();
+  return{enter(){T.clear();gs.forEach(g=>g.style.opacity=RM?1:.06);if(!RM)gs.forEach((g,i)=>T.after(()=>g.style.opacity=1,250+i*450))},leave(){T.clear()}};
+};
+
+/* ---------- seq2seq ---------- */
+V.seq2seq=el=>{
+  const svg=svgEl(el,1100,320,'Encoder reads an English sentence; decoder generates the French translation');
+  const enc=['I','love','cats'],dec=['<bos>','j’aime','les','chats'],out=['j’aime','les','chats','<eos>'];
+  const ex=enc.map((_,i)=>70+i*130),dx=dec.map((_,i)=>540+i*150),gs=[];
+  TX(svg,200,24,'encoder','lab b');TX(svg,765,24,'decoder','lab a');
+  ex.forEach((x,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);if(i)AR(g,ex[i-1]+42,170,x-44,170,'b');
+    BX(g,x-40,144,80,52,'bxb');SUB(g,x,170,'h',String(i+1));AR(g,x,266,x,200);TX(g,x,286,enc[i],'lab')});
+  const cg=S('g',{class:'fd'},svg);gs.push(cg);AR(cg,ex[2]+42,170,dx[0]-46,170,'a');TX(cg,(ex[2]+dx[0])/2,150,'c = h₃','mt a');
+  TX(cg,(ex[2]+dx[0])/2,112,'summary of the input','st a');
+  dx.forEach((x,i)=>{const g=S('g',{class:'fd'},svg);gs.push(g);if(i)AR(g,dx[i-1]+44,170,x-46,170,'a');
+    BX(g,x-42,144,84,52,'bxa');SUB(g,x,170,'s',String(i+1),'mt a');AR(g,x,266,x,200);TX(g,x,286,dec[i],i?'lab a':'lab');
+    AR(g,x,142,x,86);TX(g,x,68,out[i],'lab a');
+    if(i<3)PA(g,'M'+(x+30)+' 68 C'+(x+90)+' 68 '+(x+90)+' 286 '+(dx[i+1]-40)+' 286','a',{style:'stroke-dasharray:6 5'})});
+  const T=timers();
+  return{enter(){T.clear();gs.forEach(g=>g.style.opacity=RM?1:.06);if(!RM)gs.forEach((g,i)=>T.after(()=>g.style.opacity=1,250+i*480))},leave(){T.clear()}};
+};
+
+/* ---------- beam search ---------- */
+V.beam=el=>{vcol(el);el.style.gap='4px';
+  const svg=svgEl(el,1060,330,'Beam search tree with beam width two');
+  const node=(g,x,y,t,c)=>{const b=BX(g,x-52,y-20,104,40,c||'bx');TX(g,x,y,t,'lab');return b};
+  const edge=(g,x1,y1,x2,y2,p)=>{AR(g,x1,y1,x2,y2);TX(g,(x1+x2)/2,(y1+y2)/2-12,p,'st')};
+  const G=[0,1,2,3].map(()=>S('g',{class:'fd'},svg));
+  node(G[0],70,165,'<bos>','bxb');
+  const LV=[['The cat',.5,70],['The dog',.4,175],['A',.1,280]];
+  const n1=LV.map(q=>{edge(G[0],124,165,276,q[2],q[1].toFixed(1));return node(G[0],330,q[2],q[0])});
+  const pr=S('g',{class:'fd'},svg);S('line',{x1:270,x2:390,y1:262,y2:298,style:'stroke:var(--bad);stroke-width:3'},pr);S('line',{x1:270,x2:390,y1:298,y2:262,style:'stroke:var(--bad);stroke-width:3'},pr);
+  TX(pr,330,316,'pruned: not in top 2','st');
+  const L2=[['is',.4,20,0],['sat',.35,95,0],['barked',.9,165,1],['ran',.05,240,1]],sc=[];
+  L2.forEach(q=>{const py=LV[q[3]][2],tot=LV[q[3]][1]*q[1];edge(G[2],384,py,596,q[2],q[1].toFixed(2));
+    sc.push({b:node(G[2],650,q[2],q[0]),t:TX(G[2],760,q[2],'score '+tot.toFixed(3),'lab','start'),tot})});
+  TX(G[3],900,165,'← best: “The dog barked”','lab a','start');
+  TX(G[3],900,20,'← greedy ends here','st','start');
+  const cap=exCaps(el,[L1('Step 1: score every first word. Beam width '+MM('k = 2')+'.'),
+    L1('Keep only the <b>2 best</b> partial outputs. Greedy decoding would keep just “The cat” (0.5).'),
+    L1('Step 2: extend each kept output; score = product of the probabilities along the path.'),
+    L1('Keep the 2 best again. “The dog barked” (0.36) beats greedy’s “The cat is” (0.20).')]);
+  return{step(s){G[0].style.opacity=1;pr.style.opacity=s>=1?1:0;G[2].style.opacity=s>=2?1:0;G[3].style.opacity=s>=3?1:0;
+    n1[2].parentNode;sc.forEach((q,i)=>{q.b.setAttribute('class',s>=3?(i===2?'bxa':i===0?'bxb':'bx'):'bx');q.t.style.opacity=s>=3&&(i===1||i===3)?.35:1});cap(s)}};
+};
+
+/* ================= gradient boosting deck ================= */
+const CSSV=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---- regression tree (CART, squared error) on 2-D or 1-D points ---- */
+function fitTree(P,y,idx,depth,minLeaf){
+  minLeaf=minLeaf||2;let s=0;idx.forEach(i=>s+=y[i]);const v=s/idx.length;
+  if(depth===0||idx.length<2*minLeaf)return{v:v};
+  const D=P[0].length;let best=null;
+  for(let f=0;f<D;f++){const o=idx.slice().sort((a,b)=>P[a][f]-P[b][f]);
+    let tot=0,tot2=0;o.forEach(i=>{tot+=y[i];tot2+=y[i]*y[i]});
+    let sL=0,qL=0;const n=o.length;
+    for(let k=1;k<n;k++){const i=o[k-1];sL+=y[i];qL+=y[i]*y[i];
+      if(k<minLeaf||n-k<minLeaf)continue;const a=P[o[k-1]][f],b=P[o[k]][f];if(a===b)continue;
+      const sR=tot-sL,qR=tot2-qL,sse=qL-sL*sL/k+qR-sR*sR/(n-k);
+      if(!best||sse<best.sse-1e-12)best={sse:sse,f:f,t:(a+b)/2}}}
+  if(!best)return{v:v};
+  const L=[],R=[];idx.forEach(i=>(P[i][best.f]<=best.t?L:R).push(i));
+  return{f:best.f,t:best.t,v:v,l:fitTree(P,y,L,depth-1,minLeaf),r:fitTree(P,y,R,depth-1,minLeaf)};
+}
+const predT=(n,p)=>{while(n.l)n=p[n.f]<=n.t?n.l:n.r;return n.v};
+
+/* ---- triangle data ---- */
+const TRI=[[.1,.12],[.9,.12],[.5,.92]];
+const inTri=(x,y)=>{const s=(a,b,p)=>(b[0]-a[0])*(p[1]-a[1])-(b[1]-a[1])*(p[0]-a[0]);const p=[x,y];
+  const d1=s(TRI[0],TRI[1],p),d2=s(TRI[1],TRI[2],p),d3=s(TRI[2],TRI[0],p);return (d1>=0&&d2>=0&&d3>=0)||(d1<=0&&d2<=0&&d3<=0)};
+const GD=(()=>{const r=RNG(21),P=[],Y=[];for(let i=0;i<300;i++){const x=r(),y=r();P.push([x,y]);Y.push(inTri(x,y)?1:0)}
+  const G=70,cells=[],truth=[];for(let j=0;j<G;j++)for(let i=0;i<G;i++){const x=(i+.5)/G,y=(j+.5)/G;cells.push([x,y]);truth.push(inTri(x,y)?1:0)}
+  return{P,Y,G,cells,truth,all:P.map((_,i)=>i)}})();
+const accOf=pred=>{let c=0;for(let k=0;k<pred.length;k++)if((pred[k]>.5?1:0)===GD.truth[k])c++;return c/pred.length};
+const gridOf=tree=>GD.cells.map(c=>predT(tree,c));
+
+/* lazily computed ensembles */
+let BAG=null,BOOST=null;
+function getBag(){if(BAG)return BAG;const r=RNG(2),B=100,grids=[],trees=[];
+  for(let b=0;b<B;b++){const idx=[];for(let i=0;i<300;i++)idx.push(Math.floor(r()*300));const t=fitTree(GD.P,GD.Y,idx,2,3);trees.push(t);grids.push(gridOf(t))}
+  const acc=[],sum=new Float64Array(GD.cells.length);
+  for(let b=0;b<B;b++){for(let k=0;k<sum.length;k++)sum[k]+=grids[b][k];acc.push(accOf(Array.from(sum,v=>v/(b+1))))}
+  return BAG={trees,grids,acc}}
+function getBoost(){if(BOOST)return BOOST;const T=200,eta=.3,F=GD.Y.map(()=>0),m=GD.Y.reduce((a,b)=>a+b,0)/300;
+  for(let i=0;i<300;i++)F[i]=m;const g=new Float64Array(GD.cells.length).fill(m),snap=[Float32Array.from(g)],acc=[accOf(g)];
+  for(let t=0;t<T;t++){const r=GD.Y.map((y,i)=>y-F[i]);const tr=fitTree(GD.P,r,GD.all,2,3);
+    for(let i=0;i<300;i++)F[i]+=eta*predT(tr,GD.P[i]);for(let k=0;k<g.length;k++)g[k]+=eta*predT(tr,GD.cells[k]);snap.push(Float32Array.from(g));acc.push(accOf(g))}
+  return BOOST={snap,acc}}
+
+/* ---- canvas drawing of a 2-D classifier ---- */
+function regionCanvas(host,size){const c=H('canvas','',host);const dpr=Math.min(2,window.devicePixelRatio||1);
+  c.width=size*dpr;c.height=size*dpr;c.style.width=size+'px';c.style.height=size+'px';c.style.borderRadius='10px';c.style.border='1.5px solid var(--line)';
+  const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+  return{draw(grid,opt){opt=opt||{};const G=GD.G,cs=size/G,bp=CSSV('--blue-pale')||'#dbe6fb',pn=CSSV('--panel')||'#fff';
+    ctx.clearRect(0,0,size,size);
+    for(let j=0;j<G;j++)for(let i=0;i<G;i++){const v=grid[j*G+i];ctx.fillStyle=v>.5?bp:pn;ctx.fillRect(i*cs,size-(j+1)*cs,cs+.6,cs+.6)}
+    if(opt.tree){ctx.strokeStyle=CSSV('--blue');ctx.lineWidth=2;const rec=(n,x0,x1,y0,y1)=>{if(!n.l)return;ctx.beginPath();
+        if(n.f===0){ctx.moveTo(n.t*size,size-y0*size);ctx.lineTo(n.t*size,size-y1*size);ctx.stroke();rec(n.l,x0,n.t,y0,y1);rec(n.r,n.t,x1,y0,y1)}
+        else{ctx.moveTo(x0*size,size-n.t*size);ctx.lineTo(x1*size,size-n.t*size);ctx.stroke();rec(n.l,x0,x1,y0,n.t);rec(n.r,x0,x1,n.t,y1)}};rec(opt.tree,0,1,0,1)}
+    ctx.setLineDash([7,5]);ctx.strokeStyle=CSSV('--ink');ctx.lineWidth=2;ctx.beginPath();TRI.forEach((p,i)=>i?ctx.lineTo(p[0]*size,size-p[1]*size):ctx.moveTo(p[0]*size,size-p[1]*size));ctx.closePath();ctx.stroke();ctx.setLineDash([]);
+    if(opt.points!==false)GD.P.forEach((p,i)=>{ctx.fillStyle=GD.Y[i]?CSSV('--blue'):CSSV('--amber');ctx.globalAlpha=.85;ctx.beginPath();ctx.arc(p[0]*size,size-p[1]*size,2.6,0,7);ctx.fill();ctx.globalAlpha=1})}}}
+const legend2D=host=>{const p=H('p','soft',host,'<span style="color:var(--blue)">●</span> inside &nbsp; <span style="color:var(--amber)">●</span> outside &nbsp; shaded: predicted inside &nbsp; dashed: true triangle');p.style.fontSize='15px';return p};
+
+/* small accuracy chart */
+function accChart(host,W,Hh,n,label){const svg=svgEl(host,W,Hh,'Accuracy chart');const x0=46,x1=W-12,y0=Hh-30,y1=14;
+  const sx=k=>x0+(k/(n))*(x1-x0),sy=a=>y0-(a-.7)/.3*(y0-y1);
+  S('line',{x1:x0,x2:x1,y1:y0,y2:y0,class:'ax'},svg);S('line',{x1:x0,x2:x0,y1:y0,y2:y1,class:'ax'},svg);
+  [.7,.8,.9,1].forEach(a=>TX(svg,x0-6,sy(a),Math.round(a*100)+'%','st','end'));TX(svg,x1,Hh-10,label,'st','end');
+  return{svg,sx,sy,line(arr,cls,off){S('path',{d:pathOf(arr.map((a,k)=>[sx(k+(off||0)),sy(Math.max(.7,a))])),class:cls},svg)},
+    mark(){const c=S('circle',{r:6,class:'dot'},svg);return(k,a)=>{c.setAttribute('cx',sx(k));c.setAttribute('cy',sy(Math.max(.7,a)))}}}}
+
+/* ---- title ---- */
+V.titleGB=el=>{const svg=svgEl(el,460,300,'Small boosting illustration');
+  const xs=[60,180,300],lab=['F₀','+ η h₁','+ η h₂'];
+  xs.forEach((x,i)=>{BX(svg,x-45,120,90,56,i?'bxa':'bxb');TX(svg,x,148,lab[i],'mt');if(i)AR(svg,xs[i-1]+47,148,x-49,148,'b')});
+  AR(svg,347,148,400,148,'b');TX(svg,430,148,'F','mt b');TX(svg,180,230,'each tree fixes the last one’s errors','st')};
+
+/* ---- slide: tree intro ---- */
+V.treeIntro=el=>{el.style.display='flex';el.style.gap='40px';el.style.alignItems='center';
+  const left=H('div','',el);left.style.display='flex';left.style.flexDirection='column';left.style.gap='6px';left.style.alignItems='center';
+  const cv=regionCanvas(left,380);legend2D(left);
+  const tree=fitTree(GD.P,GD.Y,GD.all,2,3);
+  const right=H('div','',el);const svg=svgEl(right,520,330,'Depth-two decision tree');
+  const name=f=>f?'x₂':'x₁',pos=[[260,40],[130,150],[390,150]];
+  const node=(n,x,y)=>{if(!n.l){BX(svg,x-55,y-22,110,44,n.v>.5?'bxb':'bx');TX(svg,x,y,'p = '+n.v.toFixed(2),'lab');return}
+    BX(svg,x-75,y-22,150,44,'bx');TX(svg,x,y,name(n.f)+' ≤ '+n.t.toFixed(2)+' ?','lab')};
+  node(tree,260,40);[[tree.l,130,150],[tree.r,390,150]].forEach(q=>{AR(svg,260+(q[1]<260?-40:40),64,q[1],126);node(q[0],q[1],q[2]);
+    if(q[0].l)[[q[0].l,q[1]-65,270],[q[0].r,q[1]+65,270]].forEach(z=>{AR(svg,q[1]+(z[1]<q[1]?-30:30),174,z[1],246);node(z[0],z[1],z[2])})});
+  TX(svg,165,98,'yes','st');TX(svg,355,98,'no','st');
+  H('p','soft small',right,'Each question uses <b>one</b> feature, so every cut is horizontal or vertical. Accuracy: '+Math.round(accOf(gridOf(tree))*100)+'%');
+  return{enter(){cv.draw(gridOf(tree),{tree:tree})}}};
+
+/* ---- slide: depth slider ---- */
+V.depthViz=el=>{el.style.display='flex';el.style.gap='44px';el.style.alignItems='center';
+  const left=H('div','',el);left.style.display='flex';left.style.flexDirection='column';left.style.gap='6px';left.style.alignItems='center';
+  const cv=regionCanvas(left,400);legend2D(left);
+  const right=H('div','',el);right.style.display='flex';right.style.flexDirection='column';right.style.gap='16px';right.style.width='460px';
+  const ro=H('p','big',right);const trees={};
+  const draw=d=>{d=Math.round(d);const t=trees[d]||(trees[d]=fitTree(GD.P,GD.Y,GD.all,d,2));const g=gridOf(t);cv.draw(g,{tree:t});
+    ro.innerHTML='depth '+d+': accuracy <b style="color:var(--blue)">'+(accOf(g)*100).toFixed(1)+'%</b>'};
+  const sl=Slider(right,'depth',1,8,1,1,draw,true,v=>String(Math.round(v)));
+  H('p','small',right,'Every boundary is a <span class="imp">staircase</span> of horizontal and vertical edges. Deeper trees make finer steps, but also fit the noise in this sample.');
+  return{enter(){sl.set(1);draw(1)}}};
+
+/* ---- slide: two bootstrap trees ---- */
+V.twoTrees=el=>{el.style.display='flex';el.style.gap='50px';
+  [7,8].forEach(seed=>{const box=H('div','',el);box.style.display='flex';box.style.flexDirection='column';box.style.alignItems='center';box.style.gap='6px';
+    const r=RNG(seed),idx=[];for(let i=0;i<300;i++)idx.push(Math.floor(r()*300));const t=fitTree(GD.P,GD.Y,idx,2,3);
+    const cv=regionCanvas(box,360);box._cv=cv;box._t=t;H('p','soft small',box,'accuracy '+(accOf(gridOf(t))*100).toFixed(1)+'%')});
+  return{enter(){[...el.children].forEach(b=>b._cv.draw(gridOf(b._t),{tree:b._t}))}}};
+
+/* ---- slide: bagging ---- */
+V.baggingViz=el=>{el.style.display='flex';el.style.gap='44px';el.style.alignItems='center';
+  const left=H('div','',el);left.style.display='flex';left.style.flexDirection='column';left.style.gap='6px';left.style.alignItems='center';
+  const cv=regionCanvas(left,400);legend2D(left);
+  const right=H('div','',el);right.style.display='flex';right.style.flexDirection='column';right.style.gap='12px';right.style.width='470px';
+  const ro=H('p','big',right);let ch=null,mk=null,sl=null;
+  const draw=N=>{N=Math.round(N);const B=getBag(),sum=new Float64Array(GD.cells.length);
+    for(let b=0;b<N;b++)for(let k=0;k<sum.length;k++)sum[k]+=B.grids[b][k];const g=Array.from(sum,v=>v/N);cv.draw(g);
+    ro.innerHTML=N+' tree'+(N>1?'s':'')+' averaged: <b style="color:var(--blue)">'+(B.acc[N-1]*100).toFixed(1)+'%</b>';if(mk)mk(N,B.acc[N-1])};
+  return{enter(){const B=getBag();if(!ch){ch=accChart(right,470,220,100,'number of trees');ch.line(B.acc,'cv',1);mk=ch.mark();
+      sl=Slider(right,'trees',1,100,1,1,draw,true,v=>String(Math.round(v)));
+      H('p','small',right,'Depth-2 trees on bootstrap samples. The accuracy <span class="fire">levels off</span>: more trees do not remove the staircase.')}
+    sl.set(1);draw(1)}}};
+
+/* ---- slide: boosting ---- */
+V.boostingViz=el=>{el.style.display='flex';el.style.gap='44px';el.style.alignItems='center';
+  const left=H('div','',el);left.style.display='flex';left.style.flexDirection='column';left.style.gap='6px';left.style.alignItems='center';
+  const cv=regionCanvas(left,400);legend2D(left);
+  const right=H('div','',el);right.style.display='flex';right.style.flexDirection='column';right.style.gap='12px';right.style.width='470px';
+  const ro=H('p','big',right);let ch=null,mk=null,sl=null;
+  const draw=T=>{T=Math.round(T);const B=getBoost();cv.draw(B.snap[T]);
+    ro.innerHTML=T+' round'+(T===1?'':'s')+': <b style="color:var(--blue)">'+(B.acc[T]*100).toFixed(1)+'%</b> <span class="soft small">(bagging: '+(getBag().acc[99]*100).toFixed(1)+'%)</span>';if(mk)mk(T,B.acc[T])};
+  return{enter(){const B=getBoost();if(!ch){ch=accChart(right,470,220,200,'boosting rounds');
+      const bg=getBag().acc[99];S('line',{x1:ch.sx(0),x2:ch.sx(200),y1:ch.sy(bg),y2:ch.sy(bg),class:'cv amber',style:'stroke-dasharray:7 6;stroke-width:2'},ch.svg);
+      TX(ch.svg,ch.sx(200),ch.sy(bg)+14,'bagging, 100 trees','st a','end');ch.line(B.acc,'cv');mk=ch.mark();
+      sl=Slider(right,'rounds',0,200,1,1,draw,true,v=>String(Math.round(v)));
+      H('p','small',right,'The <b>same</b> depth-2 trees, but each one is fitted to what the model still gets wrong. The boundary keeps improving.')}
+    sl.set(1);draw(1)}}};
+
+/* ---- 1-D regression data for the algorithm slides ---- */
+const D1=(()=>{const r=RNG(13),x=[],y=[];for(let i=0;i<30;i++){const v=(i+.5)/30;x.push(v);y.push(Math.sin(2*Math.PI*v)+.25*r.n())}return{x,y,P:x.map(v=>[v])}})();
+function plot1D(svg,ox,oy,W,Hh,ymin,ymax){const sx=v=>ox+v*W,sy=v=>oy+Hh-(v-ymin)/(ymax-ymin)*Hh;
+  S('line',{x1:ox,x2:ox+W,y1:sy(0),y2:sy(0),class:'ax',style:'opacity:.6'},svg);return{sx,sy}}
+const stepPath=(fn,sx,sy)=>{const p=[];for(let k=0;k<=400;k++){const v=k/400;p.push([sx(v),sy(fn(v))])}return pathOf(p)};
+
+V.roundViz=el=>{vcol(el);el.style.gap='4px';
+  const svg=svgEl(el,1080,340,'One round of boosting on noisy data');
+  TX(svg,250,14,'model and data','lab');TX(svg,820,14,'residuals, and the tree fitted to them','lab');
+  const A=plot1D(svg,20,30,470,290,-1.8,1.8),B=plot1D(svg,590,30,470,290,-1.8,1.8);
+  const f0=D1.y.reduce((a,b)=>a+b,0)/30,r=D1.y.map(v=>v-f0),tree=fitTree(D1.P,r,D1.x.map((_,i)=>i),2,2),eta=.8;
+  const g=[0,1,2,3].map(()=>S('g',{class:'fd'},svg));
+  D1.x.forEach((x,i)=>S('circle',{cx:A.sx(x),cy:A.sy(D1.y[i]),r:5,class:'dot',style:'fill:var(--ink)'},svg));
+  S('path',{d:stepPath(()=>f0,A.sx,A.sy),class:'cv',style:'stroke-width:3'},g[0]);TX(g[0],A.sx(1)-4,A.sy(f0)-14,'F₀ = mean','st b','end');
+  D1.x.forEach((x,i)=>{S('line',{x1:A.sx(x),x2:A.sx(x),y1:A.sy(f0),y2:A.sy(D1.y[i]),class:'ar a',style:'stroke-width:2'},g[1]);
+    S('circle',{cx:B.sx(x),cy:B.sy(r[i]),r:5,class:'dot a'},g[1])});
+  S('path',{d:stepPath(v=>predT(tree,[v]),B.sx,B.sy),class:'cv',style:'stroke-width:3'},g[2]);TX(g[2],B.sx(.02),B.sy(1.55),'h₁: a depth-2 tree','st b','start');
+  S('path',{d:stepPath(v=>f0+eta*predT(tree,[v]),A.sx,A.sy),class:'cv amber',style:'stroke-width:3'},g[3]);TX(g[3],A.sx(.02),A.sy(1.6),'F₁ = F₀ + η h₁','st a','start');
+  const cap=exCaps(el,[L1('Start simple: a constant prediction '+MM('F_0(x)')+', usually the mean of '+MM('y')+'.'),
+    L1('Measure what is wrong: the residuals '+MM('r_{i0} = y_i - F_0(x_i)')+'.'),
+    L1('Fit a small tree '+MM('h_1')+' to the residuals: <b>focus on what was missed</b>.'),
+    L1('Add the correction: '+MM('F_1(x) = F_0(x) + \\eta h_1(x)')+'. There are still errors, so repeat.')]);
+  return{step(s){g.forEach((x,i)=>x.style.opacity=i<=s?1:0);if(s>=3)g[0].style.opacity=.3;cap(s)}}};
+
+V.repeatViz=el=>{vcol(el);
+  const svg=svgEl(el,900,300,'Boosting fit after a chosen number of rounds');
+  const A=plot1D(svg,20,10,860,280,-1.8,1.8);
+  D1.x.forEach((x,i)=>S('circle',{cx:A.sx(x),cy:A.sy(D1.y[i]),r:5,style:'fill:var(--ink)'},svg));
+  const path=S('path',{class:'cv amber',style:'stroke-width:3'},svg);
+  const eta=.3,f0=D1.y.reduce((a,b)=>a+b,0)/30,trees=[],F=D1.y.map(()=>f0);
+  for(let t=0;t<100;t++){const r=D1.y.map((v,i)=>v-F[i]);const tr=fitTree(D1.P,r,D1.x.map((_,i)=>i),2,2);trees.push(tr);for(let i=0;i<30;i++)F[i]+=eta*predT(tr,D1.P[i])}
+  const ro=H('div','trio',el);
+  const draw=T=>{T=Math.round(T);const fn=v=>{let s=f0;for(let t=0;t<T;t++)s+=eta*predT(trees[t],[v]);return s};
+    path.setAttribute('d',stepPath(fn,A.sx,A.sy));let m=0;D1.x.forEach((x,i)=>{const e=D1.y[i]-fn(x);m+=e*e/30});
+    ro.innerHTML='<span class="soft">M = <b style="color:var(--ink)">'+T+'</b> trees, η = 0.3</span><span class="soft">training error: <b style="color:var(--amber)">'+m.toFixed(3)+'</b></span>'};
+  const sl=Slider(el,'rounds M',0,100,1,1,draw,true,v=>String(Math.round(v)));sl.el.parentNode.style.width='520px';
+  draw(1);return{enter(){sl.set(1);draw(1)}}};
+
+/* ---- bagging vs boosting diagram ---- */
+V.bagVsBoost=el=>{const svg=svgEl(el,1080,170,'Parallel bagging versus sequential boosting');
+  TX(svg,250,14,'bagging: in parallel','lab b');
+  BX(svg,10,70,80,44,'bx');TX(svg,50,92,'data','lab');
+  [0,1,2].forEach(i=>{const y=30+i*50;AR(svg,92,92,148,y+18);BX(svg,150,y,110,36,'bxb');TX(svg,205,y+18,'tree '+(i+1),'lab');AR(svg,262,y+18,338,92)});
+  BX(svg,340,70,110,44,'bxb');TX(svg,395,92,'average','lab');
+  TX(svg,800,14,'boosting: in sequence','lab a');
+  const xs=[560,700,840,980];['F₀','h₁','h₂','h₃'].forEach((l,i)=>{BX(svg,xs[i]-45,70,90,44,i?'bxa':'bxb');TX(svg,xs[i],92,l,'mt');
+    if(i){AR(svg,xs[i-1]+47,92,xs[i]-47,92,'a');TX(svg,(xs[i-1]+xs[i])/2,56,'residuals','st a')}});
+  TX(svg,770,150,'sum: F₀ + η h₁ + η h₂ + η h₃','st')};
+
+/* ---- toy problem ---- */
+const TX5=[1,2,3,4,5],TY5=[2,4,6,8,20];
+function toyPlot(el,W,Hh){const svg=svgEl(el,W,Hh,'Toy regression data');const x0=50,x1=W-20,y0=Hh-34,y1=12;
+  const sx=v=>x0+(v-.5)/5*(x1-x0),sy=v=>y0-v/22*(y0-y1);
+  S('line',{x1:x0,x2:x1,y1:y0,y2:y0,class:'ax'},svg);S('line',{x1:x0,x2:x0,y1:y0,y2:y1,class:'ax'},svg);
+  [0,5,10,15,20].forEach(v=>TX(svg,x0-8,sy(v),String(v),'st','end'));TX5.forEach(v=>TX(svg,sx(v),y0+16,String(v),'st'));
+  const pts=()=>TX5.forEach((x,i)=>S('circle',{cx:sx(x),cy:sy(TY5[i]),r:7,style:'fill:var(--ink)'},svg));
+  const steps=(vals,cls,g,extra)=>S('path',{d:vals.map((v,i)=>(i?'L':'M')+sx(i+.5)+' '+sy(v)+' L'+sx(i+1.5)+' '+sy(v)).join(''),class:cls,style:'stroke-width:3;'+(extra||'')},g||svg);
+  return{svg,sx,sy,pts,steps}}
+const stump=(s,vals)=>{const L=[],R=[];TX5.forEach((x,i)=>(x<s?L:R).push(vals[i]));const m=a=>a.reduce((p,q)=>p+q,0)/a.length;const a=m(L),b=m(R);return TX5.map(x=>x<s?a:b)};
+const r2=v=>String(Math.round(v*100)/100).replace('-','−');
+const vec=a=>'['+a.map(r2).join(', ')+']';
+
+V.toyBag=el=>{el.style.display='flex';el.style.gap='36px';el.style.alignItems='center';
+  const P=toyPlot(el,500,340),splits=[3.5,2.5,4.5],cls=['cv','cv amber','cv'],dash=['','stroke-dasharray:9 6','stroke-dasharray:3 5'],G=[];
+  splits.forEach((s,i)=>{const g=S('g',{class:'fd'},P.svg);G.push(g);P.steps(stump(s,TY5),cls[i],g,dash[i])});P.pts();
+  const tb=H('table','tt',el);tb.style.fontSize='19px';tb.style.whiteSpace='nowrap';tb.innerHTML='<thead><tr><th>stump</th><th>split</th><th>left, right mean</th><th>predictions</th></tr></thead>';
+  const body=H('tbody','',tb),rows=splits.map((s,i)=>{const p=stump(s,TY5);return H('tr','fd',body,'<td>'+(i+1)+'</td><td>x ≤ '+Math.floor(s)+'</td><td>'+r2(p[0])+', '+r2(p[4])+'</td><td>'+vec(p)+'</td>')});
+  return{step(s){G.forEach((g,i)=>g.style.opacity=i<=s?1:.06);rows.forEach((r,i)=>r.style.opacity=i<=s?1:.1)}}};
+
+V.toyBagAvg=el=>{el.style.display='flex';el.style.gap='40px';el.style.alignItems='center';
+  const P=toyPlot(el,560,360),ps=[3.5,2.5,4.5].map(s=>stump(s,TY5)),avg=TX5.map((_,i)=>(ps[0][i]+ps[1][i]+ps[2][i])/3);
+  ps.forEach(p=>P.steps(p,'cv',null,'opacity:.18'));P.steps(avg,'cv',null,'stroke-width:4');P.pts();
+  const box=H('div','',el);box.style.display='flex';box.style.flexDirection='column';box.style.gap='14px';
+  H('div','math sm',box,M('f(x) = \\frac{1}{3}(f_1 + f_2 + f_3)'));
+  const tb=H('table','tt',box);tb.style.fontSize='22px';tb.innerHTML='<thead><tr><th>x</th><th>y</th><th>average</th></tr></thead><tbody>'+TX5.map((x,i)=>'<tr'+(i===4?' class="hl"':'')+'><td>'+x+'</td><td>'+TY5[i]+'</td><td>'+avg[i].toFixed(2)+'</td></tr>').join('')+'</tbody>'};
+
+V.toyBoost=el=>{vcol(el);el.style.gap='6px';
+  const row=H('div','',el);row.style.display='flex';row.style.gap='34px';row.style.alignItems='center';
+  const P=toyPlot(row,540,330);
+  // greedy stumps, eta = 1
+  const F=[TX5.map(()=>8)],R=[],S_=[],Gs=[];
+  for(let t=0;t<3;t++){const f=F[t],r=TY5.map((y,i)=>y-f[i]);let best=null;
+    [1.5,2.5,3.5,4.5].forEach(s=>{const g=stump(s,r);const e=g.reduce((a,v,i)=>a+(r[i]-v)**2,0);if(!best||e<best.e-1e-9)best={s,g,e}});
+    R.push(r);S_.push(best.s);Gs.push(best.g);F.push(f.map((v,i)=>v+best.g[i]))}
+  const gF=S('g',{},P.svg),gR=S('g',{},P.svg);P.pts();
+  const info=H('div','',row);info.style.display='flex';info.style.flexDirection='column';info.style.gap='10px';info.style.width='480px';info.style.textAlign='left';info.style.fontSize='21px';
+  const draw=s=>{gF.innerHTML='';gR.innerHTML='';
+    if(s>0)P.steps(F[s-1],'cv',gF,'opacity:.25');P.steps(F[s],'cv',gF,'stroke-width:4');
+    TX5.forEach((x,i)=>{const yv=F[s][i];if(Math.abs(TY5[i]-yv)>.05)S('line',{x1:P.sx(x)+10,x2:P.sx(x)+10,y1:P.sy(yv),y2:P.sy(TY5[i]),class:'ar a',style:'stroke-width:2.4'},gR)});
+    if(s===0){info.innerHTML='<p><b>Round 0.</b> '+MM('f_0 = \\text{mean}(y) = 8')+'</p><p>'+MM('f_0(x)')+' = [8, 8, 8, 8, 8]</p><p class="soft">Amber: the residuals still to explain.</p>';return}
+    const t=s-1;info.innerHTML='<p><b>Round '+s+'.</b> residuals '+MM('r = y - f_'+t)+' = '+vec(R[t])+'</p>'+
+      '<p>Best stump: split at x ≤ '+Math.floor(S_[t])+' → '+MM('g_'+s)+' = '+vec(Gs[t])+'</p>'+
+      '<p>'+MM('f_'+s+' = f_'+t+' + g_'+s)+' = <b style="color:var(--blue)">'+vec(F[s])+'</b></p>'+(s===1?'<p class="fire">Round 1 already fits the hard point exactly.</p>':'');
+    info.querySelectorAll('.math').forEach(m=>m.style.fontSize='23px')};
+  H('p','soft',el,'η = 1, and each stump is the split with the smallest squared error on the current residuals.').style.fontSize='16px';
+  return{step(s){draw(s)}}};
+
+/* ---- shrinkage on the toy problem ---- */
+V.shrinkViz=el=>{el.style.display='flex';el.style.gap='36px';el.style.alignItems='center';
+  const P=toyPlot(el,540,330);const g=S('g',{},P.svg);P.pts();
+  const box=H('div','',el);box.style.display='flex';box.style.flexDirection='column';box.style.gap='14px';box.style.width='470px';
+  const ro=H('p','small',box);
+  const run=(eta,T)=>{let f=TX5.map(()=>8);for(let t=0;t<T;t++){const r=TY5.map((y,i)=>y-f[i]);let best=null;
+    [1.5,2.5,3.5,4.5].forEach(s=>{const gg=stump(s,r);const e=gg.reduce((a,v,i)=>a+(r[i]-v)**2,0);if(!best||e<best.e-1e-9)best={gg,e}});f=f.map((v,i)=>v+eta*best.gg[i])}return f};
+  let eta=1,T=3;
+  const draw=()=>{g.innerHTML='';const f=run(eta,T);P.steps(f,'cv',g,'stroke-width:4');
+    ro.innerHTML='After <b>'+T+'</b> rounds with η = <b>'+eta.toFixed(2)+'</b>: prediction at x = 5 is <b style="color:var(--amber)">'+r2(f[4])+'</b>, at x = 4 it is <b>'+r2(f[3])+'</b>'};
+  const s1=Slider(box,'η',.05,1,.05,1,v=>{eta=v;draw()},false,v=>v.toFixed(2));
+  const s2=Slider(box,'rounds',1,30,1,3,v=>{T=Math.round(v);draw()},false,v=>String(Math.round(v)));
+  H('p','soft small',box,'With η = 1 the hard point is fitted at once. With a small η it is approached slowly, and you can stop before it dominates.');
+  draw();return{enter(){eta=1;T=3;s1.set(1);s2.set(3);draw()}}};
+
+/* ---- early stopping ---- */
+V.earlyStop=el=>{el.style.display='flex';el.style.gap='36px';el.style.alignItems='center';
+  const r=RNG(31),mk=n=>{const x=[],y=[];for(let i=0;i<n;i++){const v=r();x.push(v);y.push(Math.sin(2*Math.PI*v)+.35*r.n())}return{x,y,P:x.map(v=>[v])}};
+  const tr=mk(40),va=mk(300),eta=.1,T=300,f0=tr.y.reduce((a,b)=>a+b,0)/40;
+  const Ft=tr.y.map(()=>f0),Fv=va.y.map(()=>f0),trees=[],eT=[],eV=[];const mse=(y,F)=>y.reduce((a,v,i)=>a+(v-F[i])**2,0)/y.length;
+  eT.push(mse(tr.y,Ft));eV.push(mse(va.y,Fv));
+  for(let t=0;t<T;t++){const rr=tr.y.map((v,i)=>v-Ft[i]);const g=fitTree(tr.P,rr,tr.x.map((_,i)=>i),2,1);trees.push(g);
+    for(let i=0;i<40;i++)Ft[i]+=eta*predT(g,tr.P[i]);for(let i=0;i<300;i++)Fv[i]+=eta*predT(g,va.P[i]);eT.push(mse(tr.y,Ft));eV.push(mse(va.y,Fv))}
+  let best=0;eV.forEach((v,i)=>{if(v<eV[best])best=i});
+  const W=520,Hh=330,svg=svgEl(el,W,Hh,'Training and validation error over boosting rounds');const x0=50,x1=W-14,y0=Hh-34,y1=14,ym=.45;
+  const sx=k=>x0+k/T*(x1-x0),sy=v=>y0-Math.min(v,ym)/ym*(y0-y1);
+  S('line',{x1:x0,x2:x1,y1:y0,y2:y0,class:'ax'},svg);S('line',{x1:x0,x2:x0,y1:y0,y2:y1,class:'ax'},svg);
+  TX(svg,x1,Hh-12,'boosting rounds','st','end');TX(svg,x0+6,y1+4,'error','st','start');
+  S('path',{d:pathOf(eT.map((v,k)=>[sx(k),sy(v)])),class:'cv'},svg);S('path',{d:pathOf(eV.map((v,k)=>[sx(k),sy(v)])),class:'cv amber'},svg);
+  TX(svg,sx(T)-4,sy(eT[T])-14,'training','st b','end');TX(svg,sx(T)-4,sy(eV[T])-14,'validation','st a','end');
+  S('line',{x1:sx(best),x2:sx(best),y1:y1,y2:y0,class:'ax',style:'stroke-dasharray:5 5'},svg);TX(svg,sx(best)+6,y1+30,'stop here (round '+best+')','st','start');
+  const mkr=S('circle',{r:6,class:'dot a'},svg);
+  const right=H('div','',el);right.style.display='flex';right.style.flexDirection='column';right.style.gap='8px';right.style.alignItems='center';
+  const fs=svgEl(right,440,280,'Fitted function at the chosen round');const A=plot1D(fs,10,10,420,260,-2.2,2.2);
+  tr.x.forEach((x,i)=>S('circle',{cx:A.sx(x),cy:A.sy(tr.y[i]),r:4,style:'fill:var(--ink)'},fs));
+  S('path',{d:stepPath(v=>Math.sin(2*Math.PI*v),A.sx,A.sy),class:'cv thin',style:'stroke-dasharray:6 5'},fs);
+  const fp=S('path',{class:'cv amber',style:'stroke-width:2.6'},fs);
+  const draw=k=>{k=Math.round(k);mkr.setAttribute('cx',sx(k));mkr.setAttribute('cy',sy(eV[k]));
+    fp.setAttribute('d',stepPath(v=>{let s=f0;for(let t=0;t<k;t++)s+=eta*predT(trees[t],[v]);return s},A.sx,A.sy))};
+  const sl=Slider(right,'rounds',0,T,1,best,draw,false,v=>String(Math.round(v)));sl.el.parentNode.style.width='420px';
+  draw(best);return{enter(){sl.set(best);draw(best)}}};
+
+/* ================= new maths section ================= */
+const X4=[1,2,3,4],Y4=[2,4,8,10];
+function plot4(el,W,Hh){const svg=svgEl(el,W,Hh,'Four training points');const x0=56,x1=W-24,y0=Hh-36,y1=16;
+  const sx=v=>x0+(v-.5)/4*(x1-x0),sy=v=>y0-v/12*(y0-y1);
+  S('line',{x1:x0,x2:x1,y1:y0,y2:y0,class:'ax'},svg);S('line',{x1:x0,x2:x0,y1:y0,y2:y1,class:'ax'},svg);
+  [0,4,8,12].forEach(v=>TX(svg,x0-8,sy(v),String(v),'st','end'));X4.forEach(v=>TX(svg,sx(v),y0+18,'x = '+v,'st'));
+  return{svg,sx,sy,pts(){X4.forEach((x,i)=>S('circle',{cx:sx(x),cy:sy(Y4[i]),r:7,style:'fill:var(--ink)'},svg))},
+    step(vals,g,cls,extra){return S('path',{d:vals.map((v,i)=>(i?'L':'M')+sx(i+.5)+' '+sy(v)+' L'+sx(i+1.5)+' '+sy(v)).join(''),class:cls||'cv',style:'stroke-width:3.5;'+(extra||'')},g||svg)}}}
+
+V.predVec=el=>{el.style.display='flex';el.style.gap='30px';el.style.alignItems='center';
+  const P=plot4(el,560,260);const F=[6,6,6,6];
+  X4.forEach((x,i)=>{S('line',{x1:P.sx(x)-26,x2:P.sx(x)+26,y1:P.sy(F[i]),y2:P.sy(F[i]),class:'cv',style:'stroke-width:4'},P.svg);
+    S('line',{x1:P.sx(x)+14,x2:P.sx(x)+14,y1:P.sy(F[i]),y2:P.sy(Y4[i])+(Y4[i]>F[i]?10:-10),class:'ar a','marker-end':'url(#aha)',style:'stroke-width:3'},P.svg)});P.pts();
+  H('p','small',el,'<span style="color:var(--blue)">▬</span> current predictions <i>f<sub>i</sub></i><br><span style="color:var(--amber)">↕</span> negative gradient: the direction each <i>f<sub>i</sub></i> should move<br>● targets <i>y<sub>i</sub></i>').style.textAlign='left'};
+
+V.fitGrad=el=>{el.style.display='flex';el.style.gap='30px';el.style.alignItems='center';
+  const P=plot4(el,600,280);
+  X4.forEach((x,i)=>{S('line',{x1:P.sx(x)-26,x2:P.sx(x)+26,y1:P.sy(6),y2:P.sy(6),class:'cv',style:'stroke-width:4'},P.svg);
+    S('line',{x1:P.sx(x),x2:P.sx(x),y1:P.sy(6),y2:P.sy(Y4[i])+(Y4[i]>6?10:-10),class:'ar a','marker-end':'url(#aha)',style:'stroke-width:3'},P.svg)});P.pts();
+  const q=S('g',{},P.svg);S('line',{x1:P.sx(2.5),x2:P.sx(2.5),y1:P.sy(11.5),y2:P.sy(.5),class:'ax',style:'stroke-dasharray:5 5'},q);TX(q,P.sx(2.5),P.sy(11.8),'x = 2.5: no gradient here','st a');
+  const fit=S('g',{class:'fd'},P.svg);S('path',{d:'M'+P.sx(.5)+' '+P.sy(3)+' L'+P.sx(2.5)+' '+P.sy(3)+' L'+P.sx(2.5)+' '+P.sy(9)+' L'+P.sx(4.5)+' '+P.sy(9),class:'cv',style:'stroke-width:3;stroke-dasharray:9 6'},fit);
+  TX(fit,P.sx(3.9),P.sy(9)+18,'F + h: defined for every x','st b','end');
+  const tx=H('p','small',el,'');tx.style.maxWidth='400px';tx.style.textAlign='left';
+  return{step(s){fit.style.opacity=s>=1?1:0;tx.innerHTML=s?'Fit a function <i>h</i> to the arrows. It also gives a correction for <b>new inputs</b>.':'Updating the <i>n</i> training predictions directly says nothing about <b>new inputs</b>.'}}};
+
+V.stump4=el=>{el.style.display='flex';el.style.gap='40px';el.style.alignItems='center';
+  const svg=svgEl(el,520,250,'Decision stump fitted to the residuals');
+  BX(svg,180,20,160,46,'bx');TX(svg,260,43,'x ≤ 2.5 ?','lab');
+  AR(svg,220,68,140,140);AR(svg,300,68,380,140);TX(svg,160,96,'yes','st');TX(svg,360,96,'no','st');
+  BX(svg,40,142,200,80,'bxb');TX(svg,140,166,'x = 1, 2','st');TX(svg,140,196,'(−4 − 2)/2 = −3','lab');
+  BX(svg,280,142,200,80,'bxb');TX(svg,380,166,'x = 3, 4','st');TX(svg,380,196,'(2 + 4)/2 = +3','lab');
+  const P=plot4(el,440,250);const g=S('g',{},P.svg);
+  const r=[-4,-2,2,4],sy=v=>P.sy(v+6);S('line',{x1:P.sx(.5),x2:P.sx(4.5),y1:sy(0),y2:sy(0),class:'ax'},g);
+  X4.forEach((x,i)=>S('circle',{cx:P.sx(x),cy:sy(r[i]),r:7,class:'dot a'},g));
+  S('path',{d:'M'+P.sx(.5)+' '+sy(-3)+' L'+P.sx(2.5)+' '+sy(-3)+' L'+P.sx(2.5)+' '+sy(3)+' L'+P.sx(4.5)+' '+sy(3),class:'cv',style:'stroke-width:3.5'},g);
+  P.svg.querySelectorAll('text').forEach(t=>{if(/^\d+$/.test(t.textContent))t.textContent=String(+t.textContent-6).replace('-','−')});
+  TX(P.svg,P.sx(.6),P.sy(11.6),'residuals r and the stump h₁','st a','start');
+  S('line',{x1:P.sx(2.5),x2:P.sx(2.5),y1:P.sy(11),y2:P.sy(0),class:'ax',style:'stroke-dasharray:5 5'},P.svg);TX(P.svg,P.sx(2.5)+6,P.sy(.8),'split at x = 2.5','st b','start')};
+
+V.tiny4=el=>{el.style.display='flex';el.style.gap='34px';el.style.alignItems='center';
+  const P=plot4(el,520,330),g=S('g',{},P.svg);P.pts();
+  const F=[[6,6,6,6],[4.5,4.5,7.5,7.5],[3.75,3.75,8.25,8.25]],H_=[null,[-3,-3,3,3],[-1.5,-1.5,1.5,1.5]],Ls=[20,6.5,3.125];
+  const box=H('div','',el);box.style.textAlign='left';box.style.fontSize='22px';box.style.width='520px';box.style.display='flex';box.style.flexDirection='column';box.style.gap='10px';
+  const v=a=>'('+a.map(z=>String(z).replace('-','−')).join(', ')+')';
+  return{step(s){g.innerHTML='';if(s)P.step(F[s-1],g,'cv','opacity:.25');P.step(F[s],g);
+    X4.forEach((x,i)=>{if(Math.abs(Y4[i]-F[s][i])>.01)S('line',{x1:P.sx(x)+12,x2:P.sx(x)+12,y1:P.sy(F[s][i]),y2:P.sy(Y4[i]),class:'ar a',style:'stroke-width:2.6'},g)});
+    const r=Y4.map((y,i)=>y-F[s][i]);
+    box.innerHTML=(s===0?'<p><b>F</b><sub>0</sub> = '+v(F[0])+'</p>':'<p>Fit <i>h</i><sub>'+s+'</sub> = '+v(H_[s])+' (split at x ≤ 2.5)</p><p><b>F</b><sub>'+s+'</sub> = <i>F</i><sub>'+(s-1)+'</sub> + 0.5 <i>h</i><sub>'+s+'</sub> = <b style="color:var(--blue)">'+v(F[s])+'</b></p>')+
+      '<p>residuals <b style="color:var(--amber)">'+v(r)+'</b></p><p>loss ℒ = <b>'+Ls[s]+'</b></p>'}}};
+
+V.alphaCurve=el=>{el.style.display='flex';el.style.gap='36px';el.style.alignItems='center';
+  const W=520,Hh=300,svg=svgEl(el,W,Hh,'Vote strength alpha as a function of error epsilon');const x0=50,x1=W-16,y0=Hh-36,y1=14;
+  const sx=e=>x0+e/.5*(x1-x0),sy=a=>y0-a/2.5*(y0-y1),al=e=>.5*Math.log((1-e)/e);
+  S('line',{x1:x0,x2:x1,y1:y0,y2:y0,class:'ax'},svg);S('line',{x1:x0,x2:x0,y1:y0,y2:y1,class:'ax'},svg);
+  [0,.1,.2,.3,.4,.5].forEach(e=>TX(svg,sx(e),y0+16,String(e),'st'));[0,1,2].forEach(a=>TX(svg,x0-8,sy(a),String(a),'st','end'));
+  TX(svg,x1,y0+30,'error ε','st','end');TX(svg,x0+8,y1+4,'α','mt','start');
+  const pts=[];for(let e=.004;e<=.5;e+=.004)pts.push([sx(e),sy(Math.min(2.5,al(e)))]);S('path',{d:pathOf(pts),class:'cv'},svg);
+  const mk=S('circle',{r:7,class:'dot a'},svg);
+  const right=H('div','',el);right.style.display='flex';right.style.flexDirection='column';right.style.gap='16px';right.style.width='420px';
+  const ro=H('p','big',right);
+  const draw=e=>{mk.setAttribute('cx',sx(e));mk.setAttribute('cy',sy(Math.min(2.5,al(e))));ro.innerHTML='ε = '+e.toFixed(2)+' → α = <b style="color:var(--amber)">'+al(e).toFixed(3)+'</b>'};
+  const sl=Slider(right,'ε',.02,.5,.01,.2,draw,false,v=>v.toFixed(2));
+  H('p','small',right,'ε = 0.5 (a coin flip) gets no vote. Smaller error, larger vote: ε = 0.2 gives ½ log 4 ≈ 0.693.');
+  draw(.2);return{enter(){sl.set(.2);draw(.2)}}};
+
+V.weights5=el=>{const svg=svgEl(el,900,260,'Weights of five examples before and after one AdaBoost round');
+  const x0=80,bw=90,gap=60,sy=w=>220-w*360,bars=[],labs=[];
+  S('line',{x1:60,x2:860,y1:220,y2:220,class:'ax'},svg);
+  for(let i=0;i<5;i++){const x=x0+i*(bw+gap),wrong=i===4;
+    bars.push(S('rect',{x:x,width:bw,rx:5,y:sy(.2),height:220-sy(.2),style:'transition:all .7s;fill:'+(wrong?'var(--amber)':'var(--blue)')},svg));
+    labs.push(TX(svg,x+bw/2,sy(.2)-14,'0.200','lab'));TX(svg,x+bw/2,240,wrong?'misclassified':'correct',wrong?'st a':'st')}
+  return{step(s){const W=[.125,.125,.125,.125,.5],w0=[.2,.2,.2,.2,.2];bars.forEach((b,i)=>{const w=s?W[i]:w0[i];b.setAttribute('y',sy(w));b.setAttribute('height',220-sy(w));
+    labs[i].setAttribute('y',sy(w)-14);labs[i].textContent=w.toFixed(3)})}}};
+
+V.logit=el=>{el.style.display='flex';el.style.gap='36px';el.style.alignItems='center';
+  const W=460,Hh=230,svg=svgEl(el,W,Hh,'Sigmoid of the logit');const x0=40,x1=W-14,y0=Hh-30,y1=12;
+  const sx=f=>x0+(f+5)/10*(x1-x0),sy=p=>y0-p*(y0-y1),sg=f=>1/(1+Math.exp(-f));
+  S('line',{x1:x0,x2:x1,y1:y0,y2:y0,class:'ax'},svg);S('line',{x1:sx(0),x2:sx(0),y1:y0,y2:y1,class:'ax'},svg);
+  TX(svg,x0-6,sy(1),'1','st','end');TX(svg,x0-6,sy(.5),'0.5','st','end');TX(svg,x1,y0+18,'logit F','st','end');
+  const pts=[];for(let f=-5;f<=5.01;f+=.1)pts.push([sx(f),sy(sg(f))]);S('path',{d:pathOf(pts),class:'cv'},svg);TX(svg,sx(3.4),sy(.82),'p = σ(F)','st b');
+  const mk=S('circle',{r:7,class:'dot a'},svg);
+  const right=H('div','',el);right.style.display='flex';right.style.flexDirection='column';right.style.gap='10px';right.style.width='480px';
+  const out=H('div','',right);out.style.textAlign='left';
+  const draw=f=>{const p=sg(f);mk.setAttribute('cx',sx(f));mk.setAttribute('cy',sy(p));
+    const bar=(v,c)=>'<span style="display:inline-block;vertical-align:middle;height:14px;width:'+Math.abs(v)*140+'px;background:'+c+';border-radius:3px;margin:0 8px"></span>';
+    out.innerHTML='<p class="small">F = '+f.toFixed(1)+' → p = <b style="color:var(--blue)">'+p.toFixed(2)+'</b></p>'+
+      '<p class="small">if y = 1: r = 1 − p = <b>+'+(1-p).toFixed(2)+'</b>'+bar(1-p,'var(--amber)')+'push F up</p>'+
+      '<p class="small">if y = 0: r = −p = <b>−'+p.toFixed(2)+'</b>'+bar(p,'var(--blue)')+'push F down</p>'};
+  const sl=Slider(right,'F',-4,4,.1,-1.4,draw,false,v=>v.toFixed(1));
+  draw(-1.4);return{enter(){sl.set(-1.4);draw(-1.4)}}};
+
+V.expLoss=el=>{el.style.display='flex';el.style.gap='36px';el.style.alignItems='center';
+  const W=560,Hh=280,svg=svgEl(el,W,Hh,'Exponential loss versus the margin');const x0=46,x1=W-14,y0=Hh-34,y1=12;
+  const sx=z=>x0+(z+2)/4*(x1-x0),sy=v=>y0-Math.min(v,5)/5*(y0-y1);
+  S('line',{x1:x0,x2:x1,y1:y0,y2:y0,class:'ax'},svg);S('line',{x1:sx(0),x2:sx(0),y1:y0,y2:y1,class:'ax',style:'opacity:.5'},svg);
+  [-2,-1,0,1,2].forEach(z=>TX(svg,sx(z),y0+16,String(z).replace('-','−'),'st'));[1,3,5].forEach(v=>TX(svg,x0-6,sy(v),String(v),'st','end'));
+  TX(svg,x1,y0+30,'margin y F(x)','st','end');
+  S('path',{d:'M'+sx(-2)+' '+sy(1)+'L'+sx(0)+' '+sy(1)+'L'+sx(0)+' '+sy(0)+'L'+sx(2)+' '+sy(0),class:'cv thin',style:'stroke-dasharray:6 5'},svg);
+  const pts=[];for(let z=-2;z<=2.001;z+=.05)pts.push([sx(z),sy(Math.exp(-z))]);S('path',{d:pathOf(pts),class:'cv amber'},svg);
+  TX(svg,sx(-.25),sy(3.2),'exp(−yF)','st a','start');TX(svg,sx(-1.2),sy(1)-14,'0–1 error','st');
+  TX(svg,sx(-1),y1+4,'← wrong','st','middle');TX(svg,sx(1),y1+4,'right →','st','middle');
+  H('p','small',el,'<b>Margin</b> <i>yF</i> &gt; 0: correct. The loss is small for confident correct answers and grows <span class="fire">exponentially</span> for wrong ones.').style.maxWidth='380px'};
+
+V.adaResid=el=>{el.style.display='flex';el.style.flexDirection='column';el.style.alignItems='center';el.style.gap='6px';
+  const Y=[1,1,-1,-1,1],W=[[.2,.2,.2,.2,.2],[.125,.125,.125,.125,.5]],svg=svgEl(el,900,330,'Pseudo-residuals as arrows: sign is the label, length is the weight');
+  const base=210,k=340,xs=Y.map((_,i)=>150+i*150);
+  S('line',{x1:70,x2:850,y1:base,y2:base,class:'ax'},svg);TX(svg,60,base,'0','st','end');
+  const arr=Y.map((y,i)=>{TX(svg,xs[i],318,'y = '+(y>0?'+1':'−1'),'lab');S('circle',{cx:xs[i],cy:base,r:6,style:'fill:var(--ink)'},svg);
+    return{l:S('line',{x1:xs[i],x2:xs[i],y1:base,class:'ar '+(y>0?'b':'a'),'marker-end':'url(#ah'+(y>0?'b':'a')+')',style:'stroke-width:4;transition:y2 .6s'},svg),
+      t:TX(svg,xs[i]+16,0,'','st','start')}});
+  const note=TX(svg,xs[4]-20,22,'','st a','end');
+  const cap=exCaps(el,[L1('<span>Round 1: equal weights, so every residual has the <b>same size</b>. Its sign is just the label.</span>'),
+    L1('<span>Round 2: one point was misclassified. Its residual is <span class="fire">4× longer</span>; the signs <b>never change</b>.</span>')]);
+  return{step(s){arr.forEach((a,i)=>{const w=W[s][i],y2=base-Y[i]*w*k;a.l.setAttribute('y2',y2);a.t.setAttribute('y',(base+y2)/2);a.t.textContent='w = '+w});
+    note.textContent=s?'misclassified in round 1':'';cap(s)}}};
+
+/* ---- boosting for classification with logistic loss ---- */
+V.logitBoost=el=>{el.style.display='flex';el.style.gap='40px';el.style.alignItems='center';
+  const r=RNG(17),P=[],Y=[],inC=(x,y)=>(x-.5)**2+(y-.5)**2<.32**2;
+  for(let i=0;i<300;i++){const x=r(),y=r();P.push([x,y]);Y.push(inC(x,y)?1:0)}
+  const G=60,cells=[];for(let j=0;j<G;j++)for(let i=0;i<G;i++)cells.push([(i+.5)/G,(j+.5)/G]);
+  const sg=f=>1/(1+Math.exp(-f)),T=100,eta=1,pm=Y.reduce((a,b)=>a+b,0)/300,f0=Math.log(pm/(1-pm));
+  const F=P.map(()=>f0),Fg=new Float64Array(cells.length).fill(f0),snapF=[Float64Array.from(F)],snapG=[Float32Array.from(Fg)],all=P.map((_,i)=>i);
+  for(let t=0;t<T;t++){const res=Y.map((y,i)=>y-sg(F[i]));const tr=fitTree(P,res,all,2,3);
+    for(let i=0;i<300;i++)F[i]+=eta*predT(tr,P[i]);for(let k=0;k<cells.length;k++)Fg[k]+=eta*predT(tr,cells[k]);snapF.push(Float64Array.from(F));snapG.push(Float32Array.from(Fg))}
+  const left=H('div','',el);left.style.display='flex';left.style.flexDirection='column';left.style.alignItems='center';left.style.gap='6px';
+  const size=360,c=H('canvas','',left),dpr=Math.min(2,window.devicePixelRatio||1);c.width=size*dpr;c.height=size*dpr;c.style.width=size+'px';c.style.height=size+'px';
+  c.style.borderRadius='10px';c.style.border='1.5px solid var(--line)';const ctx=c.getContext('2d');ctx.scale(dpr,dpr);
+  H('p','soft',left,'shading: p = σ(F) &nbsp; dot size: |r| = |y − p| &nbsp; dashed: true circle').style.fontSize='15px';
+  const right=H('div','',el);right.style.display='flex';right.style.flexDirection='column';right.style.gap='14px';right.style.width='480px';
+  const ro=H('p','big',right);
+  const draw=t=>{t=Math.round(t);const fg=snapG[t],fp=snapF[t],cs=size/G,blue=CSSV('--blue'),pan=CSSV('--panel');
+    ctx.clearRect(0,0,size,size);ctx.fillStyle=pan;ctx.fillRect(0,0,size,size);
+    for(let j=0;j<G;j++)for(let i=0;i<G;i++){const p=sg(fg[j*G+i]);ctx.fillStyle=blue;ctx.globalAlpha=.55*p;ctx.fillRect(i*cs,size-(j+1)*cs,cs+.6,cs+.6)}
+    ctx.globalAlpha=1;ctx.strokeStyle=CSSV('--ink');ctx.setLineDash([7,5]);ctx.lineWidth=2;ctx.beginPath();ctx.arc(.5*size,.5*size,.32*size,0,7);ctx.stroke();ctx.setLineDash([]);
+    let acc=0,mr=0;P.forEach((q,i)=>{const p=sg(fp[i]),res=Y[i]-p;mr+=Math.abs(res)/300;if((p>.5?1:0)===Y[i])acc++;
+      ctx.fillStyle=Y[i]?blue:CSSV('--amber');ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(q[0]*size,size-q[1]*size,1.5+7*Math.abs(res),0,7);ctx.fill()});ctx.globalAlpha=1;
+    ro.innerHTML='round '+t+': <b style="color:var(--blue)">'+(acc/3).toFixed(1)+'%</b> correct<br><span class="small">mean |r| = <b style="color:var(--amber)">'+mr.toFixed(2)+'</b></span>'};
+  const sl=Slider(right,'rounds',0,T,1,0,draw,true,v=>String(Math.round(v)));
+  H('p','small',right,'Round 0 predicts the base rate everywhere, so every point has a large residual. Each new tree is fitted to <i>y</i> − <i>p</i>: the boundary grows toward the circle and the <b>big dots shrink</b>, leaving only the hard points near the edge.');
+  draw(0);return{enter(){sl.set(0);draw(0)}}};
+
+const stage=document.getElementById('stage'),slides=[].slice.call(document.querySelectorAll('.slide'));
+
+const bar=document.getElementById('bar'),count=document.getElementById('count');
+slides.forEach(s=>{let n=0;s.querySelectorAll('.frag').forEach(f=>{if(f.dataset.f)f._i=+f.dataset.f;else f._i=++n;n=Math.max(n,f._i)});s._n=Math.max(n,+s.dataset.steps||0);s._v=null});
+let cur=-1,step=0;
+function inst(s){if(!s._v){s._v=[];s.querySelectorAll('[data-v]').forEach(e=>{try{s._v.push(V[e.dataset.v](e,s)||{})}catch(err){console.error(e.dataset.v,err)}})}return s._v}
+function go(i,st){
+  i=Math.max(0,Math.min(slides.length-1,i));
+  if(i!==cur){if(cur>=0){slides[cur].classList.remove('on');inst(slides[cur]).forEach(v=>v.leave&&v.leave())}
+    cur=i;slides[cur].classList.add('on');inst(slides[cur]).forEach(v=>v.enter&&v.enter())}
+  step=Math.max(0,Math.min(slides[cur]._n,st));
+  slides[cur].querySelectorAll('.frag').forEach(f=>f.classList.toggle('show',f._i<=step));
+  inst(slides[cur]).forEach(v=>v.step&&v.step(step));
+  count.textContent=(cur+1)+' / '+slides.length;bar.style.width=((cur+1)/slides.length*100)+'%';
+  try{history.replaceState(null,'','#s-'+(cur+1))}catch(e){}
+}
+const next=()=>{if(step<slides[cur]._n)go(cur,step+1);else if(cur<slides.length-1)go(cur+1,0)};
+const prev=()=>{if(step>0)go(cur,step-1);else if(cur>0)go(cur-1,slides[cur-1]._n)};
+document.getElementById('next').onclick=next;document.getElementById('prev').onclick=prev;
+document.addEventListener('keydown',e=>{
+  if(e.metaKey||e.ctrlKey||e.altKey)return;const t=e.target,inp=t&&(t.tagName==='INPUT'||t.tagName==='BUTTON');
+  if(e.key==='ArrowRight'||e.key==='PageDown'){if(t&&t.tagName==='INPUT'&&e.key==='ArrowRight')return;e.preventDefault();next()}
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){if(t&&t.tagName==='INPUT'&&e.key==='ArrowLeft')return;e.preventDefault();prev()}
+  else if(e.key===' '&&!inp){e.preventDefault();next()}
+  else if(e.key==='Home'&&!inp)go(0,0);else if(e.key==='End'&&!inp)go(slides.length-1,0);
+});
+let tx=null,ty=0;
+stage.addEventListener('touchstart',e=>{const t=e.target;tx=(t.tagName==='INPUT'||t.tagName==='BUTTON')?null:e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+stage.addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.5)(dx<0?next:prev)();tx=null},{passive:true});
+function fit(){const d=document.getElementById('deck'),s=Math.min(d.clientWidth/1280,d.clientHeight/720);stage.style.transform='translate(-50%,-50%) scale('+s+')'}
+addEventListener('resize',fit);fit();
+function fromHash(){const m=/^#s-(\d+)$/.exec(location.hash);return m?+m[1]-1:0}
+addEventListener('hashchange',()=>{const i=fromHash();if(i!==cur)go(i,0)});
+go(fromHash(),0);
+})();
+</script>
+</body>
+</html>
